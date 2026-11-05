@@ -1,0 +1,29 @@
+# Bí mật – KHÔNG BAO GIỜ commit
+.env
+*.pem
+*.key
+
+# Dữ liệu, nhật ký, đầu ra
+data/*.duckdb
+data/*.duckdb.wal
+data/checkpoints/
+logs/
+reports_out/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Kết quả kiểm thử sinh tự động (giữ test_summary.csv và pytest_output.txt làm bằng chứng)
+docs/coverage.json
+docs/pytest_junit.xml

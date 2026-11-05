@@ -1,0 +1,25 @@
+......................................................................   [100%]
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.12.0-final-0 _______________
+
+Name                                Stmts   Miss  Cover
+-------------------------------------------------------
+src\analytics\__init__.py               0      0   100%
+src\analytics\alerts.py               127      9    93%
+src\analytics\did.py                   67     32    52%
+src\analytics\event_study.py          234     46    80%
+src\analytics\health.py                58     58     0%
+src\analytics\narrative.py             67      5    93%
+src\analytics\news.py                  24     24     0%
+src\analytics\pipeline.py             153      8    95%
+src\analytics\stats_tests.py          125     16    87%
+src\analytics\watchlist_impact.py     127     10    92%
+src\finance\__init__.py                 0      0   100%
+src\finance\breadth.py                 61      7    89%
+src\finance\contribution.py            56      0   100%
+src\finance\domestic.py                43      2    95%
+src\finance\foreign_flow.py            69      2    97%
+src\finance\utils.py                   53      2    96%
+-------------------------------------------------------
+TOTAL                                1264    221    83%
+Coverage JSON written to file docs/coverage.json

@@ -1,0 +1,17 @@
+﻿kiểm thử,mục tiêu,dữ liệu dùng,kết quả,đạt,ghi chú
+test_alerts,"8 quy tắc cảnh báo, cooldown, giới hạn 5/ngày, chạy lại lịch sử",Dữ liệu giả + mẫu,4/4 qua,Đạt,
+test_breadth,"Công thức (1)–(3), phân loại phiên","Ví dụ tính tay 5 mã, chia 0, NULL, một mã",11/11 qua,Đạt,
+test_contribution,"Công thức (4)–(5): ΣC + ε = ΔI, CR5, chỉ số loại trừ, hệ số k",Chỉ số tự dựng 6 mã,5/5 qua,Đạt,
+test_event_study,AR/CAR/BMP phát hiện hiệu ứng cài sẵn; ghép đối chứng không hoàn lại,Bảng 30 mã × 200 phiên,5/5 qua,Đạt,
+test_foreign,"Công thức (6)–(8), chuỗi, đảo chiều, mẫu số nf, trạng thái hấp thụ",Dữ liệu giả,14/14 qua,Đạt,
+test_no_lookahead,"Không nhìn trước: z, phân vị, ngưỡng, tham số sự kiện",Phá hủy dữ liệu tương lai,6/6 qua,Đạt,
+test_operations,"Chuyển nguồn, thử lại 2–4–8 giây, quota, mất mạng, 401, che bí mật",Đồng hồ & HTTP giả,8/8 qua,Đạt,
+test_pipeline,"Tích hợp raw→chỉ báo, chất lượng, tái lập (hash), đồng nhất 3 kênh, PDF",Dữ liệu mẫu 125 phiên,11/11 qua,Đạt,
+test_stats_watchlist,"Holm, Newey–West, hoán vị khối, Dunn, beta Dimson, hồ sơ watchlist",Mô phỏng,6/6 qua,Đạt,
+coverage,Độ phủ tầng finance + analytics ≥ 80%,pytest-cov,82.5%,Đạt,
+B2.4 đối chiếu độ rộng,Lệch ≤ 2 mã ở ≥ 95% phiên,kho hiện tại,98.5%,Đạt,
+B3.5 sai số tái lập ε,"Trung vị |ε| < 0,5 điểm",kho hiện tại,0.084,Đạt,
+B2.6 độ đầy đủ,≥ 98%,kho hiện tại,100.00%,Đạt,
+B8.4 chạy lại cảnh báo,Trung bình ≤ 5 cảnh báo thị trường/ngày,60 phiên,2.68/ngày,Đạt,docs/notes/alert_backtest.md
+B12.6 đối chiếu nguồn ngoài,Cùng dấu NF với số công bố ở 10 phiên,—,Chưa thực hiện,Chưa,Cần dữ liệu SSI thật – xem docs/notes/external_check.md
+B1.4b luồng NEO ≥ 10 phiên,"≥ 10 phiên, mất kết nối < 5 phút/phiên",—,Chưa thực hiện (dữ liệu mẫu),Chưa,Cần chạy recorder_neo với tài khoản NEO thật

@@ -1,0 +1,4 @@
+event_id,event_date,effective_date,label,description,source_url,verified
+E1,2025-10-08,,Công bố nâng hạng,"FTSE Russell công bố nâng hạng Việt Nam lên Thị trường mới nổi thứ cấp (kết quả kỳ rà soát tháng 9/2025, công bố tối 07/10/2025 giờ London)",https://www.lseg.com/en/ftse-russell/equity-country-classification,false
+E2,2026-04-08,,Xác nhận lộ trình,"Phiên đầu tiên sau kỳ rà soát giữa kỳ công bố 07/04/2026 xác nhận giữ nguyên lộ trình",https://www.lseg.com/en/ftse-russell/equity-country-classification,false
+E3,2026-09-18,2026-09-21,Phiên điều chỉnh rổ,"Phiên giao dịch cuối cùng trước ngày hiệu lực 21/09/2026 – các quỹ thụ động tái cơ cấu danh mục",https://www.lseg.com/en/ftse-russell/equity-country-classification,false

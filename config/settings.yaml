@@ -1,0 +1,155 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# FTSE Flow Radar 3.2 – THAM SỐ TẬP TRUNG (bước B0.6)
+# Mọi ngưỡng, cửa sổ, trọng số đọc từ tệp này qua src.common.config.load_settings().
+# Không viết cứng ngưỡng trong mã nguồn. Trang 8 "Phương pháp" hiển thị trực tiếp tệp này.
+# ═══════════════════════════════════════════════════════════════════════════════
+app:
+  name: "FTSE Flow Radar"
+  version: "3.2"
+  subtitle: "MARKET INTELLIGENCE"
+  timezone: "Asia/Ho_Chi_Minh"
+  disclaimer: "Công cụ phân tích học thuật, không phải khuyến nghị đầu tư."
+  bot_disclaimer: "Thông tin phân tích, không phải khuyến nghị giao dịch."
+
+paths:
+  db: "data/ffr.duckdb"
+  log_file: "logs/app.log"
+  reports_dir: "reports_out"
+  checkpoint_dir: "data/checkpoints"
+
+# Dữ liệu lịch sử
+history:
+  start_date: "2025-04-01"
+  exchange: "HOSE"
+  index_codes: ["VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX"]
+
+# Chế độ dữ liệu mẫu (biến môi trường DEMO_DATA ghi đè)
+demo:
+  enabled: true
+  seed: 20251008
+  # Danh sách mã lấy từ config/stock_groups.csv (173 mã HOSE)
+  intraday_sessions: 20
+  neo_stream_sessions: 10
+
+# ── Làm sạch (mục 8.1) ────────────────────────────────────────────────────────
+cleaning:
+  winsor_lower: 0.01
+  winsor_upper: 0.99
+  max_abs_return: 0.07        # biên độ HOSE; vượt ngưỡng ghi data_quality_log (trừ ngày đầu niêm yết)
+  completeness_target: 0.98
+  breadth_tolerance: 2        # lệch tối đa (mã) khi đối chiếu độ rộng với SSI
+
+# ── Cửa sổ ───────────────────────────────────────────────────────────────────
+windows:
+  z_window: 60                # z-score dòng vốn: 60 phiên trước, chỉ dữ liệu đến t−1
+  pct_windows: [20, 60, 250]  # phân vị lịch sử
+  high_div_window: 250
+  high_div_pct: 90            # nhãn "độ vênh cao" khi D ≥ phân vị 90 của 250 phiên trước
+  beta_window: 120            # beta Dimson
+  beta_min_obs: 100
+  intraday_sessions: 20       # beta nội ngày
+  er_sd_window: 60
+  sparkline_index: 40
+  sparkline_stock: 30
+  ma_short: 20
+  ma_long: 50
+  rsi_period: 14
+
+# ── Module A ─────────────────────────────────────────────────────────────────
+breadth:
+  flat_threshold_pct: 0.1     # |r_VNI| < 0,1% → "đi ngang"
+contribution:
+  eps_median_target: 0.5      # trung vị |ε| mục tiêu (điểm)
+  top_n: 5
+  family_default: "VINGROUP"
+
+# ── Module B ─────────────────────────────────────────────────────────────────
+foreign:
+  denominator: "auto"         # auto | match | match_plus_deal (chốt ở B2.5)
+  absorb_nf_min: 0.05         # |nf| tối thiểu để gán trạng thái hấp thụ
+  absorb_ret_min: 0.005       # |r| tối thiểu (0,5%)
+  streak_reversal_min: 3      # đảo chiều sau chuỗi ≥ 3 phiên
+  top_value_n: 10             # NF_top: mua ròng chuẩn hóa vào Top10 vốn hóa
+
+# ── Sức khỏe thị trường (khối B4.5d) – tổng = 100 ─────────────────────────────
+health_weights:
+  trend: 30
+  momentum: 15
+  perf20: 15
+  breadth: 25
+  divergence: 15
+health_labels:
+  positive: 70
+  caution: 40
+
+# ── Module C: nghiên cứu sự kiện (mục 8.4, 9) ────────────────────────────────
+events:
+  estimation_window: [-130, -11]
+  estimation_window_long: [-250, -11]   # kiểm tra độ vững
+  event_window: [-10, 20]
+  car_windows: [[-1, 1], [-5, 5], [-10, 10], [0, 20]]
+  min_est_obs: 100
+  large_weight_threshold: 0.03          # mã có w ≥ 3% dùng VN-Index loại trừ chính mã
+  did_event: "E3"
+  did_window: [-60, 60]
+  did_weeks: [-8, 8]
+  bootstrap_reps: 2000
+  permutation_reps: 5000
+  permutation_block: 5
+  regime_split_date: "2026-09-21"
+  h1b_dI_min: 10
+  nw_lags: 5
+  alpha: 0.05
+  min_obs_per_type: 15                  # RQ4: Kruskal–Wallis chỉ khi mỗi loại ≥ 15 phiên
+  control_lookback: 120                 # thanh khoản bình quân 120 phiên trước E1
+
+# ── Cảnh báo (mục 8.6) ───────────────────────────────────────────────────────
+alerts:
+  dI_min: 5                   # quy tắc 1: |ΔI| ≥ 5 điểm
+  cr5_min: 0.60               #            và CR5 ≥ 60%
+  div_pct: 90                 # quy tắc 2: D ≥ phân vị 90 của 250 phiên
+  z_total_nf: 2.0             # quy tắc 3: |z| tổng NF HOSE ≥ 2
+  wl_nf_pct_hi: 95            # quy tắc 4
+  wl_nf_pct_lo: 5
+  wl_er_sd_mult: 2.0          # quy tắc 5: |ER_M| ≥ 2 lần độ lệch chuẩn 60 phiên
+  wl_top_n: 5                 # quy tắc 6
+  room_used_min: 0.95         # quy tắc 7
+  stale_minutes: 5            # quy tắc 8
+  cooldown_min: 30
+  max_market_per_day: 5
+  priority: {high: 1, medium: 2, low: 3, system: 0}
+  backtest_sessions: 60
+
+# ── Nguồn dữ liệu ────────────────────────────────────────────────────────────
+ssi:
+  base_url: "https://fc-data.ssi.com.vn/"
+  min_interval_sec: 1.2
+  retries: 3
+  backoff_sec: [2, 4, 8]
+  page_size: 1000
+  timeout_sec: 30
+neo:
+  base_url: "https://neoapi.vpbanks.com.vn"
+  ws_url: "ws://neoapi.vpbanks.com.vn/stock-stream/broker"
+  page_size: 1000
+  max_rps: 5
+  reconnect_backoff_sec: [2, 4, 8, 16]
+  reconnect_max_sec: 60
+failover:
+  ssi_fail_count: 3
+  silence_sec: 120
+  recover_stable_min: 5
+
+# ── Lịch phiên & tác vụ (giờ Việt Nam) ───────────────────────────────────────
+session:
+  open: "09:00"
+  close: "15:00"
+  recorder_start: "08:55"
+  recorder_end: "15:05"
+schedule:
+  midday_brief: "11:35"
+  close_update: "15:05"
+  quality_check: "15:10"
+  closing_report: "15:15"
+
+watchlist_default: ["FPT", "HPG", "MBB", "VNM", "SSI"]

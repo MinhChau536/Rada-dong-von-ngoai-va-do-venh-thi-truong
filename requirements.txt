@@ -1,0 +1,20 @@
+# Giao diện & dữ liệu
+streamlit>=1.40
+pandas>=2.2
+numpy>=1.26
+duckdb>=1.1
+plotly>=5.24
+pyyaml>=6.0
+python-dotenv>=1.0
+requests>=2.31
+websocket-client>=1.8
+# Thống kê
+scipy>=1.13
+statsmodels>=0.14
+linearmodels>=6.0
+# Báo cáo & bot
+fpdf2>=2.8
+python-telegram-bot>=21.0
+# Kiểm thử
+pytest>=8.0
+pytest-cov>=5.0

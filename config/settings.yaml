@@ -23,14 +23,6 @@ history:
   exchange: "HOSE"
   index_codes: ["VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX"]
 
-# Chế độ dữ liệu mẫu (biến môi trường DEMO_DATA ghi đè)
-demo:
-  enabled: true
-  seed: 20251008
-  # Danh sách mã lấy từ config/stock_groups.csv (173 mã HOSE)
-  intraday_sessions: 20
-  neo_stream_sessions: 10
-
 # ── Làm sạch (mục 8.1) ────────────────────────────────────────────────────────
 cleaning:
   winsor_lower: 0.01
@@ -129,8 +121,12 @@ ssi:
   page_size: 1000
   timeout_sec: 30
 neo:
-  base_url: "https://neoapi.vpbanks.com.vn"
-  ws_url: "ws://neoapi.vpbanks.com.vn/stock-stream/broker"
+  # Theo SDK Python của VPBankS (NeoInvestSDK 0.2.5) – môi trường thật
+  base_url: "https://neoapi.vpbanks.com.vn/neo-api"
+  auth_base_url: "https://external.vpbanks.com.vn"
+  ws_url: "wss://neoapi.vpbanks.com.vn/stock-stream/broker"
+  schema_cache: "data/neo_schemas.bin"
+  timeout_sec: 20
   page_size: 1000
   max_rps: 5
   reconnect_backoff_sec: [2, 4, 8, 16]

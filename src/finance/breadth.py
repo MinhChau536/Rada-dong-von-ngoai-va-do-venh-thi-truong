@@ -26,10 +26,23 @@ SESSION_TYPES = {
 }
 
 
+STOCK_TYPES = {"ST", "S"}      # SSI đặc tả ghi "ST", phản hồi mẫu trả "S"; NEO stockType "ST"
+
+
+def is_common_stock(symbol: pd.Series, sec_type: pd.Series | None) -> pd.Series:
+    """Cổ phiếu thường: theo SecType nếu có; nếu thiếu, dùng quy ước mã cổ phiếu HOSE gồm đúng 3 chữ cái
+    (chứng quyền dạng CXXX2401, chứng chỉ quỹ/ETF dạng E1VFVN30, FUEVFVND bị loại)."""
+    by_code = symbol.astype(str).str.fullmatch(r"[A-Z0-9]{3}")
+    if sec_type is None:
+        return by_code
+    t = symbol.map(sec_type).astype("string").str.upper().str.strip()
+    return (t.isin(STOCK_TYPES) | (t.isna() & by_code)).fillna(False).astype(bool)
+
+
 def add_validity(df: pd.DataFrame, sec_type: pd.Series | None = None) -> pd.DataFrame:
     """Gắn is_valid, is_ceiling, is_floor, ret (công thức 1)."""
     d = df.copy()
-    st_ok = True if sec_type is None else d["symbol"].map(sec_type).fillna("ST").eq("ST")
+    st_ok = is_common_stock(d["symbol"], sec_type)
     d["is_valid"] = st_ok & (d["ref"] > 0) & (d["tv"].fillna(0) > 0) & d["close"].notna()
     d["ret"] = np.where(d["ref"] > 0, d["close"] / d["ref"] - 1, np.nan)
     d["is_ceiling"] = d["is_valid"] & (d["close"] >= d["ceiling"]) & d["ceiling"].notna()

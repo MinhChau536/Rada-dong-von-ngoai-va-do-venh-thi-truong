@@ -3,7 +3,8 @@ FTSE Flow Radar – điểm vào ứng dụng Streamlit.
 
     streamlit run src/app/main.py
 
-Chế độ DEMO_DATA=true: nếu kho chưa có chỉ báo, tự sinh dữ liệu mẫu tổng hợp và chạy toàn bộ chuỗi xử lý (~1–2 phút).
+Ứng dụng chỉ đọc dữ liệu thật tải từ SSI FastConnect Data / NEO API. Khi kho chỉ báo còn trống, chỉ mở trang
+"Kết nối dữ liệu" (chẩn đoán API, IP cần đăng ký, nút tải dữ liệu) và trang "Phương pháp & giới hạn".
 """
 from __future__ import annotations
 
@@ -18,13 +19,13 @@ import streamlit as st  # noqa: E402
 
 from src.app import data_access as da  # noqa: E402
 from src.app.theme import css, register_plotly  # noqa: E402
-from src.common.config import get, is_demo  # noqa: E402
+from src.common.config import get  # noqa: E402
 
 st.set_page_config(page_title=f"{get('app.name')}", page_icon="📡", layout="wide", initial_sidebar_state="expanded")
 st.session_state.setdefault("theme", "light")
 st.session_state.setdefault("bg_fx", False)  # B4.3: tắt hiệu ứng nền động, không còn tùy chọn bật
 
-from src.app.pages import (p1_tong_quan, p2_dan_dat, p3_khoi_ngoai, p4_su_kien, p5_watchlist,  # noqa: E402
+from src.app.views import (p0_ket_noi, p1_tong_quan, p2_dan_dat, p3_khoi_ngoai, p4_su_kien, p5_watchlist,  # noqa: E402
                            p6_bao_cao, p7_chat_luong, p8_phuong_phap)
 
 PAGES = {
@@ -43,29 +44,24 @@ PAGES = {
     "Hệ thống": [
         st.Page(p7_chat_luong.render, title="Chất lượng dữ liệu", icon=":material/fact_check:", url_path="chat-luong"),
         st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
+        st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:", url_path="ket-noi"),
     ],
 }
+if not da.ready():                     # kho trống → chỉ mở trang kết nối & phương pháp, KHÔNG sinh dữ liệu giả
+    PAGES = {"Hệ thống": [
+        st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:", url_path="ket-noi", default=True),
+        st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
+    ]}
 st.session_state["_pages"] = {pg.url_path: pg for grp in PAGES.values() for pg in grp}
 
 mode = st.session_state["theme"]
 register_plotly(mode)
 st.markdown(css(mode), unsafe_allow_html=True)
 
-if not da.ready():
-    if is_demo():
-        with st.spinner("Lần chạy đầu: đang sinh DỮ LIỆU MẪU tổng hợp và tính toàn bộ chỉ báo (khoảng 1–2 phút)…"):
-            from src.data import rebuild_all
-            rebuild_all.main(robustness=True, backtest=True)
-            da.clear_cache()
-    else:
-        st.error("Kho chỉ báo trống. Chạy `python -m src.data.backfill` rồi `python -m src.data.rebuild_all`, "
-                 "hoặc đặt DEMO_DATA=true trong .env để dùng dữ liệu mẫu.")
-        st.stop()
-
 nav = st.navigation(PAGES, position="hidden")
 from src.app.components import sidebar  # noqa: E402
 
 sidebar.render(PAGES, nav)
-if st.session_state.pop("sb_search_go", False) and nav.url_path != "watchlist":
+if st.session_state.pop("sb_search_go", False) and nav.url_path != "watchlist" and "watchlist" in st.session_state["_pages"]:
     st.switch_page(st.session_state["_pages"]["watchlist"])
 nav.run()

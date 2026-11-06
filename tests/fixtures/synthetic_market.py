@@ -1,14 +1,9 @@
 """
-Sinh DỮ LIỆU MẪU TỔNG HỢP (chế độ DEMO_DATA – bước B13.2).
+BỘ SINH DỮ LIỆU GIẢ LẬP – CHỈ DÙNG CHO KIỂM THỬ TỰ ĐỘNG (tests/).
 
-⚠️ Đây KHÔNG phải dữ liệu thị trường thật. Bộ sinh tạo chuỗi giá, khối lượng, khối ngoại có cấu trúc
-giống thị trường HOSE (nhân tố thị trường + ngành + riêng lẻ, biên độ ±7%, bước giá, trần/sàn,
-mã tạm ngừng, dòng vốn ngoại có tính bền và tương quan với lợi suất, hiệu ứng quanh mốc FTSE) để
-giảng viên chạy được toàn bộ sản phẩm khi không có khóa SSI/NEO. Mọi bản ghi gắn source = 'DEMO_SSI'
-hoặc 'DEMO_NEO' và giao diện, PDF, Telegram đều hiện nhãn "dữ liệu mẫu".
-
-Dữ liệu được ghi vào ĐÚNG các bảng raw_* với ĐÚNG tên trường SSI FastConnect v2 (chuỗi số, ngày
-dd/mm/yyyy) để đi qua cùng một chuỗi xử lý build_facts → chỉ báo → phân tích như dữ liệu thật.
+Không được import từ src/: ứng dụng, PDF, bot chỉ dùng dữ liệu tải từ SSI/NEO.
+Mô-đun ghi vào kho DuckDB TẠM của pytest (tmp_path) để kiểm thử chuỗi raw → fact → chỉ báo → phân tích
+có đúng công thức, không nhìn trước và tái lập được – giống "fixture" trong kiểm thử phần mềm.
 """
 from __future__ import annotations
 
@@ -25,8 +20,8 @@ from src.common.timeutil import fmt_ssi_date, today_vn
 from src.data import database as db
 
 log = get_logger(__name__)
-SRC = "DEMO_SSI"
-SRC_NEO = "DEMO_NEO"
+SRC = "SSI"
+SRC_NEO = "NEO"
 
 # Ngày nghỉ lễ HOSE (gần đúng, chỉ dùng cho lịch mẫu)
 HOLIDAYS = {
@@ -83,7 +78,7 @@ class DemoMarket:
     """Mô phỏng thị trường HOSE; mọi tham số cố định bằng seed để tái lập."""
 
     def __init__(self, end: Optional[date] = None, seed: Optional[int] = None):
-        self.seed = int(seed or get("demo.seed", 20251008))
+        self.seed = int(seed or 20251008)
         self.rng = np.random.default_rng(self.seed)
         self.start = pd.Timestamp(get("history.start_date", "2025-04-01")).date()
         self.end = end or today_vn()
@@ -434,12 +429,12 @@ def generate(end: Optional[date] = None, path=None, force: bool = False) -> Dict
                     for s, sh in zip(sec["symbol"], sec["shares"])], "loaded_at": now})
     comp = pd.DataFrame({"index_code": "VN30", "symbol": sorted(mk.vn30), "as_of": mk.days[0].date(),
                          "source": SRC, "loaded_at": now})
-    intr = mk.intraday(stock, index, int(get("demo.intraday_sessions", 20)))
+    intr = mk.intraday(stock, index, 20)
     rin = pd.DataFrame({
         "ts": pd.to_datetime(intr["TradingDate"] + " " + intr["Time"], format="%d/%m/%Y %H:%M:%S"),
         "symbol": intr["Symbol"], "source": SRC,
         "payload": [json.dumps(r) for r in intr.to_dict("records")], "loaded_at": now})
-    neo = mk.neo_stream(stock, index, int(get("demo.neo_stream_sessions", 10)), list(get("watchlist_default", [])))
+    neo = mk.neo_stream(stock, index, 10, list(get("watchlist_default", [])))
     with db.connect(path=path) as con:
         db.upsert("raw_daily_stock", rs, con=con)
         db.upsert("raw_daily_index", ri, con=con)
@@ -449,13 +444,9 @@ def generate(end: Optional[date] = None, path=None, force: bool = False) -> Dict
         con.register("_neo", neo)
         con.execute("INSERT INTO raw_stream_neo (recv_ts, session_date, channel, symbol, source, payload) "
                     "SELECT recv_ts, session_date, channel, symbol, source, payload FROM _neo")
-    db.set_source_status("SSI", "demo", "Dữ liệu mẫu tổng hợp (DEMO_DATA=true)", ok=True, path=path)
-    db.set_source_status("NEO", "demo", "Luồng NEO mẫu (DEMO_DATA=true)", ok=True, path=path)
     out = {"sessions": len(mk.days), "stock_rows": len(rs), "index_rows": len(ri), "intraday_rows": len(rin),
            "neo_rows": len(neo)}
     log.info("Đã ghi dữ liệu mẫu: %s", out)
     return out
 
 
-if __name__ == "__main__":  # python -m src.data.demo_data
-    print(generate(force=True))

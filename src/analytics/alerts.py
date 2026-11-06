@@ -176,7 +176,8 @@ def backtest(n_sessions: Optional[int] = None, path: Optional[Path] = None, writ
         "by_type": kept["alert_type"].value_counts().to_dict(),
         "raw_unique_per_day": float(res.drop_duplicates(["trade_date", "event_id"]).groupby("trade_date").size().mean()),
     }
-    if write_note:
+    from src.common.config import is_main_store
+    if write_note and is_main_store(path):
         p = abs_path("docs/notes/alert_backtest.md")
         lines = ["# Chạy lại cảnh báo trên dữ liệu lịch sử (bước B8.4)", "",
                  f"- Số phiên: **{summary['sessions']}**; mỗi phiên đánh giá 4 lần (10:00, 10:15, 11:00, 14:45).",

@@ -8,6 +8,7 @@ pyyaml>=6.0
 python-dotenv>=1.0
 requests>=2.31
 websocket-client>=1.8
+avro>=1.11            # giải mã luồng NEO stock-stream (Avro nhị phân)
 # Thống kê
 scipy>=1.13
 statsmodels>=0.14

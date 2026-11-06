@@ -1,14 +1,20 @@
 # Dữ liệu mẫu (bước B13.2)
 
-⚠️ **Dữ liệu tổng hợp** do `src/data/demo_data.py` sinh (seed cố định) – KHÔNG phải số liệu thị trường thật, không chứa thông tin tài khoản.
+Thư mục này chứa **dữ liệu thật** trích từ kho DuckDB sau khi tải qua API (SSI FastConnect Data / NEO API) –
+không có dữ liệu sinh giả lập, không chứa khóa, token hay thông tin tài khoản.
 
-- Ứng dụng chạy không cần khóa với `DEMO_DATA=true` (mặc định): lần đầu tự sinh ~400 phiên vào `data/ffr.duckdb`.
-- Các tệp CSV ở đây là 10 phiên cuối của các bảng chính để xem nhanh cấu trúc:
+```bash
+python -m src.data.sample_data export     # (người làm đồ án) xuất 10 phiên gần nhất của các bảng raw_*
+python -m src.data.sample_data load       # (người chấm) nạp vào data/ffr.duckdb rồi dựng lại toàn bộ chỉ báo
+streamlit run src/app/main.py
+```
 
-| Tệp | Bảng |
-|---|---|
-| `raw_daily_index_VNINDEX_sample.csv` | `raw_daily_index` – JSON gốc theo tên trường SSI v2 |
-| `fact_daily_stock_10sessions.csv` | `fact_daily_stock` – bảng chuẩn mã × phiên |
-| `fact_daily_index_10sessions.csv` | `fact_daily_index` |
-| `indicator_daily_10sessions.csv` | `indicator_daily` – D, AD, IQR, CR5, ε, NF, HHI, z, loại phiên, phân vị |
-| `leaders_daily_10sessions.csv` | `leaders_daily` – top 5 đóng góp dương/âm |
+| Tệp | Bảng | Nội dung |
+|---|---|---|
+| `raw_daily_stock.csv` | `raw_daily_stock` | JSON gốc DailyStockPrice (SSI) hoặc ảnh chụp cuối phiên stockInfo (NEO), cột `source` ghi nguồn |
+| `raw_daily_index.csv` | `raw_daily_index` | JSON gốc DailyIndex (SSI) / marketInfo (NEO) |
+| `raw_securities.csv` | `raw_securities` | SecuritiesDetails: loại CK, ListedShare |
+| `raw_index_components.csv` | `raw_index_components` | Thành phần VN30 |
+
+Với chỉ 10 phiên, các chỉ báo cần lịch sử dài (phân vị 250 phiên, beta 120 phiên, nghiên cứu sự kiện) sẽ hiện
+trạng thái "chưa đủ dữ liệu" thay vì số liệu – đúng nguyên tắc không hiển thị kết quả gây hiểu nhầm.

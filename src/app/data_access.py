@@ -28,6 +28,30 @@ def ready() -> bool:
 
 
 @st.cache_data(ttl=TTL, show_spinner=False)
+def session_sources(date=None) -> dict:
+    """Số mã theo nguồn (SSI/NEO) của một phiên (mặc định phiên mới nhất) trong fact_daily_stock."""
+    if not db.table_exists("fact_daily_stock"):
+        return {}
+    if date is None:
+        df = _q("SELECT source, COUNT(*) AS n FROM fact_daily_stock WHERE trade_date = "
+                "(SELECT MAX(trade_date) FROM fact_daily_stock) GROUP BY 1")
+    else:
+        df = _q("SELECT source, COUNT(*) AS n FROM fact_daily_stock WHERE trade_date = ? GROUP BY 1", [pd.Timestamp(date)])
+    return dict(zip(df["source"], df["n"].astype(int))) if not df.empty else {}
+
+
+@st.cache_data(ttl=TTL, show_spinner=False)
+def raw_counts() -> dict:
+    """Số bản ghi tầng raw theo bảng và nguồn – trang Kết nối dữ liệu."""
+    out = {}
+    for t in ("raw_daily_stock", "raw_daily_index", "raw_securities", "raw_intraday", "raw_stream_neo"):
+        if db.table_exists(t):
+            df = _q(f"SELECT source, COUNT(*) AS n FROM {t} GROUP BY 1")
+            out[t] = dict(zip(df["source"], df["n"].astype(int))) if not df.empty else {}
+    return out
+
+
+@st.cache_data(ttl=TTL, show_spinner=False)
 def daily() -> pd.DataFrame:
     return _q("SELECT * FROM indicator_daily ORDER BY trade_date")
 

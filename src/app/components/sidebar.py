@@ -13,7 +13,7 @@ import streamlit as st
 from src.app import data_access as da
 from src.app.components.status_bar import source_state
 from src.app.components.ui import esc, md
-from src.common.config import get, is_demo
+from src.common.config import get
 
 
 def render(groups: Dict[str, List], current) -> None:
@@ -49,8 +49,6 @@ def render(groups: Dict[str, List], current) -> None:
                  f'<span class="ffr-dot" style="background:{srcs["NEO"][0]}"></span>NEO API · ghi song song',
                  f'<span class="ffr-dot" style="background:#14B8A6"></span>Phiên mới nhất {last}',
                  f'<span class="ffr-dot" style="background:#7F8EA3"></span>Kho DuckDB · {n_sess} phiên']
-        if is_demo():
-            lines.insert(0, '<span class="ffr-dot" style="background:#F59E0B"></span><b>CHẾ ĐỘ DỮ LIỆU MẪU</b>')
         md('<div class="ffr-srcbox">' + "<br>".join(lines) + "</div>")
         md(f'<div class="ffr-disc"><b style="color:#FBBF24">Khuyến cáo học thuật</b><br>{get("app.disclaimer")} '
            'Hệ thống chỉ đọc dữ liệu, không đặt lệnh.</div>')

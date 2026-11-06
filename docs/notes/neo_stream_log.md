@@ -7,6 +7,6 @@ Tiêu chí đạt: **≥ 10 phiên**, mất kết nối **< 5 phút/phiên**.
 
 | Phiên | Số tin | Mất kết nối (phút) | Ghi chú |
 |---|---|---|---|
-| (điền sau khi chạy `python -m src.data.recorder_neo` với tài khoản NEO thật) | | | |
+| (điền sau khi chạy `python -m src.data.recorder_neo`) | | | |
 
-Trạng thái hiện tại: kho đang chứa 10 phiên luồng NEO **mẫu** (`source = DEMO_NEO`) để trình diễn giao diện – không tính là bằng chứng ghi thật.
+Kiểm tra kết nối 06/11/2026: WebSocket `wss://neoapi.vpbanks.com.vn/stock-stream/broker` đồng bộ 26 lược đồ Avro và nhận tin `marketSession` thật (HOSE, HNX, UPCOM, FU). Bộ ghi bắt đầu tích lũy dữ liệu từ phiên giao dịch kế tiếp (`python -m src.data.recorder_neo`).

@@ -9,13 +9,14 @@ Dựng bảng chuẩn từ tầng raw (bước B2.1).
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 
-from src.common.config import events, field_map, ftse_universe, control_group, is_demo, stock_groups
+from src.common.config import events, field_map, ftse_universe, control_group, stock_groups
 from src.common.logging import get_logger
 from src.common.timeutil import now_vn
 from src.data import database as db
@@ -29,25 +30,39 @@ INT_INDEX = ["advances", "declines", "no_changes", "ceilings", "floors"]
 
 
 def source_priority() -> List[str]:
-    return ["DEMO_SSI"] if is_demo() else ["SSI", "NEO"]
+    return ["SSI", "NEO"]          # SSI là nguồn chính; NEO thay thế khi SSI thiếu phiên/mã
+
+
+_THOUSANDS = re.compile(r"^-?\d{1,3}(,\d{3})+(\.\d+)?$")
 
 
 def _num(s: pd.Series) -> pd.Series:
-    return pd.to_numeric(s.replace("", np.nan), errors="coerce")
+    """Chuỗi số SSI ('20150', '-0.70'); phòng trường hợp có dấu phân cách nghìn '1,234,500'. Giữ NULL."""
+    x = s.astype(str).str.strip()
+    x = x.where(~x.str.match(_THOUSANDS), x.str.replace(",", "", regex=False))
+    x = x.replace({"": np.nan, "None": np.nan, "nan": np.nan, "null": np.nan})
+    return pd.to_numeric(x, errors="coerce")
 
 
 def _parse(raw: pd.DataFrame, table: str) -> pd.DataFrame:
-    """payload JSON → DataFrame với tên cột chuẩn; nguồn NEO dùng bảng ánh xạ NEO."""
+    """payload JSON → DataFrame cột chuẩn. So khớp tên trường KHÔNG phân biệt hoa/thường, theo nguồn SSI hoặc NEO."""
     out = []
     for src, g in raw.groupby("source"):
-        recs = [json.loads(p) for p in g["payload"]]
+        fmap = field_map(table, "neo" if src.upper().startswith("NEO") else "ssi")
+        recs = []
+        for p in g["payload"]:
+            d = json.loads(p)
+            row = {}
+            for k, v in d.items():
+                col = fmap.get(str(k).lower())
+                if col is not None and col not in row:
+                    row[col] = v
+            recs.append(row)
         df = pd.DataFrame.from_records(recs)
-        fmap = field_map(table, "neo" if src.endswith("NEO") else "ssi")
-        df = df.rename(columns=fmap)
-        keep = [c for c in fmap.values() if c in df.columns]
-        df = df[keep].copy()
         df["source"] = src
         df["_key_date"] = g["trade_date"].values
+        for k in [c for c in g.columns if c not in ("payload", "source", "trade_date")]:
+            df["_key_" + k] = g[k].values
         out.append(df)
     return pd.concat(out, ignore_index=True) if out else pd.DataFrame()
 
@@ -71,10 +86,9 @@ def build_daily_stock(path: Optional[Path] = None) -> pd.DataFrame:
         return pd.DataFrame()
     df = _parse(raw, "daily_stock")
     df["trade_date"] = pd.to_datetime(df["_key_date"]).dt.date
-    df = df.drop(columns=["_key_date"])
-    df["symbol"] = df["symbol"].astype(str).str.upper().str.strip()
-    for c in NUM_STOCK:
-        df[c] = _num(df[c].astype(str)) if c in df.columns else np.nan
+    df["symbol"] = df["_key_symbol"].astype(str).str.upper().str.strip()
+    for c in NUM_STOCK + ["room_api", "listed_share_api"]:
+        df[c] = _num(df[c]) if c in df.columns else np.nan
     qrows: list = []
     df = _dedupe(df, ["trade_date", "symbol"], "daily_stock", qrows)
     # NULL theo cột – ghi nhật ký (không điền giá trị)
@@ -87,7 +101,8 @@ def build_daily_stock(path: Optional[Path] = None) -> pd.DataFrame:
     sec = build_securities(path, write=False)
     df = attach_shares(df, sec)
     lim = stock_groups().set_index("symbol")["foreign_limit"] if not stock_groups().empty else pd.Series(dtype=float)
-    df["room"] = df["symbol"].map(lim).fillna(0.49) * df["listed_share"]
+    df["listed_share"] = df["listed_share"].fillna(df["listed_share_api"])
+    df["room"] = df["room_api"].where(df["room_api"] > 0, df["symbol"].map(lim).fillna(0.49) * df["listed_share"])
     df["loaded_at"] = now_vn().replace(tzinfo=None)
     cols = ["trade_date", "symbol", "source"] + NUM_STOCK + ["room", "loaded_at"]
     fact = df[cols].copy()
@@ -122,12 +137,21 @@ def build_securities(path: Optional[Path] = None, write: bool = True) -> pd.Data
         return pd.DataFrame(columns=["symbol", "sec_type", "exchange", "listed_share", "as_of", "source"])
     pri = {s: i for i, s in enumerate(source_priority())}
     raw = raw[raw["source"].isin(pri)]
-    fmap = field_map("securities", "ssi")
-    recs = pd.DataFrame.from_records([json.loads(p) for p in raw["payload"]]).rename(columns=fmap)
-    recs["as_of"] = raw["as_of"].values
-    recs["source"] = raw["source"].values
-    recs["listed_share"] = _num(recs["listed_share"].astype(str))
-    recs = recs.drop_duplicates(["symbol", "as_of"], keep="first")
+    recs = []
+    for src, payload, as_of in zip(raw["source"], raw["payload"], raw["as_of"]):
+        fmap = field_map("securities", "neo" if src.upper().startswith("NEO") else "ssi")
+        d = {fmap[k.lower()]: v for k, v in json.loads(payload).items() if k.lower() in fmap}
+        d.update({"as_of": as_of, "source": src})
+        recs.append(d)
+    recs = pd.DataFrame.from_records(recs)
+    for c in ("symbol", "sec_type", "exchange", "listed_share"):
+        if c not in recs:
+            recs[c] = None
+    recs["symbol"] = recs["symbol"].astype(str).str.upper().str.strip()
+    recs["listed_share"] = _num(recs["listed_share"])
+    pri = {s: i for i, s in enumerate(source_priority())}
+    recs = recs.assign(_p=recs["source"].map(pri)).sort_values(["symbol", "as_of", "_p"]).drop(columns="_p")
+    recs = recs[recs["listed_share"].notna()].drop_duplicates(["symbol", "as_of"], keep="first")
     out = recs[["symbol", "sec_type", "exchange", "listed_share", "as_of", "source"]].copy()
     if write:
         out["loaded_at"] = now_vn().replace(tzinfo=None)
@@ -143,11 +167,11 @@ def build_daily_index(path: Optional[Path] = None) -> pd.DataFrame:
         return pd.DataFrame()
     df = _parse(raw, "daily_index")
     df["trade_date"] = pd.to_datetime(df["_key_date"]).dt.date
-    df = df.drop(columns=["_key_date"])
+    df["index_code"] = df["_key_index_code"]           # mã chuẩn đã gán khi tải (SSI có thể trả 'HNXIndex')
     for c in NUM_INDEX:
-        df[c] = _num(df[c].astype(str)) if c in df.columns else np.nan
+        df[c] = _num(df[c]) if c in df.columns else np.nan
     for c in INT_INDEX:
-        df[c] = _num(df[c].astype(str)).astype("Int64") if c in df.columns else pd.NA
+        df[c] = _num(df[c]).astype("Int64") if c in df.columns else pd.NA
     qrows: list = []
     df = _dedupe(df, ["trade_date", "index_code"], "daily_index", qrows)
     df["loaded_at"] = now_vn().replace(tzinfo=None)
@@ -167,10 +191,11 @@ def build_intraday(path: Optional[Path] = None) -> pd.DataFrame:
     pri = {s: i for i, s in enumerate(source_priority())}
     raw = raw[raw["source"].isin(pri)]
     fmap = field_map("intraday", "ssi")
-    rec = pd.DataFrame.from_records([json.loads(p) for p in raw["payload"]]).rename(columns=fmap)
+    rec = pd.DataFrame.from_records([{fmap[k.lower()]: v for k, v in json.loads(p).items() if k.lower() in fmap}
+                                     for p in raw["payload"]])
     out = pd.DataFrame({"ts": raw["ts"].values, "symbol": raw["symbol"].values, "source": raw["source"].values})
     for c in ("open", "high", "low", "close", "vol"):
-        out[c] = _num(rec[c].astype(str)).values if c in rec.columns else np.nan
+        out[c] = _num(rec[c]).values if c in rec.columns else np.nan
     out = out.drop_duplicates(["ts", "symbol"])
     with db.connect(path=path) as con:
         con.execute("DELETE FROM fact_intraday")

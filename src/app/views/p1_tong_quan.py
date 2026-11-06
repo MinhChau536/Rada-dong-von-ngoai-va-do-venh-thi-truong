@@ -24,7 +24,7 @@ from src.app.components.states import empty, safe_block
 from src.app.components.ui import (colored, esc, header, kpi, md, pal, plot, section, soft_chip, spark, table_html)
 from src.app.theme import ABSORB_COLORS, SESSION_COLORS, color_for
 from src.common import fmt
-from src.common.config import events, get, is_demo
+from src.common.config import events, get
 from src.finance.breadth import breadth_summary, session_type_label
 from src.finance.domestic import ABSORB_LABELS
 
@@ -388,7 +388,7 @@ def render_performance(data: Dict) -> None:
 
 def render_footer() -> None:
     md(f'<div class="ffr-foot"><span>Nguồn: SSI FastConnect Data (chính), VPBankS NEO API (phụ) · giờ Việt Nam'
-       f'{" · ĐANG DÙNG DỮ LIỆU MẪU TỔNG HỢP" if is_demo() else ""} · phương pháp tại trang "Phương pháp & giới hạn"</span>'
+       f' · phương pháp tại trang "Phương pháp & giới hạn"</span>'
        f'<span>{get("app.disclaimer")}</span></div>')
 
 

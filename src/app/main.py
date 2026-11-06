@@ -47,11 +47,24 @@ PAGES = {
         st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:", url_path="ket-noi"),
     ],
 }
-if not da.ready():                     # kho trống → chỉ mở trang kết nối & phương pháp, KHÔNG sinh dữ liệu giả
-    PAGES = {"Hệ thống": [
-        st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:", url_path="ket-noi", default=True),
-        st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
-    ]}
+if not da.ready():
+    # Kho chỉ báo trống: vẫn hiện đủ menu, mỗi trang phân tích hiện nội dung sẽ có + lối tới "Kết nối dữ liệu";
+    # trang Kết nối dữ liệu là trang mặc định. KHÔNG sinh dữ liệu giả.
+    from src.app.components.states import page_waiting
+
+    def _waiting(pg):
+        path = pg.url_path or "tong-quan"                      # trang mặc định cũ trả url_path rỗng
+
+        def _render(title=pg.title, url=path):
+            page_waiting(title, url)
+        _render.__name__ = f"waiting_{path.replace('-', '_')}"
+        return st.Page(_render, title=pg.title, icon=pg.icon, url_path=path)
+
+    keep = {"phuong-phap"}
+    PAGES = {g: [pg if pg.url_path in keep else _waiting(pg) for pg in grp if pg.url_path != "ket-noi"]
+             for g, grp in PAGES.items()}
+    PAGES["Hệ thống"].insert(0, st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:",
+                                        url_path="ket-noi", default=True))
 st.session_state["_pages"] = {pg.url_path: pg for grp in PAGES.values() for pg in grp}
 
 mode = st.session_state["theme"]

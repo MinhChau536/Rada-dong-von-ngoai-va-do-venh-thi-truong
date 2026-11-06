@@ -90,7 +90,7 @@ def render() -> None:
     • Khác biệt trước/sau 21/9/2026 không quy hoàn toàn cho nâng hạng (lãi suất, tỷ giá, kết quả kinh doanh đồng thời).<br>
     • Nghiên cứu sự kiện ~25–30 mã nhóm xử lý → độ mạnh thống kê hạn chế; giai đoạn sau hiệu lực còn ngắn.<br>
     • Danh sách FTSE trong cấu hình phải đối chiếu thông báo chính thức (≥ 2 nguồn) trước khi diễn giải.<br>
-    • Ở chế độ DEMO_DATA, mọi số liệu là dữ liệu tổng hợp để trình diễn, KHÔNG dùng để rút ra kết luận về thị trường.
+    • Mọi số liệu tải từ SSI FastConnect Data (nguồn chính) và luồng WebSocket NEO API (phụ); phiên dùng nguồn NEO được gắn nhãn trên trang Chất lượng dữ liệu.
     </div>""")
     section("Mã kế thừa từ đồ án giữa kỳ", "Kho web_phantichchungkhoan – ghi nguồn theo yêu cầu liêm chính học thuật")
     md(table_html(["Thành phần giữa kỳ", "Vị trí trong bản 3.2", "Cách dùng"], [list(x) for x in INHERITED], left=(0, 1, 2)))

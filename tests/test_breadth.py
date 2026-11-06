@@ -11,15 +11,20 @@ def _stock(rows):
 
 
 def test_return_formula_and_validity():
-    d = _stock([("2026-01-02", "A", 10000, 10500, 10700, 9300, 1e9),
-                ("2026-01-02", "B", 20000, 20000, 21400, 18600, 0),       # không khớp lệnh → loại khỏi Ω
-                ("2026-01-02", "C", 0, 5000, 0, 0, 1e9),                  # P_ref = 0 → loại
-                ("2026-01-02", "D", 10000, 10700, 10700, 9300, 2e9)])     # kịch trần
+    d = _stock([("2026-01-02", "AAA", 10000, 10500, 10700, 9300, 1e9),
+                ("2026-01-02", "BBB", 20000, 20000, 21400, 18600, 0),       # không khớp lệnh → loại khỏi Ω
+                ("2026-01-02", "CCC", 0, 5000, 0, 0, 1e9),                  # P_ref = 0 → loại
+                ("2026-01-02", "DDD", 10000, 10700, 10700, 9300, 2e9),      # kịch trần
+                ("2026-01-02", "CFPT2401", 1000, 1100, 1500, 500, 1e9),     # chứng quyền → loại
+                ("2026-01-02", "FUEVFVND", 30000, 30500, 32100, 27900, 1e9)])  # chứng chỉ quỹ ETF → loại
     v = add_validity(d)
     assert v.loc[0, "ret"] == pytest.approx(0.05)
-    assert list(v["is_valid"]) == [True, False, False, True]
+    assert list(v["is_valid"]) == [True, False, False, True, False, False]
     assert bool(v.loc[3, "is_ceiling"]) and not bool(v.loc[0, "is_ceiling"])
     assert np.isnan(v.loc[2, "ret"])                                       # chia cho 0 → NaN, không lỗi
+    # SecType từ API được ưu tiên hơn quy ước mã ("ST" theo đặc tả, "S" theo phản hồi mẫu SSI)
+    v2 = add_validity(d, sec_type=pd.Series({"AAA": "S", "DDD": "E"}))
+    assert list(v2["is_valid"])[:4] == [True, False, False, False]
 
 
 def test_D_AD_IQR_hand_example():

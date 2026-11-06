@@ -1,8 +1,7 @@
 """
 Chạy lại TOÀN BỘ chuỗi xử lý từ raw (bước B12.3 – tái lập).
 
-    python -m src.data.rebuild_all                 # dùng raw hiện có (sinh dữ liệu mẫu nếu DEMO_DATA và kho trống)
-    python -m src.data.rebuild_all --regen-demo    # sinh lại dữ liệu mẫu
+    python -m src.data.rebuild_all                 # dựng lại toàn bộ chỉ báo từ bảng raw_* (dữ liệu SSI/NEO đã tải)
     python -m src.data.rebuild_all --hash          # in mã băm kết quả để so sánh hai lần chạy
 
 raw → fact → indicator_* → nghiên cứu sự kiện, DiD, kiểm định → watchlist → chạy lại cảnh báo.
@@ -18,7 +17,7 @@ from typing import Dict, Optional
 import numpy as np
 import pandas as pd
 
-from src.common.config import abs_path, get, is_demo
+from src.common.config import abs_path, get
 from src.common.logging import get_logger
 from src.data import database as db
 
@@ -91,7 +90,9 @@ def robustness_table(st: pd.DataFrame, day: pd.DataFrame, path: Optional[Path] =
     df["sign"] = np.sign(df["estimate"])
     df["sig_5pct"] = df["p_value"] < 0.05
     db.replace_table("robustness_results", df, path)
-    df.to_csv(abs_path("docs/robustness_table.csv"), index=False, encoding="utf-8")
+    from src.common.config import is_main_store
+    if is_main_store(path):
+        df.to_csv(abs_path("docs/robustness_table.csv"), index=False, encoding="utf-8")
     return len(df)
 
 
@@ -110,12 +111,9 @@ def results_hash(path: Optional[Path] = None) -> str:
     return h.hexdigest()[:16]
 
 
-def main(regen_demo: bool = False, path: Optional[Path] = None, robustness: bool = True, backtest: bool = True) -> Dict:
+def main(path: Optional[Path] = None, robustness: bool = True, backtest: bool = True) -> Dict:
     t0 = time.time()
     db.init_schema(path)
-    if is_demo():
-        from src.data import demo_data
-        demo_data.generate(path=path, force=regen_demo)
     from src.data import build_facts, quality
     from src.analytics import pipeline, alerts
     out = {"facts": build_facts.build_all(path)}
@@ -132,13 +130,12 @@ def main(regen_demo: bool = False, path: Optional[Path] = None, robustness: bool
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--regen-demo", action="store_true")
     ap.add_argument("--no-robustness", action="store_true")
     ap.add_argument("--hash", action="store_true")
     a = ap.parse_args()
     if a.hash:
         print(results_hash())
     else:
-        res = main(regen_demo=a.regen_demo, robustness=not a.no_robustness)
+        res = main(robustness=not a.no_robustness)
         for k, v in res.items():
             print(f"{k}: {v}")

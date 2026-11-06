@@ -10,7 +10,7 @@ from src.app.components import charts, status_bar
 from src.app.components.states import empty
 from src.app.components.ui import header, md, pal, plot, section, table_html
 from src.common import fmt
-from src.common.config import control_group, events, ftse_universe, is_demo
+from src.common.config import control_group, events, ftse_universe
 
 
 def _stats_table(df: pd.DataFrame) -> None:
@@ -32,7 +32,7 @@ def render() -> None:
     fu = ftse_universe()
     if not fu.empty and not fu["verified"].astype(str).str.lower().eq("true").all():
         st.warning("Danh sách FTSE trong config/ftse_universe.csv đang là DỰ KIẾN (verified = false) – cần đối chiếu thông báo "
-                   "chính thức của FTSE Russell trước khi diễn giải kết quả." + (" Kết quả hiện chạy trên dữ liệu MẪU." if is_demo() else ""))
+                   "chính thức của FTSE Russell trước khi diễn giải kết quả.")
     eid = st.segmented_control("Mốc sự kiện", ev["event_id"].tolist(), default="E3", key="p4_ev",
                                format_func=lambda e: f"{e} · {ev.set_index('event_id').loc[e, 'label']} "
                                                      f"({ev.set_index('event_id').loc[e, 'event_date']:%d/%m/%Y})") or "E3"

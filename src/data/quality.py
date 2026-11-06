@@ -70,7 +70,8 @@ def run(path: Optional[Path] = None, write_notes: bool = True) -> Dict:
                "n_out_of_bounds": int(len(oob)), "denominator": m.get("denominator", "match"),
                "foreign_includes_deal": bool(m.get("foreign_includes_deal", False)),
                "n_sessions": int(day["trade_date"].nunique()), "n_symbols": int(st["symbol"].nunique())}
-    if write_notes:
+    from src.common.config import is_main_store
+    if write_notes and is_main_store(path):
         _notes(summary, m)
     log.info("Chất lượng: đầy đủ %.2f%%, độ rộng khớp %.1f%% phiên, trung vị |ε| = %.3f",
              overall * 100, breadth_ok * 100, eps_med)
@@ -87,5 +88,4 @@ def _notes(s: Dict, m) -> None:
         f"- Tỷ lệ quan sát (FB+FS)/2 > TV trong nhóm này: {float(m.get('share_exceed_bigdeal', 0)):.2%}",
         f"- **Kết luận: trường khối ngoại {'GỒM thỏa thuận' if s['foreign_includes_deal'] else 'chỉ KHỚP LỆNH'}; "
         f"mẫu số nf chốt = `{s['denominator']}`.**", "",
-        "_Tự sinh bởi src/data/quality.py. Với dữ liệu mẫu (DEMO_DATA) kết luận phản ánh cách sinh dữ liệu, "
-        "phải chạy lại trên dữ liệu SSI thật._"]), encoding="utf-8")
+        "_Tự sinh bởi src/data/quality.py (python -m src.data.rebuild_all) trên dữ liệu SSI/NEO trong kho._"]), encoding="utf-8")

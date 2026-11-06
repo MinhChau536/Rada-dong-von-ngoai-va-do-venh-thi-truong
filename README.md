@@ -54,7 +54,7 @@ pip install -r requirements.txt
 copy .env.example .env                                  # rồi điền khóa thật nếu có (cp trên Linux/macOS)
 ```
 
-Yêu cầu Python 3.12. Không cần khóa API để chạy thử: mặc định `DEMO_DATA=true`.
+Yêu cầu Python 3.12. Ứng dụng **chỉ dùng dữ liệu thật** tải qua API – không có chế độ dữ liệu giả lập.
 
 ### Cấu hình `.env`
 
@@ -63,41 +63,50 @@ Yêu cầu Python 3.12. Không cần khóa API để chạy thử: mặc định
 | `SSI_CONSUMER_ID`, `SSI_CONSUMER_SECRET` | Khóa FastConnect Data (iBoard → Dịch vụ API). **Không cần Private Key.** |
 | `NEO_USERNAME`, `NEO_PASSWORD` | Tài khoản NEO API (luồng WebSocket song song) |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS` | Bot từ @BotFather; danh sách chat_id được phép (phân tách dấu phẩy) |
-| `DEMO_DATA` | `true` = dữ liệu mẫu tổng hợp; `false` = dữ liệu thật từ SSI/NEO |
 
 `.env` nằm trong `.gitignore`; kho mã chỉ chứa `.env.example` với giá trị giả. Nhật ký đi qua `mask_secrets` nên không ghi token, mật khẩu, ConsumerSecret.
 
 ## 4. Cách chạy
 
-### 4.1. Chế độ dữ liệu mẫu (không cần khóa – dành cho người chấm)
+### 4.1. Đăng ký IP (bắt buộc)
+
+SSI FastConnect Data và NEO API đều kiểm soát địa chỉ IP. Nếu IP chưa đăng ký:
+SSI trả `This connection is invalid`, NEO REST trả `401 Invalid role or IP address`. Kiểm tra nhanh:
 
 ```bash
-streamlit run src/app/main.py
+python -m src.data.diagnostics      # in IP công khai + gọi thử SSI REST, NEO REST, NEO WebSocket
 ```
 
-Lần chạy đầu tự sinh **dữ liệu mẫu tổng hợp** (~400 phiên × 173 mã HOSE) và tính toàn bộ chỉ báo, nghiên cứu sự kiện, kiểm định (~1–2 phút). Mọi trang, PDF và tin Telegram đều gắn nhãn **"DỮ LIỆU MẪU – không phải số liệu thị trường thật"**.
+Luồng NEO WebSocket (`wss://neoapi.vpbanks.com.vn/stock-stream/broker`, mã hóa Avro) không cần JWT nên ghi được
+ngay cả khi REST chưa mở – đây là nguồn dự phòng cho số liệu cuối phiên.
 
-> Dữ liệu mẫu do `src/data/demo_data.py` sinh có chủ đích (nhân tố thị trường/ngành/vốn hóa lớn, biên độ ±7%, bước giá, trần/sàn, mã tạm ngừng, dòng vốn ngoại bền và cùng chiều lợi suất, hiệu ứng quanh mốc FTSE) để trình diễn chức năng. **Không dùng kết quả trên dữ liệu mẫu để kết luận về thị trường.**
-
-### 4.2. Chế độ dữ liệu thật
+### 4.2. Tải dữ liệu thật và chạy
 
 ```bash
-# đặt DEMO_DATA=false trong .env
 python -m src.ssi_api.ssi_client --samples   # B1.2: gọi thử 1 ngày mỗi hàm, lưu JSON gốc vào docs/api_samples/
 python -m src.data.backfill                  # B1.8–B1.11: tải lịch sử từ 01/04/2025 (có điểm dừng, chạy tiếp được)
 python -m src.data.rebuild_all               # raw → fact → chỉ báo → sự kiện, DiD, kiểm định → watchlist → chạy lại cảnh báo
 streamlit run src/app/main.py
 
 python -m src.data.recorder_neo              # B1.4b: ghi luồng NEO WebSocket mỗi phiên 8:55–15:05 (chạy nền)
+python -m src.data.neo_eod                   # ảnh chụp cuối phiên từ luồng NEO khi SSI gián đoạn (source='NEO')
 python -m src.data.recorder_ssi              # B5.9: ghi streaming SSI (cần `pip install ssi-fc-data`)
 python -m src.data.scheduler                 # B9.2b: 11:35 Snapshot · 15:05 cập nhật · 15:10 kiểm tra · 15:15 Closing + Telegram
 python -m src.bot.bot                        # B10: bot Telegram (/market /leaders /foreign /watch /report /status)
 ```
 
+Khi kho chỉ báo còn trống, ứng dụng chỉ mở trang **Kết nối dữ liệu** (chẩn đoán API, IP cần đăng ký, nút chạy nền
+các tác vụ trên) và trang **Phương pháp & giới hạn** – không bao giờ hiển thị số liệu giả.
+
+### 4.2b. Người chấm không có khóa
+
+`data_sample/` chứa 10 phiên **dữ liệu thật** trích từ kho (`python -m src.data.sample_data export`).
+Nạp và chạy: `python -m src.data.sample_data load && streamlit run src/app/main.py`.
+
 ### 4.3. Kiểm thử
 
 ```bash
-python -m pytest                             # 71 kiểm thử, không cần mạng/khóa
+python -m pytest                             # kiểm thử công thức trên kho TẠM (dữ liệu giả lập chỉ trong tests/fixtures), không cần mạng/khóa
 python tools/make_test_summary.py            # docs/test_summary.csv + độ phủ (finance + analytics ≈ 83%)
 python -m src.data.rebuild_all --hash        # mã băm kết quả – chạy lại toàn bộ cho cùng hash (tái lập, B12.3)
 ```
@@ -111,18 +120,18 @@ python -m src.data.rebuild_all --hash        # mã băm kết quả – chạy l
 ├── src/
 │   ├── common/        config.py · logging.py (mask_secrets) · timeutil.py · fmt.py (định dạng số dùng chung 3 kênh)
 │   ├── ssi_api/       ssi_client.py (REST v2, token, giãn cách, thử lại) · base_provider.py (kế thừa)
-│   ├── neo_api/       neo_client.py (JWT, stockDetail phân trang, WebSocket)
+│   ├── neo_api/       neo_client.py (JWT, stockDetail/marketIndexDetail, WebSocket Avro stock-stream)
 │   ├── data/          schema.sql · database.py · backfill.py · recorder_neo.py · recorder_ssi.py · failover.py
-│   │                  build_facts.py · quality.py · demo_data.py · scheduler.py · rebuild_all.py
+│   │                  build_facts.py · quality.py · neo_eod.py · diagnostics.py · sample_data.py · scheduler.py · rebuild_all.py
 │   ├── finance/       breadth.py (1–3) · contribution.py (4–5) · foreign_flow.py (6–8) · domestic.py · utils.py
 │   ├── analytics/     pipeline.py · event_study.py (9–10) · did.py (11) · stats_tests.py · watchlist_impact.py (12–13)
 │   │                  alerts.py · narrative.py · health.py · news.py
-│   ├── app/           main.py · theme.py · data_access.py · components/ · pages/ (8 trang)
+│   ├── app/           main.py · theme.py · data_access.py · components/ · views/ (8 trang + Kết nối dữ liệu)
 │   ├── reports/       context.py · pdf_base.py · snapshot.py · closing.py
 │   └── bot/           bot.py · messages.py · jobs.py · telegram_api.py
 ├── tests/             kiểm thử công thức, không nhìn trước, sự kiện, cảnh báo, vận hành, tích hợp
 ├── tools/             make_test_summary.py
-├── data_sample/       10 phiên dữ liệu mẫu dạng CSV (để xem nhanh cấu trúc bảng)
+├── data_sample/       10 phiên dữ liệu THẬT (bảng raw_*) xuất từ kho – sample_data.py export/load
 ├── docs/              api_samples/ · notes/ · test_summary.csv · robustness_table.csv
 ├── report/            khung báo cáo cuối kỳ 10 phần
 └── assets/fonts/      Be Vietnam Pro (giấy phép OFL)
@@ -150,7 +159,7 @@ Nguồn: kho [`web_phantichchungkhoan`](https://github.com/MinhChau536/web_phant
 | `data/providers/base_provider.py` | `src/ssi_api/base_provider.py` | Giữ khuôn |
 | `data/database.py` | `src/data/database.py` | Ý tưởng, viết lại theo lược đồ mới |
 | `core/thi_truong_danh_muc.py` (breadth_stats, sector_performance, index_card, period_returns, market_health, rsi, WatchlistService) | `src/finance/breadth.py`, `src/analytics/health.py`, `src/analytics/watchlist_impact.py` | Giữ logic, đổi nguồn, đổi trọng số |
-| `giao_dien/thi_truong.py` (render, _index_chart, _treemap, _sector_bars, _gauge, _breadth_block, _movers_table, _spark, _returns_table) | `src/app/pages/p1_tong_quan.py`, `src/app/components/` | Giữ thứ tự khối & khung, đổi bảng màu |
+| `giao_dien/thi_truong.py` (render, _index_chart, _treemap, _sector_bars, _gauge, _breadth_block, _movers_table, _spark, _returns_table) | `src/app/views/p1_tong_quan.py`, `src/app/components/` | Giữ thứ tự khối & khung, đổi bảng màu |
 | `_pal()` rải rác, `assets/styles/main_style.py` | `src/app/theme.py` | Viết lại – một nguồn màu cho CSS, Plotly, PDF |
 | `reports/pdf_generator.py`, `reports/cover.py`, `assets/fonts/` | `src/reports/`, `assets/fonts/` | Giữ khung & font |
 | `core/tin_tuc.py` | `src/analytics/news.py` | Rút gọn (Google News RSS), nhãn nguồn ngoài |

@@ -18,7 +18,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = ROOT / "config"
 
-try:  # .env là tùy chọn – chế độ dữ liệu mẫu chạy được khi không có tệp này
+try:  # đọc khóa API từ .env (SSI_CONSUMER_ID, NEO_USERNAME, …)
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env", override=False)
@@ -30,9 +30,6 @@ except Exception:  # pragma: no cover
 def load_settings() -> Dict[str, Any]:
     with open(CONFIG_DIR / "settings.yaml", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
-    demo_env = os.getenv("DEMO_DATA")
-    if demo_env is not None:
-        cfg.setdefault("demo", {})["enabled"] = demo_env.strip().lower() in ("1", "true", "yes", "on")
     return cfg
 
 
@@ -55,8 +52,21 @@ def env(name: str, default: Optional[str] = None) -> Optional[str]:
     return os.getenv(name, default)
 
 
-def is_demo() -> bool:
-    return bool(get("demo.enabled", True))
+def _real(v: Optional[str]) -> bool:
+    return bool(v) and not str(v).startswith("your_")
+
+
+def ssi_configured() -> bool:
+    return _real(env("SSI_CONSUMER_ID")) and _real(env("SSI_CONSUMER_SECRET"))
+
+
+def neo_configured() -> bool:
+    return _real(env("NEO_USERNAME")) and _real(env("NEO_PASSWORD"))
+
+
+def is_main_store(path=None) -> bool:
+    """True khi đang ghi vào kho chính data/ffr.duckdb (không phải kho tạm của pytest/kiểm tra) → được phép ghi docs/."""
+    return path is None and not os.getenv("FFR_DB_PATH")
 
 
 def abs_path(rel: str) -> Path:
@@ -78,12 +88,17 @@ def load_data_dictionary() -> Dict[str, Any]:
 
 
 def field_map(table: str, source: str = "ssi") -> Dict[str, str]:
-    """Ánh xạ tên trường nguồn → tên cột chuẩn cho một bảng của từ điển dữ liệu."""
-    out = {}
+    """
+    Ánh xạ tên trường nguồn (đã hạ chữ thường) → cột chuẩn. Mỗi cột có thể có nhiều bí danh vì tài liệu SSI viết
+    hoa/thường không thống nhất (ClosePrice / Closeprice) và có lỗi chính tả (Toreignsellvaltotal).
+    """
+    out: Dict[str, str] = {}
     for col, spec in load_data_dictionary().get(table, {}).items():
-        src = spec.get(source)
-        if src:
-            out[src] = col
+        names = spec.get(source) or []
+        if isinstance(names, str):
+            names = [names]
+        for n in names:
+            out[str(n).lower()] = col
     return out
 
 

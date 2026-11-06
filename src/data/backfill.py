@@ -111,7 +111,7 @@ def main(start: Optional[date] = None, end: Optional[date] = None) -> dict:
     db.init_schema()
     c = SSIClient()
     if not c.is_available:
-        raise SystemExit("Thiếu khóa SSI trong .env – đặt DEMO_DATA=true để dùng dữ liệu mẫu.")
+        raise SystemExit("Thiếu SSI_CONSUMER_ID / SSI_CONSUMER_SECRET trong .env (lấy tại iBoard > Dịch vụ API).")
     start = start or pd.Timestamp(get("history.start_date")).date()
     end = end or (today_vn() - timedelta(days=1))
     out = {"securities": securities(c), "stocks": stocks(c, start, end), "indexes": indexes(c, start, end)}

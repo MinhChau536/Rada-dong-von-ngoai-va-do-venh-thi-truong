@@ -6,7 +6,7 @@ import streamlit as st
 
 from src.app import data_access as da
 from src.app.components.ui import md, pal
-from src.common.config import get, is_demo
+from src.common.config import get
 from src.common.fmt import frac_pct
 from src.common.timeutil import in_session, now_vn
 
@@ -22,7 +22,7 @@ def source_state() -> dict:
             continue
         r = r.iloc[0]
         status = str(r["status"])
-        color = {"ok": "#16A34A", "demo": "#F59E0B", "degraded": "#F59E0B", "error": "#DC2626"}.get(status, "#94A3B8")
+        color = {"ok": "#16A34A", "degraded": "#F59E0B", "error": "#DC2626"}.get(status, "#94A3B8")
         out[src] = (color, status, r["last_ok"])
     return out
 
@@ -33,7 +33,10 @@ def active_source() -> str:
         last = ev.sort_values("ts").iloc[-1]
         if last["to_source"] == "NEO":
             return "NEO (dự phòng)"
-    return "Dữ liệu mẫu" if is_demo() else "SSI FastConnect"
+    src = da.session_sources()
+    if src and src.get("NEO", 0) and not src.get("SSI", 0):
+        return "NEO API (ảnh chụp cuối phiên)"
+    return "SSI FastConnect"
 
 
 def render(session_date=None) -> None:
@@ -49,14 +52,14 @@ def render(session_date=None) -> None:
     srcs = source_state()
     dots = " ".join(f'<span class="ffr-pill"><span class="ffr-dot" style="background:{c}"></span>{k}: {s}</span>'
                     for k, (c, s, _) in srcs.items())
-    demo = '<span class="ffr-pill ffr-demo">⚠ DỮ LIỆU MẪU tổng hợp – không phải số liệu thị trường thật</span>' if is_demo() else ""
+    demo = ""
     sess = sdate.strftime("%d/%m/%Y") if sdate is not None else "—"
     md(f'<div class="ffr-status">{demo}<span class="ffr-pill">📅 Phiên {sess}</span>'
        f'<span class="ffr-pill">⏱ {now_vn():%H:%M:%S} (giờ VN)</span>'
        f'<span class="ffr-pill">Nguồn: {active_source()}</span>{dots}'
        f'<span class="ffr-pill">Đầy đủ: {frac_pct(comp, 1) if comp is not None else "—"}</span></div>')
-    # Dữ liệu cũ > 5 phút trong phiên → cảnh báo vàng (không áp dụng cho dữ liệu mẫu)
-    if not is_demo() and in_session():
+    # Dữ liệu cũ > 5 phút trong phiên → cảnh báo vàng
+    if in_session():
         ok = srcs.get("SSI", (None, None, None))[2]
         if ok is not None and pd.notna(ok):
             age = (now_vn().replace(tzinfo=None) - pd.Timestamp(ok)).total_seconds() / 60

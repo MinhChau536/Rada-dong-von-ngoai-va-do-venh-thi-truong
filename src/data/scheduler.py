@@ -17,7 +17,7 @@ import time
 from datetime import datetime
 from typing import Callable, Dict
 
-from src.common.config import get, is_demo
+from src.common.config import get, neo_configured, ssi_configured
 from src.common.logging import get_logger
 from src.common.timeutil import in_session, now_vn
 
@@ -27,13 +27,21 @@ log = get_logger(__name__)
 def task_close_update() -> Dict:
     from src.data import build_facts
     from src.analytics import pipeline
-    if not is_demo():
+    today = now_vn().date()
+    if ssi_configured():
         from src.data import backfill
         from src.ssi_api.ssi_client import SSIClient
         c = SSIClient()
-        today = now_vn().date()
-        backfill.stocks(c, today, today)
-        backfill.indexes(c, today, today)
+        try:
+            backfill.stocks(c, today, today)
+            backfill.indexes(c, today, today)
+        except Exception as exc:  # noqa: BLE001 – SSI lỗi: dùng ảnh chụp cuối phiên từ luồng NEO
+            log.warning("SSI lỗi khi cập nhật cuối phiên (%s) – chuyển sang ảnh chụp NEO", exc)
+            from src.data import neo_eod
+            neo_eod.snapshot_to_raw(today)
+    elif neo_configured():
+        from src.data import neo_eod
+        neo_eod.snapshot_to_raw(today)
     build_facts.build_all()
     pipeline.compute()
     return {"ok": True}

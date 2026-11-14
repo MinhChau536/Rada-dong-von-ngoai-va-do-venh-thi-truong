@@ -23,8 +23,28 @@ log = get_logger(__name__)
 SCHEMA_FILE = Path(__file__).with_name("schema.sql")
 
 
+_RESTORE_LOCK = threading.Lock()
+
+
+def _auto_restore() -> None:
+    """Máy mới clone từ GitHub: chưa có data/ffr.duckdb nhưng có data/snapshot → tự dựng lại kho (≈ 10–20 giây)."""
+    from src.common.config import is_main_store
+    main = Path(db_path())
+    snap = Path(__file__).resolve().parents[2] / "data" / "snapshot" / "manifest.json"
+    if not is_main_store() or main.exists() or not snap.exists():      # pytest/kho tạm: không đụng tới
+        return
+    with _RESTORE_LOCK:
+        if main.exists():
+            return
+        log.info("Chưa có kho dữ liệu – khôi phục từ data/snapshot (dữ liệu thật SSI đã chia sẻ kèm mã nguồn)…")
+        from tools import snapshot
+        snapshot.restore(db=main)
+
+
 @contextlib.contextmanager
 def connect(read_only: bool = False, path: Optional[Path] = None, retries: int = 5) -> Iterator[duckdb.DuckDBPyConnection]:
+    if path is None:
+        _auto_restore()
     p = str(path or db_path())
     last_exc: Optional[Exception] = None
     for i in range(retries):

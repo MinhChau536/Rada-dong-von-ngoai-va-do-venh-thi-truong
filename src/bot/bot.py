@@ -11,6 +11,8 @@ Bot Telegram (bước B10.1–B10.2) – python-telegram-bot, giao diện nút b
 """
 from __future__ import annotations
 
+import asyncio
+import html as html_lib
 import re
 import sys
 import time
@@ -26,8 +28,9 @@ log = get_logger(__name__)
 
 COMMANDS = [("menu", "🏠 Menu chính"), ("market", "📊 Tổng quan thị trường"), ("leaders", "🏁 Mã dẫn dắt VN-Index"),
             ("foreign", "🌏 Dòng vốn khối ngoại"), ("outlook", "🔮 Triển vọng 5 & 20 phiên"),
-            ("stock", "📈 Phân tích một mã: /stock FPT"), ("chart", "🖼 Biểu đồ: /chart FPT"),
-            ("watch", "👁 Danh mục theo dõi"), ("add", "➕ Thêm mã: /add FPT"), ("remove", "➖ Bỏ mã: /remove FPT"),
+            ("stock", "📈 Phân tích một mã: /stock FPT"), ("intra", "⏱ Giá từng phút trong phiên: /intra FPT"),
+            ("sector", "🏭 Ngành của mã: /sector FPT"), ("chart", "🖼 Biểu đồ ngày: /chart FPT"),
+            ("alerts", "🔔 Cảnh báo tự động: bật/tắt, chọn loại, độ nhạy"), ("watch", "👁 Danh mục theo dõi"), ("add", "➕ Thêm mã: /add FPT"), ("remove", "➖ Bỏ mã: /remove FPT"),
             ("portfolio", "💼 Tối ưu danh mục theo khẩu vị"), ("report", "📄 PDF báo cáo gần nhất"),
             ("status", "🛰 Tình trạng dữ liệu"), ("help", "❓ Hướng dẫn")]
 PROFILE_ALIASES = {"than": "Thận trọng", "thận": "Thận trọng", "can": "Cân bằng", "cân": "Cân bằng",
@@ -74,8 +77,13 @@ def main() -> None:
             except BadRequest as exc:              # tin là ảnh/tài liệu hoặc nội dung không đổi → gửi tin mới
                 if "not modified" in str(exc).lower():
                     return
-        await update.effective_chat.send_message(body, parse_mode=ParseMode.HTML, reply_markup=markup,
-                                                 disable_web_page_preview=True)
+        try:
+            await update.effective_chat.send_message(body, parse_mode=ParseMode.HTML, reply_markup=markup,
+                                                     disable_web_page_preview=True)
+        except BadRequest as exc:                  # HTML lỗi → vẫn gửi nội dung dạng chữ thường, không để người dùng thấy lỗi
+            log.error("HTML Telegram lỗi (%s) – gửi dạng chữ thường", exc)
+            plain = html_lib.unescape(re.sub(r"<[^>]+>", "", body))
+            await update.effective_chat.send_message(plain[:4090], reply_markup=markup, disable_web_page_preview=True)
 
     def guard(fn):
         async def wrap(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -110,6 +118,43 @@ def main() -> None:
         elif name == "stock":
             text, rows = M.stock_card(arg, ctx_cached())
             await send(update, text, rows, edit)
+        elif name in ("alerts", "al"):
+            from src.bot import monitor
+            cid = str(update.effective_chat.id)
+            if name == "al":
+                act, _, val = arg.partition(":")
+                if act == "scan":
+                    await update.effective_chat.send_action("typing")
+                    text, rows = await asyncio.to_thread(monitor.preview, cid)
+                    await send(update, text, rows)
+                    return
+                if act in ("on", "off"):
+                    monitor.set_pref(cid, on=act == "on")
+                elif act == "t" and val in monitor.TYPES:
+                    monitor.set_pref(cid, type=val)
+                elif act == "lv" and val in monitor.LEVELS:
+                    monitor.set_pref(cid, level=val)
+            text, rows = monitor.settings_view(cid)
+            await send(update, text, rows, edit=name == "al")      # đổi cài đặt → cập nhật ngay trên tin cài đặt
+        elif name == "sec":
+            text, rows = M.sector_card(arg, ctx_cached())
+            await send(update, text, rows, edit)
+        elif name == "intra":
+            from src.bot import intraday
+            sym = arg.upper()
+            await update.effective_chat.send_action("upload_photo")
+            df, d = intraday.fetch(sym)                 # gọi SSI FastConnect V3 ngay lúc bấm
+            if df.empty:
+                await send(update, f"⏱ SSI chưa trả nến 1 phút cho <b>{html_lib.escape(sym)}</b> trong 7 ngày gần nhất.",
+                           [[("📈 Thẻ phân tích", f"stock:{sym}"), ("🏠 Menu", "menu")]])
+                return
+            ref, lbl = intraday.reference(sym, d)
+            sm = {**intraday.summary(df, ref), "ref_lbl": lbl}
+            img = intraday.chart(df, sym, d, ref)
+            back = [[("🔄 Cập nhật", f"intra:{sym}"), ("📈 Thẻ phân tích", f"stock:{sym}")],
+                    [("📊 Biểu đồ ngày", f"chart:{sym}"), ("🏠 Menu", "menu")]]
+            await update.effective_chat.send_photo(img, caption=M.intraday_caption(sym, sm, d)[:1024],
+                                                   parse_mode=ParseMode.HTML, reply_markup=kb(back))
         elif name == "pf":
             text, rows = M.portfolio(arg or "Cân bằng")
             await send(update, text, rows, edit)
@@ -119,7 +164,8 @@ def main() -> None:
             from src.bot import charts
             sym = (arg or "VNINDEX").upper()
             img = charts.index_chart(sym) if sym in ("VNINDEX", "VN30") else charts.stock_chart(sym)
-            back = [[("📈 Thẻ phân tích", f"stock:{sym}"), ("🏠 Menu", "menu")]] if sym not in ("VNINDEX", "VN30") \
+            back = [[("📈 Thẻ phân tích", f"stock:{sym}"), ("⏱ Trong phiên", f"intra:{sym}"), ("🏠 Menu", "menu")]] \
+                if sym not in ("VNINDEX", "VN30") \
                 else [[("📊 Thị trường", "market"), ("🏠 Menu", "menu")]]
             await update.effective_chat.send_photo(img, caption=f"🖼 {sym} – giá, MA20/MA50, khối lượng, khối ngoại ròng",
                                                    reply_markup=kb(back))
@@ -159,8 +205,10 @@ def main() -> None:
                 await page(update, "pf", next((v for k, v in PROFILE_ALIASES.items() if key.startswith(k)), "Cân bằng"))
             elif name == "remove":
                 await page(update, "rm", arg.split()[0])
-            elif name in ("stock", "chart", "add"):
+            elif name in ("stock", "chart", "add", "intra"):
                 await page(update, name, arg.split()[0] if arg else "")
+            elif name == "sector":
+                await page(update, "sec", arg.split()[0])
             elif name == "start":
                 await send(update, "👋 Xin chào! Đây là <b>FTSE Flow Radar</b> – radar dòng vốn ngoại và độ vênh thị trường "
                                    "giai đoạn nâng hạng FTSE.\n\n" + M.menu_text(), M.MENU)
@@ -172,7 +220,7 @@ def main() -> None:
     async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         data = update.callback_query.data or "menu"
         name, _, arg = data.partition(":")
-        await page(update, name, arg, edit=name not in ("chart", "report"))
+        await page(update, name, arg, edit=False)   # bấm nút = gửi tin MỚI, giữ tin cũ (giống gõ lệnh)
 
     @guard
     async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -182,20 +230,48 @@ def main() -> None:
         else:
             await send(update, "Gõ một mã cổ phiếu (vd. <code>FPT</code>) hoặc chọn mục bên dưới.", M.MENU)
 
+    async def monitor_loop(app: Application) -> None:
+        """Cảnh báo tự động: quét 2 phút/lần trong phiên, sau phiên gửi tín hiệu xu hướng (src/bot/monitor.py)."""
+        from src.bot import monitor
+        await asyncio.sleep(15)
+        while True:
+            try:
+                for cids, text, rows in await asyncio.to_thread(monitor.scan, sorted(allowed)):
+                    for cid in cids:
+                        try:
+                            await app.bot.send_message(cid, _disc(text)[:4090], parse_mode=ParseMode.HTML,
+                                                       reply_markup=kb(rows), disable_web_page_preview=True)
+                        except BadRequest as exc:
+                            log.error("Gửi cảnh báo lỗi HTML: %s", exc)
+                            await app.bot.send_message(cid, html_lib.unescape(re.sub(r"<[^>]+>", "", text))[:4090],
+                                                       reply_markup=kb(rows))
+                        log.info("Đã gửi cảnh báo tự động tới chat %s", cid[-4:])
+            except Exception as exc:  # noqa: BLE001 – kho đang cập nhật, mất mạng… → thử lại lượt sau
+                log.warning("Lượt quét cảnh báo lỗi: %s", exc)
+            await asyncio.sleep(monitor.interval())
+
     async def post_init(app: Application) -> None:
         await app.bot.set_my_commands([BotCommand(c, d) for c, d in COMMANDS])
         await app.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
         log.info("Đã đăng ký %d lệnh vào thanh Menu", len(COMMANDS))
+        if allowed:
+            app.create_task(monitor_loop(app))
+            log.info("Đã bật cảnh báo tự động cho %d chat", len(allowed))
 
     app = Application.builder().token(token()).post_init(post_init).build()
     app.add_handler(CommandHandler("start", cmd("start")))
     for name, _ in COMMANDS:
-        app.add_handler(CommandHandler(name, cmd(name, need_arg=name in ("stock", "add", "remove"))))
+        app.add_handler(CommandHandler(name, cmd(name, need_arg=name in ("stock", "add", "remove", "intra", "sector"))))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     log.info("Bot Telegram đang chạy (%d chat_id được phép)", len(allowed))
     print("🤖 FTSE Flow Radar bot đang chạy – Ctrl+C để dừng")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    from src.bot import runtime
+    runtime.write_pid()                                   # trang "Bot Telegram" trên web đọc để biết bot đang chạy
+    try:
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
+    finally:
+        runtime.clear_pid()
 
 
 if __name__ == "__main__":

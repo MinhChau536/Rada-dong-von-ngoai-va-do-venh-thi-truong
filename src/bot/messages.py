@@ -28,7 +28,11 @@ HELP = ("🤖 <b>FTSE FLOW RADAR BOT</b>\n" + LINE + "\n"
         "🏁 /leaders – mã dẫn dắt VN-Index\n"
         "🌏 /foreign – dòng vốn khối ngoại\n"
         "🔮 /outlook – triển vọng thống kê 5 & 20 phiên\n"
-        "📈 /stock &lt;mã&gt; – thẻ phân tích một mã (kèm biểu đồ)\n"
+        "📈 /stock &lt;mã&gt; – thẻ phân tích: giá, ngành, đánh giá tổng quát\n"
+        "⏱ /intra &lt;mã&gt; – giá từng phút trong phiên (gọi SSI ngay)\n"
+        "🏭 /sector &lt;mã&gt; – ngành của mã và các mã cùng ngành\n"
+        "🖼 /chart &lt;mã&gt; – biểu đồ giá ngày\n"
+        "🔔 /alerts – cảnh báo tự động (bot tự nhắn khi thị trường/mã theo dõi biến động)\n"
         "👁 /watch – danh mục đang theo dõi\n"
         "➕ /add &lt;mã&gt; · ➖ /remove &lt;mã&gt; – sửa danh mục\n"
         "💼 /portfolio – tối ưu danh mục theo khẩu vị rủi ro\n"
@@ -39,7 +43,8 @@ HELP = ("🤖 <b>FTSE FLOW RADAR BOT</b>\n" + LINE + "\n"
 MENU: Keyboard = [[("📊 Thị trường", "market"), ("🏁 Dẫn dắt", "leaders")],
                   [("🌏 Khối ngoại", "foreign"), ("🔮 Triển vọng", "outlook")],
                   [("👁 Watchlist", "watch"), ("💼 Danh mục", "pf:Cân bằng")],
-                  [("📄 Báo cáo PDF", "report"), ("🛰 Trạng thái", "status")]]
+                  [("📄 Báo cáo PDF", "report"), ("🛰 Trạng thái", "status")],
+                  [("🔔 Cảnh báo tự động", "alerts")]]
 BACK: Keyboard = [[("🏠 Menu chính", "menu")]]
 
 
@@ -192,8 +197,50 @@ def outlook(ctx: Optional[Dict] = None, with_buttons: bool = False):
 
 
 # ── cổ phiếu & watchlist ─────────────────────────────────────────────────────
+def _vni_ret(d, n: int) -> float:
+    v = db.query_df("SELECT value FROM fact_daily_index WHERE index_code = 'VNINDEX' AND trade_date <= ? "
+                    "ORDER BY trade_date DESC LIMIT ?", [d, n + 1])["value"]
+    return float(v.iat[0] / v.iat[-1] - 1) * 100 if len(v) > n else np.nan
+
+
+def _sector_stats(sector: str, d) -> Dict:
+    """Sức mạnh ngành: lợi suất bình quân đều 1/5/20 phiên, hạng giữa các ngành, khối ngoại ngành."""
+    g = db.query_df("SELECT trade_date, group_name, ret_eq, net_flow FROM indicator_group_daily WHERE group_type = 'sector' "
+                    "AND trade_date <= ? AND trade_date > ? - INTERVAL 60 DAY ORDER BY trade_date", [d, d])
+    if g.empty or sector not in set(g["group_name"]):
+        return {}
+    r = g.pivot_table(index="trade_date", columns="group_name", values="ret_eq").sort_index()
+    nf = g.pivot_table(index="trade_date", columns="group_name", values="net_flow").sort_index()
+    cum = lambda n: ((1 + r.tail(n).fillna(0)).prod() - 1) * 100  # noqa: E731
+    r20 = cum(20)
+    rank = r20.rank(ascending=False, method="min").astype(int)
+    return {"r1": float(r[sector].iloc[-1] * 100), "r5": float(cum(5)[sector]), "r20": float(r20[sector]),
+            "rank": int(rank[sector]), "n_sec": int(len(r20)), "nf1": float(nf[sector].iloc[-1]),
+            "nf20": float(nf[sector].tail(20).sum()), "top": r20.sort_values(ascending=False)}
+
+
+def _peers(sector: str, d) -> pd.DataFrame:
+    return db.query_df("SELECT symbol, close, ret, ret_5d, ret_20d, net_flow, tv, C FROM indicator_stock_daily "
+                       "WHERE trade_date = ? AND sector = ? AND is_valid ORDER BY tv DESC", [d, sector])
+
+
+def _live(symbol: str) -> Optional[Dict]:
+    """Giá trong phiên hôm nay (gọi SSI ngay) – chỉ trong giờ giao dịch, lỗi thì bỏ qua."""
+    try:
+        from src.bot import intraday
+        if not intraday.in_session():
+            return None
+        df, d = intraday.fetch(symbol)
+        if df.empty or d != intraday.now_vn().date():
+            return None
+        ref, lbl = intraday.reference(symbol, d)
+        return {**intraday.summary(df, ref), "ref_lbl": lbl}
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def stock_card(symbol: str, ctx: Optional[Dict] = None):
-    """Thẻ phân tích một mã: giá, xu hướng, động lượng, dòng vốn ngoại, rủi ro + kiểm tra 5 tiêu chí (tham khảo)."""
+    """Thẻ phân tích một mã: giá, hiệu suất so VN-Index, kỹ thuật, khối ngoại, NGÀNH của mã, đánh giá tổng quát /100."""
     from src.analytics.health import rsi
     s = symbol.upper().strip()
     ctx = _ctx(ctx)
@@ -202,43 +249,132 @@ def stock_card(symbol: str, ctx: Optional[Dict] = None):
         return f"❓ Không tìm thấy dữ liệu cho <b>{escape(s)}</b> (chỉ hỗ trợ cổ phiếu HOSE).", BACK
     h = h[pd.to_datetime(h["trade_date"]) <= ctx["date"]]
     r = h.iloc[-1]
+    d = pd.Timestamp(r["trade_date"])
     c = h["close"].astype(float)
     ma20, ma50 = c.rolling(20).mean().iloc[-1], c.rolling(50).mean().iloc[-1]
     rsi14 = float(rsi(c).iloc[-1]) if len(c) > 15 else np.nan
     nf5, nf20 = h["net_flow"].tail(5).sum(), h["net_flow"].tail(20).sum()
     tv20 = h["tv"].tail(20).mean()
-    r5 = (c.iloc[-1] / c.iloc[-6] - 1) * 100 if len(c) > 6 else np.nan
-    r20 = (c.iloc[-1] / c.iloc[-21] - 1) * 100 if len(c) > 21 else np.nan
+    ret = lambda n: (c.iloc[-1] / c.iloc[-n - 1] - 1) * 100 if len(c) > n else np.nan  # noqa: E731
+    perf = {n: (ret(n), _vni_ret(d, n)) for n in (5, 20, 60, 250)}
+    hi52, lo52 = c.tail(250).max(), c.tail(250).min()
+    pos52 = (c.iloc[-1] - lo52) / (hi52 - lo52) * 100 if hi52 > lo52 else np.nan
+    sector = str(r.get("sector") or "")
+    sec = _sector_stats(sector, d) if sector else {}
+    peers = _peers(sector, d) if sector else pd.DataFrame()
     wl = wi.get_watchlist()
-    checks = [("Xu hướng (giá > MA20 > MA50)", bool(c.iloc[-1] > ma20 > ma50)),
-              ("Động lượng (RSI14 trong 40–70)", bool(40 <= rsi14 <= 70)),
+    cap = r["close"] * r["listed_share"] if pd.notna(r.get("listed_share")) else np.nan
+    U = r["U"] if pd.notna(r["U"]) else 0
+
+    checks = [("Xu hướng tăng (giá > MA20 > MA50)", bool(c.iloc[-1] > ma20 > ma50)),
+              ("Động lượng lành mạnh (RSI14 từ 40 đến 70)", bool(40 <= rsi14 <= 70)),
+              ("Mạnh hơn VN-Index 20 phiên", bool(perf[20][0] > perf[20][1])),
               ("Khối ngoại mua ròng 20 phiên", bool(nf20 > 0)),
               ("Thanh khoản ≥ 10 tỷ/phiên", bool(tv20 >= 10e9)),
-              ("Room ngoại còn (< 95%)", bool((r["U"] if pd.notna(r["U"]) else 0) < 0.95))]
+              ("Ngành mạnh hơn VN-Index 20 phiên", bool(sec and sec["r20"] > perf[20][1])),
+              ("Room ngoại chưa cạn (đã dùng dưới 95%)", bool(U < 0.95))]
     n_ok = sum(ok for _, ok in checks)
-    lines = [f"📈 <b>{s}</b> · {escape(str(r.get('sector') or ''))}",
-             f"📅 Phiên {pd.Timestamp(r['trade_date']):%d/%m/%Y}\n{LINE}",
-             f"💰 Giá đóng cửa: <b>{fmt.price(r['close'])}</b>  {dot(r['ret'])} {fmt.pct(r['ret'] * 100)}",
-             f"📆 5 phiên {fmt.pct(r5, 1)} · 20 phiên {fmt.pct(r20, 1)} · so VN-Index hôm nay "
-             f"{fmt.num((r['ER_I'] or 0) * 100, 2, True)} đ.%",
-             "\n📐 <b>CHỈ BÁO</b>",
-             f"• MA20: {fmt.price(ma20)} · MA50: {fmt.price(ma50)}",
-             f"• RSI14: {fmt.num(rsi14, 1)} · KL/TB20: {fmt.num(r.get('vol_ratio'), 2, False, '×')}",
-             f"• GTGD TB 20 phiên: {fmt.bn(tv20, 1, False)}",
-             f"• Đóng góp VN-Index hôm nay: {fmt.num(r['C'], 2, True)} điểm",
-             "\n🌏 <b>KHỐI NGOẠI</b>",
-             f"• Hôm nay {dot(r['net_flow'])} {fmt.bn(r['net_flow'], 1)} · 5 phiên {fmt.bn(nf5, 1)} · 20 phiên {fmt.bn(nf20, 1)}",
-             f"• Room đã dùng: {fmt.frac_pct(r['U'], 1)} · trạng thái: {ABSORB_LABELS.get(r['absorb_state'], '—')}",
-             f"\n🧩 <b>KIỂM TRA 5 TIÊU CHÍ</b> ({n_ok}/5)"]
-    lines += [f"{'🟢' if ok else '🔴'} {lbl}" for lbl, ok in checks]
-    verdict = ("🟢 Nhiều tiêu chí tích cực" if n_ok >= 4 else "🟡 Trung tính – cần theo dõi thêm" if n_ok >= 2
-               else "🔴 Đa số tiêu chí chưa đạt")
-    lines.append(f"\n🏁 <b>TÓM TẮT</b>: {verdict}")
-    lines.append("<i>Tiêu chí kỹ thuật mô tả trạng thái, không phải tín hiệu mua/bán.</i>")
-    kb = [[("📈 Biểu đồ", f"chart:{s}"), ("🔄 Làm mới", f"stock:{s}")],
+    score = round(n_ok / len(checks) * 100)
+    verdict = "🟢 TÍCH CỰC" if score >= 70 else "🟡 TRUNG TÍNH" if score >= 45 else "🔴 TIÊU CỰC"
+
+    lines = [f"📈 <b>{s}</b> · {escape(sector or '—')} · HOSE", f"📅 Phiên {d:%d/%m/%Y}\n{LINE}"]
+    lv = _live(s)
+    if lv:
+        lines.append(f"⚡ <b>TRONG PHIÊN {lv['last_t']:%H:%M}</b>: <b>{fmt.price(lv['last'])}</b> {dot(lv['chg'])} "
+                     f"{fmt.pct(lv['pct'])} so {lv['ref_lbl']} · KL {fmt.num(lv['vol'] / 1e6, 2)} tr\n")
+    lines += [f"💰 <b>GIÁ</b>: <b>{fmt.price(r['close'])}</b>  {dot(r['ret'])} {fmt.pct(r['ret'] * 100)}",
+              f"• Mở {fmt.price(r['open'])} · Cao {fmt.price(r['high'])} · Thấp {fmt.price(r['low'])}",
+              f"• TC {fmt.price(r['ref'])} · Trần {fmt.price(r['ceiling'])} · Sàn {fmt.price(r['floor'])}",
+              f"• KL {fmt.num(r['vol'] / 1e6, 2)} tr · GTGD {fmt.bn(r['tv'], 1, False)} · vốn hóa {fmt.bn(cap, 0, False)}",
+              f"• Vùng 52 tuần: {fmt.price(lo52)} – {fmt.price(hi52)} (đang ở {fmt.num(pos52, 0)}% biên độ)",
+              "\n📆 <b>HIỆU SUẤT</b> (mã | VN-Index)"]
+    for n, lbl in ((5, "1 tuần"), (20, "1 tháng"), (60, "3 tháng"), (250, "1 năm")):
+        a, b = perf[n]
+        lines.append(f"• {lbl}: {dot(a)} {fmt.pct(a, 1)} | {fmt.pct(b, 1)}")
+    lines += ["\n📐 <b>KỸ THUẬT</b>",
+              f"• MA20 {fmt.price(ma20)} · MA50 {fmt.price(ma50)} · RSI14 {fmt.num(rsi14, 1)}",
+              f"• KL so TB20: {fmt.num(r.get('vol_ratio'), 2, False, '×')} · GTGD TB20: {fmt.bn(tv20, 1, False)}",
+              f"• Đóng góp VN-Index hôm nay: {fmt.num(r['C'], 2, True)} điểm",
+              "\n🌏 <b>KHỐI NGOẠI</b>",
+              f"• Hôm nay {dot(r['net_flow'])} {fmt.bn(r['net_flow'], 1)} · 5 phiên {fmt.bn(nf5, 1)} · 20 phiên {fmt.bn(nf20, 1)}",
+              f"• Room đã dùng {fmt.frac_pct(U, 1)} · {escape(ABSORB_LABELS.get(r['absorb_state'], '—'))}"]
+    if sec:
+        strong = "mạnh hơn" if sec["r20"] > perf[20][1] else "yếu hơn"
+        lines += [f"\n🏭 <b>NGÀNH {escape(sector.upper())}</b>",
+                  f"• Hôm nay {dot(sec['r1'])} {fmt.pct(sec['r1'])} · 5 phiên {fmt.pct(sec['r5'], 1)} · "
+                  f"20 phiên {fmt.pct(sec['r20'], 1)}",
+                  f"• Xếp hạng 20 phiên: <b>{sec['rank']}/{sec['n_sec']}</b> ngành · {strong} VN-Index",
+                  f"• Khối ngoại ngành: hôm nay {fmt.bn(sec['nf1'], 0)} · 20 phiên {fmt.bn(sec['nf20'], 0)}"]
+        if not peers.empty and s in set(peers["symbol"]):
+            pr = peers.sort_values("ret_20d", ascending=False).reset_index(drop=True)
+            k = int(pr.index[pr["symbol"] == s][0]) + 1
+            lines.append(f"• {s} đứng <b>{k}/{len(pr)}</b> mã trong ngành theo lợi suất 20 phiên")
+    lines.append(f"\n🧩 <b>ĐÁNH GIÁ TỔNG QUÁT: {score}/100 – {verdict}</b> ({n_ok}/{len(checks)} tiêu chí)")
+    lines += [f"{'🟢' if ok else '🔴'} {escape(lbl)}" for lbl, ok in checks]
+    lines.append("<i>Tiêu chí mô tả trạng thái hiện tại, không phải tín hiệu mua/bán.</i>")
+    kb = [[("📈 Biểu đồ ngày", f"chart:{s}"), ("⏱ Trong phiên (1 phút)", f"intra:{s}")],
+          [("🏭 Ngành", f"sec:{s}"), ("🔄 Làm mới", f"stock:{s}")],
           [("➖ Bỏ theo dõi", f"rm:{s}") if s in wl else ("➕ Theo dõi", f"add:{s}"), ("👁 Watchlist", "watch")],
           [("🏠 Menu", "menu")]]
     return "\n".join(lines), kb
+
+
+def sector_card(symbol: str, ctx: Optional[Dict] = None):
+    """Ngành của một mã: sức mạnh so VN-Index, hạng giữa các ngành, khối ngoại, bảng các mã cùng ngành."""
+    s = symbol.upper().strip()
+    ctx = _ctx(ctx)
+    row = db.query_df("SELECT sector FROM indicator_stock_daily WHERE symbol = ? AND sector IS NOT NULL "
+                      "ORDER BY trade_date DESC LIMIT 1", [s])
+    if row.empty or ctx is None:
+        return f"❓ Chưa có thông tin ngành của <b>{escape(s)}</b>.", BACK
+    sector, d = str(row["sector"].iat[0]), ctx["date"]
+    sec, peers = _sector_stats(sector, d), _peers(sector, d)
+    if not sec or peers.empty:
+        return f"❓ Chưa có số liệu ngành {escape(sector)}.", [[("📈 " + s, f"stock:{s}"), ("🏠 Menu", "menu")]]
+    v1, v5, v20 = _vni_ret(d, 1), _vni_ret(d, 5), _vni_ret(d, 20)
+    n_up, n_dn = int((peers["ret"] > 0).sum()), int((peers["ret"] < 0).sum())
+    lines = [_head("🏭", f"Ngành {sector}", d),
+             f"🔢 {len(peers)} mã HOSE · tăng 🟢 {n_up} · giảm 🔴 {n_dn} · đứng 🟡 {len(peers) - n_up - n_dn}",
+             "\n📆 <b>NGÀNH | VN-INDEX</b>",
+             f"• Hôm nay: {dot(sec['r1'])} {fmt.pct(sec['r1'])} | {fmt.pct(v1)}",
+             f"• 5 phiên: {dot(sec['r5'])} {fmt.pct(sec['r5'], 1)} | {fmt.pct(v5, 1)}",
+             f"• 20 phiên: {dot(sec['r20'])} {fmt.pct(sec['r20'], 1)} | {fmt.pct(v20, 1)}",
+             f"• Xếp hạng 20 phiên: <b>{sec['rank']}/{sec['n_sec']}</b> ngành · "
+             f"{'🟢 mạnh hơn' if sec['r20'] > v20 else '🔴 yếu hơn'} thị trường",
+             f"\n🌏 <b>KHỐI NGOẠI NGÀNH</b>: hôm nay {dot(sec['nf1'])} {fmt.bn(sec['nf1'], 1)} · 20 phiên {fmt.bn(sec['nf20'], 0)}",
+             "\n📋 <b>CÁC MÃ TRONG NGÀNH</b> (theo GTGD)",
+             "<code>   Mã   Hôm nay 20 phiên   NN ròng</code>"]
+    for p_ in peers.head(12).itertuples():
+        mark = "👉" if p_.symbol == s else dot(p_.ret)
+        lines.append(f"{mark}<code>{p_.symbol:<4} {fmt.pct(p_.ret * 100, 1):>8} {fmt.pct(p_.ret_20d, 1):>8} "
+                     f"{fmt.bn(p_.net_flow, 0):>9}</code>")
+    best = peers.dropna(subset=["ret_20d"]).sort_values("ret_20d", ascending=False)
+    lines.append("\n🏆 Mạnh nhất 20 phiên: " + " · ".join(f"<b>{x.symbol}</b> {fmt.pct(x.ret_20d, 1)}"
+                                                       for x in best.head(3).itertuples()))
+    lines.append("🐢 Yếu nhất 20 phiên: " + " · ".join(f"<b>{x.symbol}</b> {fmt.pct(x.ret_20d, 1)}"
+                                                     for x in best.tail(3)[::-1].itertuples()))
+    lines.append("\n🥇 <b>TOP NGÀNH 20 PHIÊN</b>")
+    for i, (name, v) in enumerate(sec["top"].head(5).items(), 1):
+        nm = f"<b>{escape(name)}</b>" if name == sector else escape(name)
+        lines.append(f"{i}. {nm}: {fmt.pct(v, 1)}")
+    if sec["rank"] > 5:
+        lines.append(f"…{sec['rank']}. <b>{escape(sector)}</b>: {fmt.pct(sec['r20'], 1)}")
+    others = [x for x in peers["symbol"].head(5) if x != s][:4]
+    kb = [[(f"📈 {x}", f"stock:{x}") for x in others[:2]], [(f"📈 {x}", f"stock:{x}") for x in others[2:4]],
+          [(f"↩️ Thẻ {s}", f"stock:{s}"), ("🏠 Menu", "menu")]]
+    return "\n".join(lines), [k for k in kb if k]
+
+
+def intraday_caption(symbol: str, sm: Dict, d) -> str:
+    return (f"⏱ <b>{escape(symbol)}</b> · nến 1 phút · phiên {d:%d/%m/%Y} · cập nhật {sm['last_t']:%H:%M}\n"
+            f"💰 Giá cuối <b>{fmt.price(sm['last'])}</b> {dot(sm['chg'])} {fmt.num(sm['chg'], 0, True)} ({fmt.pct(sm['pct'])}) "
+            f"so {sm.get('ref_lbl', 'TC')} {fmt.price(sm.get('ref'))}\n"
+            f"• Mở {fmt.price(sm['open'])} · Cao {fmt.price(sm['high'])} lúc {sm['high_t']:%H:%M} · "
+            f"Thấp {fmt.price(sm['low'])} lúc {sm['low_t']:%H:%M}\n"
+            f"• VWAP {fmt.price(sm['vwap'])} · giá cuối {'trên' if sm['last'] >= sm['vwap'] else 'dưới'} giá bình quân phiên\n"
+            f"• KL {fmt.num(sm['vol'] / 1e6, 2)} tr (sáng {fmt.num(sm['vol_am'] / 1e6, 2)} · chiều "
+            f"{fmt.num(sm['vol_pm'] / 1e6, 2)}) · GTGD {fmt.bn(sm['value'], 1, False)}\n"
+            f"<i>Nguồn SSI FastConnect V3, gọi trực tiếp lúc bấm nút · {sm['bars']} nến.</i>")
 
 
 def watch(symbol: Optional[str] = None, ctx: Optional[Dict] = None, with_buttons: bool = False):

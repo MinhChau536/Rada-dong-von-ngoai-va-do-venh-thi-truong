@@ -22,16 +22,16 @@ from src.app.theme import css, register_plotly  # noqa: E402
 from src.common.config import get  # noqa: E402
 
 st.set_page_config(page_title=f"{get('app.name')}", page_icon="📡", layout="wide", initial_sidebar_state="expanded")
-from src.app.components.banners import background_css, banner_css, load_prefs  # noqa: E402
+from src.app.components.banners import background_css, banner_css, load_prefs, normalize  # noqa: E402
 
 _prefs = load_prefs()                                   # giao diện đã chọn lần trước (data/ui_prefs.json)
 st.session_state.setdefault("theme", _prefs.get("theme", "light"))
-st.session_state.setdefault("bg_choice", _prefs.get("background", "Mặc định"))
+st.session_state.setdefault("bg_choice", normalize(_prefs.get("background")))   # mặc định: Đêm sao tương tác
 st.session_state.setdefault("bg_overlay", float(_prefs.get("overlay", 0.82)))
 st.session_state.setdefault("bg_fx", False)  # B4.3: tắt hiệu ứng nền động, không còn tùy chọn bật
 
 from src.app.views import (p0_ket_noi, p1_tong_quan, p2_dan_dat, p3_khoi_ngoai, p4_su_kien, p5_watchlist,  # noqa: E402
-                           p6_bao_cao, p7_chat_luong, p8_phuong_phap)
+                           p6_bao_cao, p7_chat_luong, p8_phuong_phap, p9_telegram, p10_backtest)
 
 PAGES = {
     "Thị trường": [
@@ -42,12 +42,14 @@ PAGES = {
         st.Page(p3_khoi_ngoai.render, title="Ra-đa khối ngoại", icon=":material/radar:", url_path="khoi-ngoai"),
         st.Page(p4_su_kien.render, title="Sự kiện FTSE", icon=":material/event:", url_path="su-kien-ftse"),
     ],
-    "Cá nhân": [
+    "Danh mục & tiện ích": [
         st.Page(p5_watchlist.render, title="Watchlist Impact", icon=":material/visibility:", url_path="watchlist"),
-        st.Page(p6_bao_cao.render, title="Báo cáo & Telegram", icon=":material/description:", url_path="bao-cao"),
+        st.Page(p6_bao_cao.render, title="Báo cáo PDF", icon=":material/description:", url_path="bao-cao"),
+        st.Page(p9_telegram.render, title="Bot Telegram", icon=":material/send:", url_path="telegram"),
     ],
     "Hệ thống": [
         st.Page(p7_chat_luong.render, title="Chất lượng dữ liệu", icon=":material/fact_check:", url_path="chat-luong"),
+        st.Page(p10_backtest.render, title="Backtest", icon=":material/history:", url_path="backtest"),
         st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
         st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:", url_path="ket-noi"),
     ],
@@ -80,8 +82,13 @@ mode = st.session_state["theme"]
 register_plotly(mode)
 st.markdown(css(mode), unsafe_allow_html=True)
 st.markdown("<style>" + banner_css(mode == "dark")
-            + background_css(st.session_state["bg_choice"], mode == "dark", st.session_state["bg_overlay"]) + "</style>",
+            + background_css(st.session_state["bg_choice"], mode == "dark", st.session_state["bg_overlay"],
+                             nav.url_path or "tong-quan") + "</style>",
             unsafe_allow_html=True)
+from src.app.components import starfield  # noqa: E402
+from src.app.components.banners import STARS  # noqa: E402
+
+starfield.inject(normalize(st.session_state["bg_choice"]) == STARS and mode == "dark", True)  # sao chỉ ở chế độ Tối
 if st.session_state.pop("sb_search_go", False) and nav.url_path != "watchlist" and "watchlist" in st.session_state["_pages"]:
     st.switch_page(st.session_state["_pages"]["watchlist"])
 nav.run()

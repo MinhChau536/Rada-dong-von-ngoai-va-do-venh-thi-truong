@@ -6,10 +6,13 @@
 # Dữ liệu, nhật ký, đầu ra
 data/*.duckdb
 data/*.duckdb.wal
+data/*.restoring
 data/checkpoints/
 data/ui_prefs.json
 data/ui_background.*
 data/.update.lock
+data/.bot.pid
+data/bot_alerts.json
 logs/
 reports_out/
 *.log

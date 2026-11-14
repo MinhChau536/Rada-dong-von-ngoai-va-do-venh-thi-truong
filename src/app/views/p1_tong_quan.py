@@ -394,13 +394,13 @@ def render_footer() -> None:
 
 def render() -> None:
     sess = da.sessions()
-    c1, c2 = st.columns([5, 1.3], vertical_alignment="bottom")
+    header("Tổng quan thị trường", "Chỉ số, độ vênh, mã dẫn dắt, dòng vốn khối ngoại và tác động lên danh mục theo dõi")
+    c1, c2 = st.columns([1, 4.2], vertical_alignment="center", gap="small")   # chọn phiên ngay dưới banner, cạnh thanh trạng thái
     with c1:
-        header("Tổng quan thị trường", "Chỉ số, độ vênh, mã dẫn dắt, dòng vốn khối ngoại và tác động lên danh mục theo dõi")
+        date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"📅 Phiên {d:%d/%m/%Y}", key="p1_date",
+                            label_visibility="collapsed", help="Xem lại một phiên bất kỳ trong lịch sử")
     with c2:
-        date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"Phiên {d:%d/%m/%Y}", key="p1_date",
-                            label_visibility="collapsed")
-    status_bar.render(date)
+        status_bar.render(date, show_session=False)        # ô chọn phiên bên trái đã hiện phiên
     about.render_intro()
     data = load_overview(date)
     render_index_cards(data)

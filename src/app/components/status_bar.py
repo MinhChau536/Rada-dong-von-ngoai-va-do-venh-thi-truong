@@ -30,7 +30,7 @@ def active_source() -> str:
     return "SSI FastConnect V3"
 
 
-def render(session_date=None) -> None:
+def render(session_date=None, show_session: bool = True) -> None:
     p = pal()
     d = da.daily()
     last = d["trade_date"].max() if not d.empty else None
@@ -45,7 +45,8 @@ def render(session_date=None) -> None:
                     for k, (c, s, _) in srcs.items())
     demo = ""
     sess = sdate.strftime("%d/%m/%Y") if sdate is not None else "—"
-    md(f'<div class="ffr-status">{demo}<span class="ffr-pill">📅 Phiên {sess}</span>'
+    sess_pill = f'<span class="ffr-pill">📅 Phiên {sess}</span>' if show_session else ""
+    md(f'<div class="ffr-status">{demo}{sess_pill}'
        f'<span class="ffr-pill">⏱ {now_vn():%H:%M:%S} (giờ VN)</span>'
        f'<span class="ffr-pill">Nguồn: {active_source()}</span>{dots}'
        f'<span class="ffr-pill">Đầy đủ: {frac_pct(comp, 1) if comp is not None else "—"}</span></div>')

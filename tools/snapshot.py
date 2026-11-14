@@ -1,0 +1,126 @@
+"""
+Ảnh chụp kho dữ liệu để chia sẻ qua GitHub (tệp data/ffr.duckdb ~850 MB vượt giới hạn 100 MB/tệp của GitHub).
+
+    python -m tools.snapshot export     # kho → data/snapshot/<bảng>/*.parquet (zstd, mỗi tệp < 45 MB) + manifest.json
+    python -m tools.snapshot restore    # data/snapshot → data/ffr.duckdb (tự chạy khi mở app mà chưa có kho)
+    python -m tools.snapshot verify     # so số dòng kho hiện tại với manifest
+
+Khôi phục: tạo lược đồ từ src/data/schema.sql rồi nạp từng bảng (INSERT BY NAME; bảng ngoài lược đồ → CREATE AS),
+nên khóa chính/ràng buộc giữ nguyên như kho gốc. Dữ liệu là dữ liệu thật tải từ SSI FastConnect V3.
+"""
+from __future__ import annotations
+
+import json
+import shutil
+import sys
+import time
+from pathlib import Path
+from typing import Dict, Optional
+
+import duckdb
+
+ROOT = Path(__file__).resolve().parents[1]
+SNAP = ROOT / "data" / "snapshot"
+CHUNK = "45MB"
+
+
+def _q(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def export(db: Optional[Path] = None, out: Path = SNAP) -> Dict:
+    from src.common.config import db_path
+    db = Path(db or db_path())
+    tmp = out.with_name(out.name + "_tmp")
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    con = duckdb.connect(str(db), read_only=True)
+    tables = [r[0] for r in con.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' "
+                                        "AND table_type = 'BASE TABLE' ORDER BY 1").fetchall()]
+    man = {"created": time.strftime("%Y-%m-%d %H:%M:%S"), "source": "SSI FastConnect V3", "tables": {}}
+    for t in tables:
+        n = con.execute(f"SELECT COUNT(*) FROM {_q(t)}").fetchall()[0][0]
+        d = tmp / t
+        con.execute(f"COPY {_q(t)} TO '{d.as_posix()}' (FORMAT parquet, COMPRESSION zstd, COMPRESSION_LEVEL 9, "
+                    f"FILE_SIZE_BYTES '{CHUNK}', OVERWRITE_OR_IGNORE)")
+        files = sorted(p.name for p in d.glob("*.parquet"))
+        man["tables"][t] = {"rows": int(n), "files": files}
+        print(f"  {t:34s} {n:>10,} dòng · {len(files)} tệp", flush=True)
+    for k, sql in (("last_session", "SELECT MAX(trade_date) FROM indicator_daily"),):
+        try:
+            man[k] = str(con.execute(sql).fetchall()[0][0])
+        except duckdb.Error:
+            pass
+    con.close()
+    (tmp / "manifest.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
+    shutil.rmtree(out, ignore_errors=True)
+    tmp.rename(out)
+    size = sum(p.stat().st_size for p in out.rglob("*.parquet")) / 1e6
+    print(f"Đã xuất {len(tables)} bảng → {out} ({size:,.0f} MB)")
+    return man
+
+
+def restore(db: Optional[Path] = None, src: Path = SNAP, force: bool = False) -> bool:
+    from src.common.config import db_path
+    db = Path(db or db_path())
+    man_f = src / "manifest.json"
+    if not man_f.exists():
+        return False
+    if db.exists() and not force:
+        print(f"{db} đã có – bỏ qua (dùng --force để ghi đè)")
+        return False
+    man = json.loads(man_f.read_text(encoding="utf-8"))
+    tmp = db.with_suffix(".restoring")
+    tmp.unlink(missing_ok=True)
+    con = duckdb.connect(str(tmp))
+    con.execute((ROOT / "src" / "data" / "schema.sql").read_text(encoding="utf-8"))
+    have = {r[0] for r in con.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'").fetchall()}
+    for t, info in man["tables"].items():
+        files = [(src / t / f).as_posix() for f in info["files"]]
+        if not files:
+            continue
+        rp = "read_parquet([" + ",".join(f"'{f}'" for f in files) + "])"
+        if t in have:
+            con.execute(f"INSERT INTO {_q(t)} BY NAME SELECT * FROM {rp}")
+        else:
+            con.execute(f"CREATE TABLE {_q(t)} AS SELECT * FROM {rp}")
+    bad = {t: (con.execute(f"SELECT COUNT(*) FROM {_q(t)}").fetchall()[0][0], i["rows"]) for t, i in man["tables"].items()}
+    bad = {t: v for t, v in bad.items() if v[0] != v[1]}
+    con.close()
+    if bad:
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"Khôi phục lệch số dòng: {bad}")
+    db.parent.mkdir(parents=True, exist_ok=True)
+    if db.exists():
+        db.unlink()
+    tmp.rename(db)
+    print(f"Đã khôi phục {len(man['tables'])} bảng → {db} (dữ liệu tới phiên {man.get('last_session', '?')})")
+    return True
+
+
+def verify(db: Optional[Path] = None, src: Path = SNAP) -> bool:
+    from src.common.config import db_path
+    man = json.loads((src / "manifest.json").read_text(encoding="utf-8"))
+    con = duckdb.connect(str(db or db_path()), read_only=True)
+    ok = True
+    for t, i in man["tables"].items():
+        n = con.execute(f"SELECT COUNT(*) FROM {_q(t)}").fetchall()[0][0]
+        if n != i["rows"]:
+            ok = False
+            print(f"  LỆCH {t}: kho {n} ≠ ảnh chụp {i['rows']}")
+    con.close()
+    print("Khớp manifest" if ok else "Có bảng lệch")
+    return ok
+
+
+if __name__ == "__main__":
+    sys.path.insert(0, str(ROOT))
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "export"
+    if cmd == "export":
+        export()
+    elif cmd == "restore":
+        restore(force="--force" in sys.argv)
+    elif cmd == "verify":
+        sys.exit(0 if verify() else 1)
+    else:
+        print(__doc__)

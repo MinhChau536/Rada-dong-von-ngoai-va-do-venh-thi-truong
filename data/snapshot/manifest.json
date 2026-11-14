@@ -1,0 +1,233 @@
+{
+ "created": "2026-11-14 23:45:28",
+ "source": "SSI FastConnect V3",
+ "tables": {
+  "alert_log": {
+   "rows": 704,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "alert_predictive": {
+   "rows": 11,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "checkpoints": {
+   "rows": 3,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "control_balance": {
+   "rows": 2,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "data_quality_log": {
+   "rows": 6769,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "did_coefs": {
+   "rows": 51,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "dim_events": {
+   "rows": 3,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "dim_securities": {
+   "rows": 1621,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "dim_universe": {
+   "rows": 84,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "event_aar": {
+   "rows": 186,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "event_params": {
+   "rows": 162,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "event_results": {
+   "rows": 648,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "fact_daily_index": {
+   "rows": 10823,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "fact_daily_stock": {
+   "rows": 1013699,
+   "files": [
+    "data_0.parquet",
+    "data_1.parquet"
+   ]
+  },
+  "fact_intraday": {
+   "rows": 42743,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_daily": {
+   "rows": 2713,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_group_daily": {
+   "rows": 74349,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_intraday": {
+   "rows": 1440,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_stock_daily": {
+   "rows": 1013699,
+   "files": [
+    "data_0.parquet",
+    "data_1.parquet",
+    "data_2.parquet"
+   ]
+  },
+  "indicator_watchlist": {
+   "rows": 5,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "ingest_log": {
+   "rows": 29097,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "leaders_daily": {
+   "rows": 26889,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "pipeline_meta": {
+   "rows": 1,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_daily_index": {
+   "rows": 10823,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_daily_stock": {
+   "rows": 1013699,
+   "files": [
+    "data_0.parquet",
+    "data_1.parquet"
+   ]
+  },
+  "raw_index_components": {
+   "rows": 61,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_intraday": {
+   "rows": 42743,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_securities": {
+   "rows": 1673,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_stream": {
+   "rows": 0,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_stream_neo": {
+   "rows": 0,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "reports_log": {
+   "rows": 16,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "robustness_results": {
+   "rows": 111,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "source_events": {
+   "rows": 0,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "source_status": {
+   "rows": 1,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "stats_results": {
+   "rows": 398,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "watchlist": {
+   "rows": 2,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "watchlist_reaction": {
+   "rows": 25,
+   "files": [
+    "data_0.parquet"
+   ]
+  }
+ },
+ "last_session": "2026-11-13 00:00:00"
+}

@@ -51,6 +51,33 @@ def _pct(v, d=1):
     return fmt.pct(None if v is None or pd.isna(v) else v * 100, d)
 
 
+def backtest_block(wl: List[str], date, lookback: int, mw: float, tv: float, key: str = "pf_bt") -> pd.DataFrame:
+    """Walk-forward: tái cân bằng đầu mỗi tháng chỉ bằng dữ liệu trước thời điểm đó; so với VN-Index."""
+    p = pal()
+    bt = _backtest(tuple(sorted(wl)), date, int(lookback), float(mw), float(tv))
+    if bt.empty:
+        st.info("Chưa đủ dữ liệu để kiểm chứng ngoài mẫu (cần ≥ 2 mã có lịch sử đủ dài).")
+        return bt
+    cum = (1 + bt).cumprod() * 100
+    fig = go.Figure()
+    for c in cum.columns:
+        fig.add_trace(go.Scatter(x=cum.index, y=cum[c], name=c, mode="lines",
+                                 line=dict(width=2.6 if c == P.METHODS["target"] else 1.6,
+                                           dash="dot" if c == "VN-Index" else None)))
+    fig.update_layout(title="Giá trị danh mục ngoài mẫu (= 100 lúc bắt đầu)")
+    plot(charts._lay(fig, p, 360), key)
+    ann = (1 + bt).prod() ** (250 / len(bt)) - 1
+    vol_ = bt.std() * np.sqrt(250)
+    mdd = ((1 + bt).cumprod() / (1 + bt).cumprod().cummax() - 1).min()
+    sharpe = (ann - float(get("portfolio.risk_free", 0.045))) / vol_
+    excess = ann - ann["VN-Index"]
+    md(table_html(["Ngoài mẫu", "Lợi suất năm", "Biến động năm", "Sharpe", "Sụt giảm tối đa", "Hơn/kém VN-Index", "Số phiên"],
+                  [[f"<b>{c}</b>", colored(ann[c], _pct(ann[c])), _pct(vol_[c]), fmt.num(sharpe[c], 2), _pct(mdd[c]),
+                    "—" if c == "VN-Index" else colored(excess[c], _pct(excess[c])), str(len(bt))] for c in bt.columns],
+                  left=(0,)))
+    return bt
+
+
 def render(wl: List[str], date) -> None:
     p = pal()
     section("Tối ưu danh mục theo khẩu vị rủi ro",
@@ -136,21 +163,10 @@ def render(wl: List[str], date) -> None:
         fig.update_layout(title="Tương quan lợi suất ngày")
         plot(charts._lay(fig, p, 320), "pf_corr")
 
-    bt = _backtest(tuple(sorted(wl)), date, LOOKBACKS[lb], float(mw), float(tv))
-    if not bt.empty:
-        cum = (1 + bt).cumprod() * 100
-        fig = go.Figure()
-        for c in cum.columns:
-            fig.add_trace(go.Scatter(x=cum.index, y=cum[c], name=c, mode="lines",
-                                     line=dict(width=2.6 if c == P.METHODS["target"] else 1.6)))
-        fig.update_layout(title="Kiểm chứng ngoài mẫu: tái cân bằng đầu mỗi tháng, chỉ dùng dữ liệu trước thời điểm đó (= 100)")
-        plot(charts._lay(fig, p, 340), "pf_bt")
-        ann = (1 + bt).prod() ** (250 / len(bt)) - 1
-        vol_ = bt.std() * np.sqrt(250)
-        mdd = ((1 + bt).cumprod() / (1 + bt).cumprod().cummax() - 1).min()
-        md(table_html(["Ngoài mẫu", "Lợi suất năm", "Biến động năm", "Sụt giảm tối đa", "Số phiên"],
-                      [[f"<b>{c}</b>", colored(ann[c], _pct(ann[c])), _pct(vol_[c]), _pct(mdd[c]), str(len(bt))] for c in bt.columns],
-                      left=(0,)))
+    pages = st.session_state.get("_pages", {})
+    if "backtest" in pages:
+        st.page_link(pages["backtest"], label="Kiểm chứng ngoài mẫu (walk-forward) của danh mục này → trang Backtest",
+                     icon=":material/history:")
 
     s1, s2 = st.columns([1.2, 1], gap="medium")
     with s1:

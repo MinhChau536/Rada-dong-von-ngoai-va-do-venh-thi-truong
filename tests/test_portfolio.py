@@ -82,5 +82,100 @@ def test_keyboard_json_limits_callback_data():
     from src.bot import messages as M
     mk = json.loads(keyboard_json(M.MENU))
     btn = [b for row in mk["inline_keyboard"] for b in row]
-    assert len(btn) == 8 and all(len(b["callback_data"].encode()) <= 64 for b in btn)
+    assert len(btn) == 9 and all(len(b["callback_data"].encode()) <= 64 for b in btn)
     assert keyboard_json(None) is None
+
+
+def test_bot_runtime_pid_detection(tmp_path, monkeypatch):
+    import os
+    from src.bot import runtime
+    monkeypatch.setattr(runtime, "PID_FILE", tmp_path / ".bot.pid")
+    assert runtime.bot_process() is None
+    runtime.write_pid()
+    assert runtime.bot_process()["pid"] == os.getpid()          # tiến trình hiện tại đang sống
+    runtime.clear_pid()
+    assert runtime.bot_process() is None
+    assert runtime.pid_alive(0) is False
+
+
+def test_report_telegram_backtest_are_separate_pages():
+    from pathlib import Path
+    src = Path("src/app/main.py").read_text(encoding="utf-8")
+    for slug in ('url_path="bao-cao"', 'url_path="telegram"', 'url_path="backtest"'):
+        assert slug in src
+    from src.app.components.banners import ART, TITLE_TO_SLUG
+    assert TITLE_TO_SLUG["Bot Telegram"] in ART and TITLE_TO_SLUG["Backtest"] in ART
+
+
+def test_stock_and_sector_cards_are_valid_telegram_html(demo_db):
+    """Lỗi cũ: '(< 95%)' không escape → Telegram 'Can't parse entities' (BadRequest)."""
+    import re
+    from src.bot import messages as M
+    from src.data import database as db
+    from src.reports import context
+    p, _ = demo_db
+    ctx = context.build(path=p)
+    sym = db.query_df("SELECT symbol FROM indicator_stock_daily WHERE sector IS NOT NULL ORDER BY tv DESC LIMIT 1", path=p)["symbol"].iat[0]
+    allowed = re.compile(r"</?(b|i|code|u|s|pre)>")
+    for fn in (M.stock_card, M.sector_card):
+        text, kb = fn(sym, ctx)
+        assert not [t for t in re.findall(r"<[^>]*>?", text) if not allowed.fullmatch(t)], fn.__name__
+        assert len(text) < 4000 and all(len(c.encode()) <= 64 for row in kb for _, c in row)
+    text, kb = M.stock_card(sym, ctx)
+    assert "ĐÁNH GIÁ TỔNG QUÁT" in text and any(c == f"intra:{sym}" for row in kb for _, c in row)
+
+
+def test_intraday_summary_and_chart():
+    import pandas as pd
+    from src.bot import intraday
+    ts = pd.date_range("2026-11-13 09:15", periods=60, freq="1min").append(pd.date_range("2026-11-13 13:00", periods=60, freq="1min"))
+    px = pd.Series(range(120), dtype=float) * 10 + 10000
+    df = pd.DataFrame({"ts": ts, "open": px, "high": px + 20, "low": px - 20, "close": px + 5, "volume": 1000.0})
+    df["value"] = df["close"] * df["volume"]
+    sm = intraday.summary(df, 10000.0)
+    assert sm["last"] == 11195 and sm["vol_am"] == sm["vol_pm"] == 60000 and sm["high_t"].hour == 13
+    assert intraday.chart(df, "AAA", pd.Timestamp("2026-11-13").date(), 10000.0).getbuffer().nbytes > 10000
+
+
+def _bars(closes, start="2026-11-13 09:15", vol=1000.0):
+    import pandas as pd
+    ts = pd.date_range(start, periods=len(closes), freq="1min")
+    c = pd.Series(closes, dtype=float)
+    return pd.DataFrame({"ts": ts, "open": c, "high": c, "low": c, "close": c, "volume": vol, "value": c * vol})
+
+
+def test_market_rules_thresholds_band_ma50_and_foreign():
+    from src.bot import monitor as mo
+    lv = mo.LEVELS["Vừa"]
+    df = _bars([1000.0] * 30 + [985.0] * 5 + [978.0])                     # -2,2% và rơi mạnh trong 15 phút
+    base = {"ref": 1000.0, "prev_close": 1000.0, "sigma": 1.0, "ma50_prev": 990.0, "nf_sd": 300e9}
+    keys = [k for k, _ in mo.market_rules(df, base, lv, {"nf": -800e9, "up": 40, "dn": 300})]
+    assert {"vni:dn:1.0", "vni:dn:2.0", "vniband:dn", "vnima50:dn", "vninf:dn", "vnibreadth:giảm"} <= set(keys)
+    assert any(k.startswith("vni15:") for k in keys)
+    calm = mo.market_rules(_bars([1000.0, 1001.0, 1002.0]), base, lv, {"nf": 10e9, "up": 150, "dn": 140})
+    assert calm == []
+
+
+def test_stock_rules_ceiling_volume_and_breakout():
+    from datetime import datetime
+    from src.bot import monitor as mo
+    df = _bars([20000.0] * 10 + [21400.0], vol=50000.0)                    # +7% trần, KL 550k
+    hits = dict(mo.stock_rules("AAA", df, {"ref": 20000.0, "hi20": 21000.0, "lo20": 18000.0, "vol20": 300000.0},
+                               mo.LEVELS["Vừa"], datetime(2026, 11, 13, 10, 0)))
+    assert {"AAA:up:3.0", "AAA:up:5.0", "AAA:ceil", "AAA:vol", "AAA:hi20"} <= set(hits)
+
+
+def test_alert_prefs_and_dedup(tmp_path, monkeypatch):
+    import json
+    from src.bot import monitor as mo
+    monkeypatch.setattr(mo, "STORE", tmp_path / "a.json")
+    assert mo.prefs("1") == {"on": True, "types": {"market": True, "watch": True, "trend": True}, "level": "Vừa"}
+    mo.set_pref("1", type="watch")
+    mo.set_pref("1", level="Cao")
+    assert mo.prefs("1")["types"]["watch"] is False and mo.prefs("1")["level"] == "Cao"
+    assert mo._targets("watch", ["1"]) == [] and mo._targets("market", ["1"]) == ["1"]
+    assert mo._claim(["x", "y"], "2026-11-13") == ["x", "y"] and mo._claim(["x", "z"], "2026-11-13") == ["z"]
+    assert mo._claim(["x"], "2026-11-14") == ["x"]                         # ngày mới → gửi lại được
+    text, kb = mo.settings_view("1")
+    assert "CẢNH BÁO TỰ ĐỘNG" in text and all(len(c.encode()) <= 64 for row in kb for _, c in row)
+    assert json.loads((tmp_path / "a.json").read_text(encoding="utf-8"))["chats"]["1"]["level"] == "Cao"

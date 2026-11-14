@@ -67,7 +67,11 @@ PAGE_FEATURES = {
                      "Đồ thị hệ số chênh lệch kép (DiD)"],
     "watchlist": ["Thêm/xóa mã theo dõi", "Hồ sơ phản ứng từng mã: ER, beta Dimson, đóng góp chỉ số, phân vị nf",
                   "So sánh hiệu suất chuẩn hóa", "Phản ứng theo loại phiên", "Tin liên quan (nguồn bổ trợ)"],
-    "bao-cao": ["Xuất PDF Market Snapshot và Closing Report", "Lịch sử báo cáo", "Cấu hình và nhật ký cảnh báo Telegram"],
+    "bao-cao": ["Xuất PDF Market Snapshot và Closing Report", "Lịch sử báo cáo, tải về"],
+    "telegram": ["Trạng thái bot, xem trước tin nhắn kèm nút bấm", "Gửi bản tin giữa/cuối phiên ngay",
+                 "Danh sách lệnh, cấu hình và nhật ký cảnh báo"],
+    "backtest": ["Chạy lại cảnh báo trên lịch sử (chống trùng)", "Giá trị dự báo của tín hiệu cảnh báo",
+                 "Walk-forward danh mục watchlist", "Độ bao phủ biên dao động VN-Index"],
     "chat-luong": ["Trạng thái nguồn SSI FastConnect V3, nhật ký sự cố", "Độ đầy đủ theo phiên, sai số tái lập ε",
                    "Đối chiếu độ rộng và đối chiếu luồng ↔ REST", "Thống kê luồng WebSocket SSI, nhật ký lỗi"],
 }

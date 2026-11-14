@@ -33,7 +33,7 @@ def render(groups: Dict[str, List], current) -> None:
                     md(f'<div class="ffr-active">{esc(pg.title)}</div>')
                 else:
                     st.page_link(pg, label=pg.title, icon=pg.icon)
-        from src.app.components.banners import BACKGROUNDS, save_custom_image, save_prefs
+        from src.app.components.banners import BACKGROUNDS, PAGE_PHOTO, STARS, normalize, save_custom_image, save_prefs
         c1, c2 = st.columns([1, 1.25])
         with c1:
             dark = st.toggle("Tối", value=st.session_state.get("theme") == "dark", key="theme_toggle")
@@ -45,18 +45,22 @@ def render(groups: Dict[str, List], current) -> None:
             if st.button("↻ Làm mới", width="stretch", key="sb_refresh", help="Xóa bộ nhớ đệm và đọc lại kho chỉ báo"):
                 da.clear_cache()
                 st.rerun()
-        cur = st.session_state.get("bg_choice", "Mặc định")
+        cur = normalize(st.session_state.get("bg_choice"))
         bg = st.selectbox("🎨 Hình nền", BACKGROUNDS, index=BACKGROUNDS.index(cur) if cur in BACKGROUNDS else 0,
-                          key="sb_bg", help="Đổi nền trang – lựa chọn được lưu cho lần mở sau")
+                          key="sb_bg", help="Đổi nền trang – lựa chọn được lưu cho lần mở sau. Đêm sao: rê chuột để nối chòm sao, bấm để bắn sao băng.")
         if bg != cur:
             st.session_state["bg_choice"] = bg
             save_prefs(background=bg)
-        if bg == "Ảnh của tôi":
-            up = st.file_uploader("Tải ảnh nền (JPG/PNG/WebP)", type=["jpg", "jpeg", "png", "webp"], key="sb_bg_up",
-                                  label_visibility="collapsed")
-            if up is not None and st.session_state.get("_bg_up_name") != up.name:
-                save_custom_image(up.getvalue(), up.name)
-                st.session_state["_bg_up_name"] = up.name
+        if bg == STARS:
+            st.caption("✨ Rê chuột để nối chòm sao · bấm chuột để bắn sao băng" if st.session_state.get("theme") == "dark"
+                       else "✨ Bầu trời sao hiện ở chế độ **Tối** – chế độ Sáng dùng nền trơn")
+        if bg in ("Ảnh của tôi", PAGE_PHOTO):
+            if bg == "Ảnh của tôi":
+                up = st.file_uploader("Tải ảnh nền (JPG/PNG/WebP)", type=["jpg", "jpeg", "png", "webp"], key="sb_bg_up",
+                                      label_visibility="collapsed")
+                if up is not None and st.session_state.get("_bg_up_name") != up.name:
+                    save_custom_image(up.getvalue(), up.name)
+                    st.session_state["_bg_up_name"] = up.name
             ov = st.slider("Độ mờ lớp phủ (giữ chữ dễ đọc)", 0.3, 0.95, st.session_state.get("bg_overlay", 0.82), 0.05,
                            key="sb_bg_ov")
             if ov != st.session_state.get("bg_overlay"):

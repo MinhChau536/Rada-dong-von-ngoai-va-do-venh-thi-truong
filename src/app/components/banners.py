@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import base64
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -112,14 +113,38 @@ def _plug() -> str:
               f'<line x1="188" y1="76" x2="200" y2="76" stroke="{_w(.85)}" stroke-width="3"/>')
 
 
+def _plane() -> str:
+    """Máy bay giấy Telegram + bong bóng tin có nút bấm."""
+    return (f'<rect x="150" y="22" width="150" height="60" rx="12" fill="{_w(.16)}" stroke="{_w(.6)}" stroke-width="1.2"/>'
+            + "".join(f'<rect x="164" y="{34 + i * 12}" width="{110 - i * 28}" height="6" rx="3" fill="{_w(.7)}"/>' for i in range(3))
+            + "".join(f'<rect x="{150 + i * 52}" y="90" width="46" height="18" rx="6" fill="{_w(.3)}" stroke="{_w(.7)}"/>'
+                      for i in range(3))
+            + f'<path d="M20 78 L130 30 L104 118 L78 92 Z" fill="{_w(.9)}"/>'
+              f'<path d="M78 92 L130 30 L68 84 Z" fill="{_w(.55)}"/>'
+              f'<path d="M78 92 L84 116 L92 98" fill="{_w(.7)}"/>'
+              f'<path d="M14 118 C 40 112 52 104 66 96" fill="none" stroke="#FDE68A" stroke-width="2" stroke-dasharray="4 5"/>')
+
+
+def _rewind() -> str:
+    """Đường lợi suất lịch sử + dải biên + đồng hồ quay ngược."""
+    pts = "30,100 55,92 80,96 105,78 130,84 155,64 180,70 205,52 230,58 255,40"
+    return (f'<path d="M30 86 L255 26 L255 66 L30 112 Z" fill="{_w(.14)}"/>'
+            f'<polyline points="{pts}" fill="none" stroke="{_w(.95)}" stroke-width="3" stroke-linejoin="round"/>'
+            + "".join(f'<circle cx="{x}" cy="{y}" r="3" fill="#FDE68A"/>' for x, y in ((105, 78), (205, 52)))
+            + f'<circle cx="276" cy="100" r="26" fill="{_w(.2)}" stroke="{_w(.85)}" stroke-width="2.5"/>'
+              f'<path d="M276 84 L276 100 L288 108" fill="none" stroke="{_w(.95)}" stroke-width="2.5" stroke-linecap="round"/>'
+              f'<path d="M250 92 A 26 26 0 0 1 262 78" fill="none" stroke="#FDE68A" stroke-width="3" marker-end="url(#arr)"/>')
+
+
 ART = {"tong-quan": _candles, "dan-dat": _waterfall, "khoi-ngoai": _radar, "su-kien-ftse": _calendar,
-       "watchlist": _eye_pie, "bao-cao": _report, "chat-luong": _shield, "phuong-phap": _book, "ket-noi": _plug}
+       "watchlist": _eye_pie, "bao-cao": _report, "chat-luong": _shield, "phuong-phap": _book, "ket-noi": _plug, "telegram": _plane, "backtest": _rewind}
 TITLE_TO_SLUG = {"Tổng quan thị trường": "tong-quan", "Dẫn dắt & độ vênh": "dan-dat", "Ra-đa khối ngoại": "khoi-ngoai",
-                 "Sự kiện FTSE": "su-kien-ftse", "Watchlist Impact": "watchlist", "Báo cáo & Telegram": "bao-cao",
+                 "Sự kiện FTSE": "su-kien-ftse", "Watchlist Impact": "watchlist", "Báo cáo PDF": "bao-cao", "Bot Telegram": "telegram", "Backtest": "backtest",
                  "Chất lượng dữ liệu": "chat-luong", "Phương pháp & giới hạn": "phuong-phap", "Kết nối dữ liệu": "ket-noi"}
 GRADIENTS = {"tong-quan": ("#0F766E", "#1E3A8A"), "dan-dat": ("#7C3AED", "#1E40AF"), "khoi-ngoai": ("#0E7490", "#134E4A"),
              "su-kien-ftse": ("#B45309", "#7C2D12"), "watchlist": ("#BE185D", "#5B21B6"), "bao-cao": ("#1D4ED8", "#0F766E"),
-             "chat-luong": ("#15803D", "#0F172A"), "phuong-phap": ("#334155", "#0F766E"), "ket-noi": ("#0369A1", "#312E81")}
+             "chat-luong": ("#15803D", "#0F172A"), "phuong-phap": ("#334155", "#0F766E"), "ket-noi": ("#0369A1", "#312E81"),
+             "telegram": ("#0284C7", "#1E40AF"), "backtest": ("#9333EA", "#0F766E")}
 
 
 def art_svg(slug: str) -> str:
@@ -129,17 +154,42 @@ def art_svg(slug: str) -> str:
             '<path d="M0,0 L8,4 L0,8 z" fill="#FDE68A"/></marker></defs>' + fn() + "</svg>")
 
 
+PHOTOS = abs_path("src/app/assets/photos")
+
+
+@lru_cache(maxsize=32)
+def photo_uri(slug: str) -> Optional[str]:
+    """Ảnh thật của trang (Unsplash License, xem assets/photos/CREDITS.md) dạng data URI – không cần mạng."""
+    f = PHOTOS / f"{slug}.jpg"
+    return "data:image/jpeg;base64," + base64.b64encode(f.read_bytes()).decode() if f.exists() else None
+
+
+def _hexa(c: str, a: float) -> str:
+    return f"rgba({int(c[1:3], 16)},{int(c[3:5], 16)},{int(c[5:7], 16)},{a})"
+
+
 def banner_html(title: str, sub: str, pills_html: str = "") -> str:
     slug = TITLE_TO_SLUG.get(title, "tong-quan")
     c1, c2 = GRADIENTS.get(slug, GRADIENTS["tong-quan"])
-    return (f'<div class="ffr-banner" style="background:linear-gradient(120deg,{c1} 0%,{c2} 100%)">'
+    ph = photo_uri(slug)
+    bg = (f"linear-gradient(110deg,{_hexa(c1, .93)} 0%,{_hexa(c1, .78)} 38%,{_hexa(c2, .38)} 100%),"
+          f"url('{ph}') center/cover no-repeat" if ph else f"linear-gradient(120deg,{c1} 0%,{c2} 100%)")
+    return (f'<div class="ffr-banner" style="background:{bg}">'
             f'<div class="ffr-banner-txt"><div class="ffr-banner-title">{title}</div><div class="ffr-banner-sub">{sub}</div>'
             f'<div class="ffr-banner-pills">{pills_html}</div></div>'
             f'<div class="ffr-banner-art">{art_svg(slug)}</div></div>')
 
 
 # ── nền trang ────────────────────────────────────────────────────────────────
-BACKGROUNDS = ["Mặc định", "Lưới biểu đồ", "Sóng ngọc", "Bình minh", "Đêm sao", "Nến mờ", "Ảnh của tôi"]
+STARS = "✨ Đêm sao tương tác"
+PAGE_PHOTO = "🖼 Ảnh theo trang"
+BACKGROUNDS = [STARS, PAGE_PHOTO, "Trơn", "Lưới biểu đồ", "Sóng ngọc", "Bình minh", "Nến mờ", "Ảnh của tôi"]
+ALIASES = {"Mặc định": STARS, "Đêm sao": STARS}         # tên cũ đã lưu trong ui_prefs.json
+
+
+def normalize(choice: Optional[str]) -> str:
+    c = ALIASES.get(choice or "", choice)
+    return c if c in BACKGROUNDS else STARS
 PREFS = abs_path("data/ui_prefs.json")
 CUSTOM_DIR = abs_path("data")
 
@@ -179,8 +229,24 @@ def _svg_uri(svg: str) -> str:
     return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
 
 
-def background_css(choice: str, dark: bool, opacity: float = 0.85) -> str:
+def background_css(choice: str, dark: bool, opacity: float = 0.85, slug: str = "tong-quan") -> str:
     """CSS nền cho .stApp (lớp stAppViewContainer phía trên được làm trong suốt). Lớp phủ giữ chữ dễ đọc trên ảnh."""
+    choice = normalize(choice)
+    if choice == STARS:                                     # bầu trời do canvas (starfield.py) vẽ dưới mọi nội dung
+        if not dark:
+            return ""                                       # chế độ Sáng: nền trơn mặc định, không có sao
+        sky = "#050814"
+        return (f"html body {{ background:{sky} !important; }} html body .stApp, [data-testid='stAppViewContainer'],"
+                " [data-testid='stMain'], [data-testid='stHeader'] { background: transparent !important; }")
+    if choice == PAGE_PHOTO:
+        ph = photo_uri(slug) or photo_uri("tong-quan")
+        ov = f"rgba(8,13,24,{max(opacity, .7)})" if dark else f"rgba(244,246,249,{max(opacity, .72)})"
+        return ("html, body, [data-testid='stAppViewContainer'], [data-testid='stMain'], [data-testid='stHeader'] "
+                "{ background: transparent !important; } [data-testid='stAppViewContainer'] { position:relative; z-index:1; }"
+                f".stApp {{ background:{'#0B1320' if dark else '#F4F6F9'} !important; }}"
+                f".stApp::before {{ content:''; position:fixed; inset:-30px; z-index:0; pointer-events:none;"
+                f" background:url('{ph}') center/cover no-repeat; filter:blur(5px) saturate(1.15); }}"
+                f".stApp::after {{ content:''; position:fixed; inset:0; z-index:0; pointer-events:none; background:{ov}; }}")
     body = _background_body(choice, dark, opacity)
     if not body:
         return ""
@@ -207,7 +273,7 @@ def _background_body(choice: str, dark: bool, opacity: float) -> str:
         layer = ("linear-gradient(135deg,#fff7ed 0%,#fef3c7 40%,#fce7f3 100%)" if not dark
                  else "linear-gradient(135deg,#1c1917 0%,#3b0764 60%,#0b1320 100%)")
         return f".stApp {{ background:{layer} fixed !important; }}"
-    if choice == "Đêm sao":
+    if choice == "Đêm sao (tĩnh)":
         stars = "".join(f'<circle cx="{(i * 97) % 400}" cy="{(i * 61) % 400}" r="{1 + (i % 3) * .5}" fill="#fff" fill-opacity="{.25 + (i % 4) * .12}"/>'
                         for i in range(60))
         svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">{stars}</svg>'
@@ -229,8 +295,24 @@ def _background_body(choice: str, dark: bool, opacity: float) -> str:
     return ""
 
 
+DARK_WIDGETS = """
+[data-testid="stMain"] [data-testid="stWidgetLabel"] p, [data-testid="stMain"] [data-testid="stRadio"] label p,
+[data-testid="stMain"] button[data-baseweb="tab"] p, [data-testid="stMain"] [data-testid="stTab"] p,
+[data-testid="stMain"] [data-testid="stCheckbox"] label p,
+[data-testid="stMain"] [data-testid="stToggle"] label p, [data-testid="stMain"] [data-testid="stExpander"] summary p,
+[data-testid="stMain"] [data-testid="stCaptionContainer"] { color:#E2E8F0 !important; }
+[data-testid="stMain"] button[data-baseweb="tab"][aria-selected="true"] p,
+[data-testid="stMain"] [data-testid="stTab"][aria-selected="true"] p { color:#5EEAD4 !important; }
+[data-testid="stMain"] [data-testid="stBaseButton-secondary"], [data-testid="stMain"] [data-testid="stDownloadButton"] button {
+  background:#1E293B !important; border-color:#334155 !important; }
+[data-testid="stMain"] [data-testid="stBaseButton-secondary"] p, [data-testid="stMain"] [data-testid="stDownloadButton"] button p {
+  color:#E2E8F0 !important; }
+[data-testid="stMain"] [data-testid="stBaseButton-secondary"]:disabled p { color:#64748B !important; }
+"""
+
+
 def banner_css(dark: bool) -> str:
-    return """
+    return (DARK_WIDGETS if dark else "") + """
 .ffr-banner { position:relative; display:flex; align-items:stretch; justify-content:space-between; gap:16px; border-radius:18px;
   padding:20px 26px; margin:2px 0 14px; color:#fff; overflow:hidden; box-shadow:0 10px 28px rgba(15,23,42,.18); min-height:132px; }
 .ffr-banner::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 85% -20%, rgba(255,255,255,.22), transparent 55%);
@@ -242,5 +324,10 @@ def banner_css(dark: bool) -> str:
 .ffr-banner-pills .ffr-pill { background:rgba(255,255,255,.16) !important; color:#fff !important; border-color:rgba(255,255,255,.3) !important;
   margin:0 6px 0 0 !important; }
 .ffr-banner-art { position:relative; z-index:1; width:300px; min-width:220px; height:120px; }
+.ffr-banner-title, .ffr-banner-sub { text-shadow:0 2px 10px rgba(0,0,0,.35); }
+.ffr-banner-art svg { filter:drop-shadow(0 4px 10px rgba(0,0,0,.35)); }
+div[data-testid="stElementContainer"]:has(iframe[height="0"]) { display:none !important; }
+.st-key-ffr_fx { position:absolute !important; width:0 !important; height:0 !important; overflow:hidden !important;
+  margin:0 !important; padding:0 !important; }
 @media (max-width: 900px) { .ffr-banner-art { display:none; } .ffr-banner-txt { max-width:100%; } .ffr-banner-title { font-size:22px; } }
 """

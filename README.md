@@ -54,8 +54,14 @@ git clone https://github.com/MinhChau536/Rada-dong-von-ngoai-va-do-venh-thi-truo
 cd Rada-dong-von-ngoai-va-do-venh-thi-truong
 python -m venv .venv && .venv\Scripts\activate        # Windows  (Linux/macOS: source .venv/bin/activate)
 pip install -r requirements.txt
-copy .env.example .env                                  # rồi điền khóa thật nếu có (cp trên Linux/macOS)
+streamlit run src/app/main.py                          # lần đầu tự khôi phục kho dữ liệu từ data/snapshot (~15 giây)
+python -m src.bot.bot                                  # cửa sổ khác: bot Telegram @FTSERadar_bot
 ```
+
+**Chạy ngay sau khi clone, không cần khóa SSI:** kho dữ liệu thật (04/01/2016 → 13/11/2026, 2.713 phiên, 491 mã)
+đi kèm trong `data/snapshot/` dưới dạng Parquet nén (GitHub giới hạn 100 MB/tệp nên không đẩy nguyên `ffr.duckdb`
+~850 MB). Lần đầu mở app/bot, `data/ffr.duckdb` được dựng lại tự động; chạy tay: `python -m tools.snapshot restore`.
+Tác giả cập nhật ảnh chụp bằng `python -m tools.snapshot export`. Khóa SSI chỉ cần khi muốn tải thêm phiên mới.
 
 Yêu cầu Python 3.12. Ứng dụng **chỉ dùng dữ liệu thật** tải qua API – không có chế độ dữ liệu giả lập.
 
@@ -67,7 +73,10 @@ Yêu cầu Python 3.12. Ứng dụng **chỉ dùng dữ liệu thật** tải qu
 | `SSI_BASE_URL`, `SSI_STREAM_URL` | Mặc định `https://api.ssi.com.vn` và `wss://stream.ssi.com.vn/ws/v3` |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS` | Bot từ @BotFather; danh sách chat_id được phép (phân tách dấu phẩy) |
 
-`.env` nằm trong `.gitignore`; kho mã chỉ chứa `.env.example` với giá trị giả. Nhật ký đi qua `mask_secrets` nên không ghi token, API Secret.
+`.env` (khóa SSI thật) nằm trong `.gitignore`. `.env.example` đi kèm mã nguồn chứa sẵn **token bot @FTSERadar_bot** để
+người chạy lại dùng đúng bot của tác giả; ứng dụng tự đọc tệp này khi chưa có `.env`. Lưu ý: Telegram chỉ cho một tiến
+trình bot chạy cùng lúc với một token, và bot chỉ trả lời các chat_id trong `TELEGRAM_CHAT_IDS` (thêm chat_id của bạn
+vào đó). Nhật ký đi qua `mask_secrets` nên không ghi token, API Secret.
 
 ## 4. Cách chạy
 
@@ -156,7 +165,9 @@ python -m src.data.rebuild_all --hash        # CHỈ in mã băm kết quả hi�
 | Dòng vốn | 3. Ra-đa khối ngoại | Xếp hạng NF, nf, z, chuỗi, U, hấp thụ · HHI · dòng vốn theo nhóm FTSE/VN30/đối chứng/ngành · tỷ lệ hấp thụ |
 | | 4. Sự kiện FTSE | CAAR, CAFF hai nhóm có dải tin cậy · bảng kiểm định (t, BMP, dấu tổng quát, Welch, Mann–Whitney, Holm) · DiD + đồ thị hệ số tuần |
 | Cá nhân | 5. Watchlist Impact | Quản lý 5–10 mã · hồ sơ phản ứng · hiệu suất chuẩn hóa · phản ứng theo loại phiên · tin liên quan (nguồn ngoài) |
-| | 6. Báo cáo & Telegram | Xuất Snapshot/Closing · tải PDF · cấu hình cảnh báo · nhật ký cảnh báo |
+| | 6. Báo cáo PDF | Xuất Snapshot/Closing · danh sách báo cáo (mỗi file một dòng) · tải PDF |
+| | 6b. Bot Telegram | Trạng thái bot · xem trước tin nhắn kèm nút bấm · gửi bản tin/PDF/cảnh báo ngay · lệnh · cấu hình và nhật ký cảnh báo |
+| | 6c. Backtest | Cảnh báo chống trùng · giá trị dự báo của tín hiệu · walk-forward danh mục · bao phủ biên dao động VN-Index |
 | Hệ thống | 7. Chất lượng dữ liệu | Trạng thái nguồn SSI · nhật ký sự cố · độ đầy đủ · ε · đối chiếu độ rộng · luồng WebSocket SSI · đối chiếu luồng ↔ REST · xuất CSV |
 | | 8. Phương pháp & giới hạn | Công thức (1)–(13) · tham số đọc trực tiếp settings.yaml · kết quả kiểm định · độ vững · giới hạn · mã kế thừa |
 

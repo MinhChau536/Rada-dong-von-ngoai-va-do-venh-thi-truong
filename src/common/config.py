@@ -22,6 +22,7 @@ try:  # đọc khóa API từ .env (SSI_API_KEY, SSI_API_SECRET, …)
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env", override=False)
+    load_dotenv(ROOT / ".env.example", override=False)   # máy mới chưa có .env → dùng cấu hình mẫu đi kèm (token bot)
 except Exception:  # pragma: no cover
     pass
 

@@ -68,8 +68,8 @@ PAGE_FEATURES = {
     "watchlist": ["Thêm/xóa mã theo dõi", "Hồ sơ phản ứng từng mã: ER, beta Dimson, đóng góp chỉ số, phân vị nf",
                   "So sánh hiệu suất chuẩn hóa", "Phản ứng theo loại phiên", "Tin liên quan (nguồn bổ trợ)"],
     "bao-cao": ["Xuất PDF Market Snapshot và Closing Report", "Lịch sử báo cáo", "Cấu hình và nhật ký cảnh báo Telegram"],
-    "chat-luong": ["Trạng thái SSI và NEO, lịch sử chuyển nguồn", "Độ đầy đủ theo phiên, sai số tái lập ε",
-                   "Đối chiếu độ rộng và đối chiếu SSI–NEO", "Thống kê luồng NEO WebSocket, nhật ký lỗi"],
+    "chat-luong": ["Trạng thái nguồn SSI FastConnect V3, nhật ký sự cố", "Độ đầy đủ theo phiên, sai số tái lập ε",
+                   "Đối chiếu độ rộng và đối chiếu luồng ↔ REST", "Thống kê luồng WebSocket SSI, nhật ký lỗi"],
 }
 
 
@@ -82,7 +82,7 @@ def page_waiting(title: str, url_path: str) -> None:
     md(f'<div class="ffr-card"><div class="ffr-lbl">Trang này sẽ hiển thị</div>'
        f'<ul style="margin:8px 0 4px 18px;line-height:1.8;font-size:14px">{items}</ul>'
        f'<div style="font-size:13px;color:{p["muted"]};margin-top:8px">Ứng dụng không dùng dữ liệu giả lập. '
-       f'Kho chỉ báo đang trống vì chưa tải được dữ liệu từ SSI (hoặc chưa có phiên nào ghi từ luồng NEO).</div></div>')
+       f'Kho chỉ báo đang trống vì chưa tải được dữ liệu từ SSI FastConnect V3.</div></div>')
     pg = st.session_state.get("_pages", {}).get("ket-noi")
     if pg is not None:
         st.page_link(pg, label="→ Mở trang Kết nối dữ liệu để kiểm tra và tải dữ liệu", icon=":material/cable:")

@@ -7,6 +7,7 @@ không giữ khóa tệp lâu. Ghi bảng bằng pandas DataFrame (đăng ký t�
 from __future__ import annotations
 
 import contextlib
+import threading
 import time
 from pathlib import Path
 from typing import Iterable, Iterator, Optional, Sequence
@@ -129,12 +130,20 @@ def log_quality(rows: Iterable[dict], path: Optional[Path] = None) -> None:
     append("data_quality_log", df[["trade_date", "check_name", "metric", "value", "status", "detail", "created_at"]], path)
 
 
+_INGEST_LOCK = threading.Lock()
+
+
+def _ingest_append(path: Optional[Path], df: pd.DataFrame) -> None:
+    append("ingest_log", df, path)
+
+
 def log_ingest(source: str, endpoint: str, status: str, n_rows: int = 0, attempts: int = 1,
                elapsed_ms: float = 0.0, message: str = "", path: Optional[Path] = None) -> None:
     try:
-        append("ingest_log", pd.DataFrame([{
+        with _INGEST_LOCK:                                     # backfill gọi API song song nhiều luồng
+            _ingest_append(path, pd.DataFrame([{
             "ts": now_vn().replace(tzinfo=None), "source": source, "endpoint": endpoint, "status": status,
-            "n_rows": n_rows, "attempts": attempts, "elapsed_ms": elapsed_ms, "message": message[:500]}]), path)
+            "n_rows": n_rows, "attempts": attempts, "elapsed_ms": elapsed_ms, "message": message[:500]}]))
     except Exception as exc:  # pragma: no cover - không để lỗi ghi log làm dừng tải
         log.warning("Không ghi được ingest_log: %s", exc)
 

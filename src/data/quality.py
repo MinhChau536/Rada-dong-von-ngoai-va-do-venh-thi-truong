@@ -50,12 +50,25 @@ def run(path: Optional[Path] = None, write_notes: bool = True) -> Dict:
     idx_i = idx.copy()
     bc = breadth_check(day_i[["n_up", "n_down", "n_unch"]], idx_i)
     tol = int(get("cleaning.breadth_tolerance", 2))
+    # Tổng số mã SSI đếm lệch hẳn rổ cổ phiếu HOSE tự đếm (vd. 2025: ~540 mã so với ~380 – SSI gộp CCQ/chứng quyền)
+    # → hai bên đếm KHÁC RỔ, không đối chiếu được từng loại; ghi info và loại khỏi tỷ lệ khớp.
+    diff_total = bc["diff_up"] + bc["diff_down"] + bc["diff_unch"]
+    self_total = bc["n_up"] + bc["n_down"] + bc["n_unch"]
+    other_basket = diff_total.abs() > np.maximum(10, 0.05 * self_total)
     for d, r in bc.iterrows():
+        detail = f"tăng {int(r['diff_up']):+d}, giảm {int(r['diff_down']):+d}, đứng {int(r['diff_unch']):+d}"
+        if other_basket.loc[d]:
+            status = "info"
+            detail += f" – SSI đếm khác rổ (tổng lệch {int(diff_total.loc[d]):+d} mã), không đối chiếu"
+        elif r["max_abs_diff"] <= tol:
+            status = "ok"
+        else:
+            status = "warn"
+            detail += " – kiểm tra CCQ/ETF, mã mới niêm yết"
         rows.append({"trade_date": d, "check_name": "breadth_check", "metric": "max_abs_diff", "value": r["max_abs_diff"],
-                     "status": "ok" if r["max_abs_diff"] <= tol else "warn",
-                     "detail": f"tăng {int(r['diff_up']):+d}, giảm {int(r['diff_down']):+d}, đứng {int(r['diff_unch']):+d}"
-                               + ("" if r["max_abs_diff"] <= tol else " – kiểm tra CCQ/ETF, mã mới niêm yết")})
-    breadth_ok = float((bc["max_abs_diff"] <= tol).mean()) if len(bc) else np.nan
+                     "status": status, "detail": detail})
+    comparable = bc[~other_basket]
+    breadth_ok = float((comparable["max_abs_diff"] <= tol).mean()) if len(comparable) else np.nan
     for d, e in day_i["eps"].items():
         rows.append({"trade_date": d, "check_name": "eps", "metric": "eps_points", "value": e,
                      "status": "ok" if abs(e) < 1.5 else "warn", "detail": ""})
@@ -65,7 +78,9 @@ def run(path: Optional[Path] = None, write_notes: bool = True) -> Dict:
                  "value": m.get("share_exceed_bigdeal", np.nan), "status": "info",
                  "detail": f"mẫu số nf = {m.get('denominator', '?')}"})
     db.log_quality(rows, path)
-    summary = {"completeness": overall, "breadth_ok_share": breadth_ok, "eps_median": eps_med,
+    summary = {"completeness": overall, "breadth_ok_share": breadth_ok,
+               "breadth_sessions_compared": int(len(comparable)), "breadth_sessions_other_basket": int(other_basket.sum()),
+               "eps_median": eps_med,
                "eps_median_raw": float(m.get("eps_median_raw", np.nan)), "scale_k": float(m.get("scale_k", 1.0)),
                "n_out_of_bounds": int(len(oob)), "denominator": m.get("denominator", "match"),
                "foreign_includes_deal": bool(m.get("foreign_includes_deal", False)),
@@ -88,4 +103,4 @@ def _notes(s: Dict, m) -> None:
         f"- Tỷ lệ quan sát (FB+FS)/2 > TV trong nhóm này: {float(m.get('share_exceed_bigdeal', 0)):.2%}",
         f"- **Kết luận: trường khối ngoại {'GỒM thỏa thuận' if s['foreign_includes_deal'] else 'chỉ KHỚP LỆNH'}; "
         f"mẫu số nf chốt = `{s['denominator']}`.**", "",
-        "_Tự sinh bởi src/data/quality.py (python -m src.data.rebuild_all) trên dữ liệu SSI/NEO trong kho._"]), encoding="utf-8")
+        "_Tự sinh bởi src/data/quality.py (python -m src.data.rebuild_all) trên dữ liệu SSI FastConnect V3 trong kho._"]), encoding="utf-8")

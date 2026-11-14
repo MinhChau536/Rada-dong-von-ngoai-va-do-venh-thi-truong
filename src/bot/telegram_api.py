@@ -4,8 +4,9 @@ Token & chat_id đọc từ .env; KHÔNG ghi ra log (mask_secrets). Chỉ gửi 
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence, Tuple
 
 import requests
 
@@ -35,15 +36,33 @@ def with_disclaimer(text: str) -> str:
     return text if d in text else f"{text}\n\n— {d}"
 
 
-def send_message(text: str, ids: Optional[List[str]] = None) -> bool:
+def keyboard_json(kb: Optional[Sequence[Sequence[Tuple[str, str]]]]) -> Optional[str]:
+    """[[(nhãn, callback_data), ...], ...] → reply_markup inline_keyboard (nút chỉ phản hồi khi src.bot.bot đang chạy)."""
+    if not kb:
+        return None
+    return json.dumps({"inline_keyboard": [[{"text": t, "callback_data": c[:64]} for t, c in row] for row in kb if row]},
+                      ensure_ascii=False)
+
+
+def send_message(text: str, ids: Optional[List[str]] = None, html: bool = False,
+                 keyboard: Optional[Sequence[Sequence[Tuple[str, str]]]] = None) -> bool:
+    """html=True: text dùng thẻ HTML của Telegram (<b>, <i>, <code>) – nội dung động phải được escape trước."""
     if not configured():
         log.info("Telegram chưa cấu hình – bỏ qua gửi tin")
         return False
     ok = True
+    body = with_disclaimer(text)
+    if html:
+        body = body.replace(f"— {get('app.bot_disclaimer')}", f"<i>— {get('app.bot_disclaimer')}</i>")
     for cid in ids or chat_ids():
+        data = {"chat_id": cid, "text": body[:4000]}
+        if html:
+            data["parse_mode"] = "HTML"
+        mk = keyboard_json(keyboard)
+        if mk:
+            data["reply_markup"] = mk
         try:
-            r = requests.post(API.format(token=token(), method="sendMessage"),
-                              data={"chat_id": cid, "text": with_disclaimer(text)[:4000]}, timeout=15)
+            r = requests.post(API.format(token=token(), method="sendMessage"), data=data, timeout=15)
             ok &= r.ok
             if not r.ok:
                 log.warning("Telegram sendMessage lỗi %s: %s", r.status_code, r.text[:200])

@@ -1,6 +1,6 @@
 # Nguồn: kế thừa data/providers/base_provider.py – kho web_phantichchungkhoan (đồ án giữa kỳ),
 # rút gọn: giữ khuôn lớp cơ sở (name, is_available, health_check), bỏ phương thức giá dành cho nguồn cũ.
-"""Lớp cơ sở trừu tượng cho mọi nhà cung cấp dữ liệu (SSI, NEO)."""
+"""Lớp cơ sở trừu tượng cho nhà cung cấp dữ liệu (SSI FastConnect V3)."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

@@ -18,7 +18,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = ROOT / "config"
 
-try:  # đọc khóa API từ .env (SSI_CONSUMER_ID, NEO_USERNAME, …)
+try:  # đọc khóa API từ .env (SSI_API_KEY, SSI_API_SECRET, …)
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env", override=False)
@@ -57,11 +57,16 @@ def _real(v: Optional[str]) -> bool:
 
 
 def ssi_configured() -> bool:
-    return _real(env("SSI_CONSUMER_ID")) and _real(env("SSI_CONSUMER_SECRET"))
+    """SSI FastConnect V3: API Key + API Secret tạo tại Developer Portal (không cần OTP / Private Key)."""
+    return _real(env("SSI_API_KEY")) and _real(env("SSI_API_SECRET"))
 
 
-def neo_configured() -> bool:
-    return _real(env("NEO_USERNAME")) and _real(env("NEO_PASSWORD"))
+def ssi_base_url() -> str:
+    return (env("SSI_BASE_URL") or get("ssi.base_url", "https://api.ssi.com.vn")).rstrip("/")
+
+
+def ssi_stream_url() -> str:
+    return env("SSI_STREAM_URL") or get("ssi.stream_url", "wss://stream.ssi.com.vn/ws/v3")
 
 
 def is_main_store(path=None) -> bool:
@@ -134,5 +139,13 @@ def events() -> pd.DataFrame:
     return df
 
 
+def control_group_path() -> Path:
+    """Nhóm đối chứng ghép từ dữ liệu (B6.1)."""
+    return CONFIG_DIR / "control_group.csv"
+
+
 def control_group() -> pd.DataFrame:
-    return _read_csv("control_group.csv")
+    p = control_group_path()
+    if not p.exists():
+        return pd.DataFrame()
+    return pd.read_csv(p, dtype=str, keep_default_na=False, encoding="utf-8")

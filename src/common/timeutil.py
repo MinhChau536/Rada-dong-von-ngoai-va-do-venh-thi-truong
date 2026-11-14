@@ -40,12 +40,23 @@ def in_recorder_window(ts: datetime | None = None) -> bool:
 
 
 def parse_ssi_date(s) -> pd.Timestamp:
-    """SSI trả TradingDate dạng 'dd/mm/yyyy'."""
-    return pd.to_datetime(s, format="%d/%m/%Y", errors="coerce")
+    """SSI FastConnect V3 trả tradingDate dạng 'yyyy/mm/dd' (nến phút: 'yyyy/mm/dd HH:MM:SS'); bản cũ 'dd/mm/yyyy'."""
+    txt = str(s or "").strip()
+    for fmt in ("%Y/%m/%d %H:%M:%S", "%Y/%m/%d", "%d/%m/%Y %H:%M:%S", "%d/%m/%Y"):
+        ts = pd.to_datetime(txt, format=fmt, errors="coerce")
+        if not pd.isna(ts):
+            return ts
+    return pd.NaT
 
 
 def fmt_ssi_date(d) -> str:
+    """Định dạng dd/mm/yyyy (tệp mẫu kiểm thử)."""
     return pd.Timestamp(d).strftime("%d/%m/%Y")
+
+
+def fmt_v3_date(d) -> str:
+    """Tham số ngày của SSI FastConnect V3: 'yyyy/mm/dd'."""
+    return pd.Timestamp(d).strftime("%Y/%m/%d")
 
 
 def fmt_vn_date(d) -> str:

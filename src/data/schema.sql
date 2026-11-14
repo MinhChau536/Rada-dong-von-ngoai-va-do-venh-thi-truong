@@ -32,14 +32,9 @@ CREATE TABLE IF NOT EXISTS raw_intraday (
     PRIMARY KEY (ts, symbol, source));
 
 CREATE SEQUENCE IF NOT EXISTS seq_stream START 1;
-CREATE TABLE IF NOT EXISTS raw_stream (          -- SSI streaming: MI, R, X-TRADE, F
+CREATE TABLE IF NOT EXISTS raw_stream (          -- SSI FastConnect V3 WebSocket: indexsummary, trade, room
     id BIGINT DEFAULT nextval('seq_stream'), recv_ts TIMESTAMP NOT NULL, session_date DATE,
     channel VARCHAR, symbol VARCHAR, source VARCHAR DEFAULT 'SSI', payload VARCHAR);
-
-CREATE SEQUENCE IF NOT EXISTS seq_stream_neo START 1;
-CREATE TABLE IF NOT EXISTS raw_stream_neo (      -- NEO WebSocket: marketInfo, marketSession, stockInfo (B1.4b)
-    id BIGINT DEFAULT nextval('seq_stream_neo'), recv_ts TIMESTAMP NOT NULL, session_date DATE,
-    channel VARCHAR, symbol VARCHAR, source VARCHAR DEFAULT 'NEO', payload VARCHAR);
 
 -- ── FACT ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS fact_daily_stock (
@@ -47,8 +42,11 @@ CREATE TABLE IF NOT EXISTS fact_daily_stock (
     ref DOUBLE, ceiling DOUBLE, floor DOUBLE, open DOUBLE, high DOUBLE, low DOUBLE, close DOUBLE,
     vol DOUBLE, tv DOUBLE, vol_pt DOUBLE, tv_pt DOUBLE,
     fb_vol DOUBLE, fs_vol DOUBLE, fb DOUBLE, fs DOUBLE, remain DOUBLE, room DOUBLE,
-    loaded_at TIMESTAMP,
+    loaded_at TIMESTAMP, board VARCHAR, listed_share_est DOUBLE,
     PRIMARY KEY (trade_date, symbol));
+-- kho tạo trước khi có cột sàn niêm yết theo ngày
+ALTER TABLE fact_daily_stock ADD COLUMN IF NOT EXISTS board VARCHAR;
+ALTER TABLE fact_daily_stock ADD COLUMN IF NOT EXISTS listed_share_est DOUBLE;
 
 CREATE TABLE IF NOT EXISTS fact_daily_index (
     trade_date DATE NOT NULL, index_code VARCHAR NOT NULL, source VARCHAR NOT NULL,

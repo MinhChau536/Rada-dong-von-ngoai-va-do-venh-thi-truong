@@ -13,7 +13,7 @@
 | Mục 2.1 API là cốt lõi | `src/ssi_api`, `src/neo_api`, `src/data/backfill.py`, `recorder_*` | Mã ✅ · chạy thật ☐ |
 | Mục 2.2 Lớp logic tài chính | `src/finance`, `src/analytics` | ✅ |
 | Mục 2.3 Sản phẩm chạy được | `streamlit run src/app/main.py` (chế độ mẫu), PDF, bot | ✅ |
-| Mục 2.4 Kiểm chứng | đối chiếu độ rộng, ε, kiểm định, độ vững, 71 kiểm thử | ✅ · nguồn ngoài ☐ |
+| Mục 2.4 Kiểm chứng | đối chiếu độ rộng, ε, kiểm định, độ vững, 92 kiểm thử | ✅ · nguồn ngoài ☐ |
 | Mục 4 ≥ 1 luồng WebSocket có lưu trữ | `recorder_neo.py` → `raw_stream_neo` | Mã ✅ · ≥ 10 phiên thật ☐ |
 | Mục 4 ≥ 3 trường kinh tế | > 15 trường (`data_dictionary.yaml`) | ✅ |
 | Mục 4 ≥ 5–10 phiên | ~400 phiên lịch sử (khi backfill thật) | ☐ |

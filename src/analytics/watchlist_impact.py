@@ -23,19 +23,34 @@ from src.finance.breadth import SESSION_TYPES
 
 
 # ── B7.1 quản lý watchlist ────────────────────────────────────────────────────
+SEEDED = "watchlist_seeded"
+
+
+def _seeded(path: Optional[Path] = None) -> bool:
+    try:
+        return db.get_checkpoint(SEEDED, path) is not None
+    except Exception:  # noqa: BLE001 – bảng checkpoints chưa có
+        return False
+
+
 def get_watchlist(path: Optional[Path] = None) -> List[str]:
+    """Danh mục người dùng. Mã mặc định CHỈ dùng khi chưa từng khởi tạo – xóa hết thì danh mục trống, không tự quay lại."""
     df = db.query_df("SELECT symbol FROM watchlist ORDER BY added_at", path=path)
     if df.empty:
-        return list(get("watchlist_default", ["FPT", "HPG", "MBB", "VNM", "SSI"]))
+        return [] if _seeded(path) else list(get("watchlist_default", ["FPT", "HPG", "MBB", "VNM", "SSI"]))
     return df["symbol"].tolist()
 
 
 def ensure_default(path: Optional[Path] = None) -> None:
+    """Nạp mã mặc định một lần duy nhất (lần chạy đầu); sau đó tôn trọng mọi thao tác thêm/xóa của người dùng."""
     db.init_schema(path)
+    if _seeded(path):
+        return
     df = db.query_df("SELECT COUNT(*) AS n FROM watchlist", path=path)
     if df.empty or int(df["n"].iloc[0]) == 0:
         for s in get("watchlist_default", []):
             add(s, "Mặc định", path)
+    db.set_checkpoint(SEEDED, "1", path)
 
 
 def add(symbol: str, note: str = "", path: Optional[Path] = None) -> None:
@@ -47,6 +62,10 @@ def add(symbol: str, note: str = "", path: Optional[Path] = None) -> None:
 
 def remove(symbol: str, path: Optional[Path] = None) -> None:
     db.execute("DELETE FROM watchlist WHERE symbol = ?", [symbol.strip().upper()], path)
+
+
+def clear(path: Optional[Path] = None) -> None:
+    db.execute("DELETE FROM watchlist", path=path)
 
 
 # ── chỉ số ────────────────────────────────────────────────────────────────────

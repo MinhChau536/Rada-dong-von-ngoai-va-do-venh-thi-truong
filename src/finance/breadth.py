@@ -26,7 +26,7 @@ SESSION_TYPES = {
 }
 
 
-STOCK_TYPES = {"ST", "S"}      # SSI đặc tả ghi "ST", phản hồi mẫu trả "S"; NEO stockType "ST"
+STOCK_TYPES = {"STOCK", "ST", "S"}   # SSI V3 stockType "Stock"; FastConnect v2 cũ ghi "ST"/"S"
 
 
 def is_common_stock(symbol: pd.Series, sec_type: pd.Series | None) -> pd.Series:
@@ -39,14 +39,24 @@ def is_common_stock(symbol: pd.Series, sec_type: pd.Series | None) -> pd.Series:
     return (t.isin(STOCK_TYPES) | (t.isna() & by_code)).fillna(False).astype(bool)
 
 
-def add_validity(df: pd.DataFrame, sec_type: pd.Series | None = None) -> pd.DataFrame:
-    """Gắn is_valid, is_ceiling, is_floor, ret (công thức 1)."""
+PRICE_TOL = 2e-4   # sai số tương đối khi quy trần/sàn về thang giá điều chỉnh (< 1 bước giá HOSE)
+
+
+def add_validity(df: pd.DataFrame, sec_type: pd.Series | None = None, board: str = "HOSE") -> pd.DataFrame:
+    """Gắn is_valid, is_ceiling, is_floor, ret (công thức 1).
+    Ω_t chỉ gồm mã niêm yết trên `board` VÀO NGÀY t (cột board theo masterdata của ngày): mã đang ở UPCOM/HNX rồi
+    mới chuyển sang HOSE không được tính vào độ rộng HOSE ở các phiên trước khi chuyển sàn."""
     d = df.copy()
     st_ok = is_common_stock(d["symbol"], sec_type)
-    d["is_valid"] = st_ok & (d["ref"] > 0) & (d["tv"].fillna(0) > 0) & d["close"].notna()
+    on_board = pd.Series(True, index=d.index)
+    if board and "board" in d.columns:
+        b = d["board"].astype("string").str.upper()
+        on_board = (b == board) | b.isna()
+        on_board = on_board.fillna(True).astype(bool)
+    d["is_valid"] = st_ok & on_board & (d["ref"] > 0) & (d["tv"].fillna(0) > 0) & d["close"].gt(0)
     d["ret"] = np.where(d["ref"] > 0, d["close"] / d["ref"] - 1, np.nan)
-    d["is_ceiling"] = d["is_valid"] & (d["close"] >= d["ceiling"]) & d["ceiling"].notna()
-    d["is_floor"] = d["is_valid"] & (d["close"] <= d["floor"]) & d["floor"].notna()
+    d["is_ceiling"] = d["is_valid"] & (d["close"] >= d["ceiling"] * (1 - PRICE_TOL)) & d["ceiling"].notna()
+    d["is_floor"] = d["is_valid"] & (d["close"] <= d["floor"] * (1 + PRICE_TOL)) & d["floor"].notna()
     return d
 
 
@@ -102,11 +112,18 @@ def session_type_label(code: str) -> str:
 
 
 def breadth_check(self_count: pd.DataFrame, ssi_index: pd.DataFrame) -> pd.DataFrame:
-    """Đối chiếu độ rộng (B2.4): chênh lệch = tự đếm − SSI Advances/Declines/NoChanges."""
-    m = self_count[["n_up", "n_down", "n_unch"]].join(
-        ssi_index.set_index("trade_date")[["advances", "declines", "no_changes"]], how="inner")
-    m["diff_up"] = m["n_up"] - m["advances"]
-    m["diff_down"] = m["n_down"] - m["declines"]
+    """Đối chiếu độ rộng (B2.4): chênh lệch = tự đếm − SSI tăng/giảm/đứng.
+    SSI V3 indexSummary đếm mã trần TÁCH khỏi totalAdvanceStock và mã sàn tách khỏi totalDeclineStock
+    (phiên 06/11/2026: 99 tăng + 2 trần + 206 giảm + 6 sàn + 55 đứng = 368 = số cổ phiếu hợp lệ tự đếm)."""
+    cols = [c for c in ("advances", "declines", "no_changes", "ceilings", "floors") if c in ssi_index.columns]
+    m = self_count[["n_up", "n_down", "n_unch"]].join(ssi_index.set_index("trade_date")[cols], how="inner")
+    # Phiên SSI không cung cấp đủ độ rộng → không có gì để đối chiếu. Dữ liệu SSI V3 trước 16/01/2025 trả
+    # totalAdvanceStock = 0 ở MỌI phiên (dù totalDeclineStock có số) – coi là thiếu, không phải "0 mã tăng".
+    m = m[(m["advances"].fillna(0) > 0) & (m["declines"].fillna(0) > 0)]
+    ce =m["ceilings"].fillna(0) if "ceilings" in m else 0
+    fl = m["floors"].fillna(0) if "floors" in m else 0
+    m["diff_up"] = m["n_up"] - (m["advances"] + ce)
+    m["diff_down"] = m["n_down"] - (m["declines"] + fl)
     m["diff_unch"] = m["n_unch"] - m["no_changes"]
     m["max_abs_diff"] = m[["diff_up", "diff_down", "diff_unch"]].abs().max(axis=1)
     return m

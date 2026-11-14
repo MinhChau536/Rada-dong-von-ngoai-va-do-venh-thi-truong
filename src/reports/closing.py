@@ -1,6 +1,6 @@
 """
-Mẫu Closing Report (bước B9.2) – như Snapshot + phân vị 20/60/250, dòng vốn FTSE vs đối chứng, hấp thụ, bảng
-watchlist đầy đủ, phụ lục phương pháp & giới hạn. CHỈ xuất khi kiểm tra chất lượng cuối phiên đạt.
+Mẫu Closing Report (bước B9.2) – tóm tắt điều hành, trạng thái phiên + phân vị 20/60/250, tổng quan thị trường,
+diễn biến tuần/tháng, dẫn dắt, triển vọng thống kê + bối cảnh nâng hạng (H4), watchlist đầy đủ, phụ lục phương pháp. CHỈ xuất khi kiểm tra chất lượng cuối phiên đạt.
 """
 from __future__ import annotations
 
@@ -68,6 +68,9 @@ def page_method(pdf: FFRPdf) -> None:
         "(7) HHI = Σ(|NF_i|/Σ|NF|)²; U = 1 − Remain/Room · (8) z theo 60 phiên trước (không nhìn trước).",
         "Giới hạn: vốn hóa xấp xỉ bằng số CP niêm yết (chưa điều chỉnh CP quỹ, free-float); chỉ tách được khối ngoại; "
         "tương quan không phải nhân quả; nghiên cứu sự kiện có mẫu nhỏ.",
+        "Triển vọng: biên dao động theo σ EWMA (λ = 0,94) và tần suất lịch sử trong các phiên cùng trạng thái – mô tả "
+        "thống kê có kiểm chứng ngoài mẫu, không phải dự báo điểm hay khuyến nghị. H4: so sánh ba giai đoạn (cơ sở 250 phiên "
+        "trước E1 / E1 → hiệu lực / sau hiệu lực), OLS với sai số Newey–West, p hiệu chỉnh Holm.",
         get("app.disclaimer")]:
         pdf.para(t, 8.5)
 
@@ -84,11 +87,21 @@ def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path],
     ts = now_vn().replace(tzinfo=None)
     pdf = FFRPdf("Closing Report", f"Báo cáo cuối phiên {ctx['date']:%d/%m/%Y} · xuất {ts:%H:%M %d/%m/%Y}",
                  "SỐ LIỆU CUỐI PHIÊN – ĐÃ QUA KIỂM TRA CHẤT LƯỢNG", ctx["is_demo"])
+    from src.reports import sections
+    pdf.add_page()
+    sections.page_summary(pdf, ctx)
     pdf.add_page()
     page_market(pdf, ctx)
     page_history(pdf, ctx)
     pdf.add_page()
+    sections.page_overview(pdf, ctx)
+    pdf.add_page()
+    sections.page_recap(pdf, ctx)
+    pdf.add_page()
     page_leaders(pdf, ctx)
+    pdf.add_page()
+    sections.page_outlook(pdf, ctx)
+    sections.page_phase(pdf, ctx, db_path)
     pdf.add_page()
     page_watch(pdf, ctx, full=True)
     page_method(pdf)

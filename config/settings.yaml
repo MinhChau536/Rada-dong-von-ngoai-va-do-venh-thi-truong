@@ -19,7 +19,7 @@ paths:
 
 # Dữ liệu lịch sử
 history:
-  start_date: "2025-04-01"
+  start_date: "2016-01-01"     # ~2 700 phiên, phủ nhiều chu kỳ (tăng 2016–18, COVID 2020, bùng nổ 2021, sụp 2022, FTSE 2025–26)
   exchange: "HOSE"
   index_codes: ["VNINDEX", "VN30", "HNXINDEX", "UPCOMINDEX"]
 
@@ -89,10 +89,26 @@ events:
   permutation_reps: 5000
   permutation_block: 5
   regime_split_date: "2026-09-21"
+  h1a_pre_sessions: 250                 # H1a: số phiên trước mốc đem so (0 = toàn bộ lịch sử – kiểm tra độ vững)
   h1b_dI_min: 10
   nw_lags: 5
   alpha: 0.05
   min_obs_per_type: 15                  # RQ4: Kruskal–Wallis chỉ khi mỗi loại ≥ 15 phiên
+
+# ── H4: so sánh cấu trúc thị trường theo giai đoạn nâng hạng ────────────────
+periods:
+  announce: "2025-10-08"                # E1 – FTSE công bố nâng hạng
+  effective: "2026-09-21"               # ngày hiệu lực (sau phiên E3 18/09/2026)
+  pre_sessions: 250                     # nhóm cơ sở = 250 phiên ngay trước E1 (≈ 1 năm, so sánh được về độ dài)
+  pre_start: "2019-01-02"               # độ vững: cơ sở dài từ 2019 (ε 2016–2018 kém hơn – xem README §9)
+
+# ── Triển vọng thống kê trong báo cáo (src/analytics/outlook.py) ─────────────
+outlook:
+  ewma_lambda: 0.94                     # RiskMetrics
+  horizons: [5, 20]                     # số phiên tới
+  history_start: "2019-01-02"           # dữ liệu dùng cho kiểm chứng biên dao động và phiên tương tự
+  min_analog: 30                        # ít hơn → bỏ điều kiện khối ngoại
+  movers_min_tv_bn: 10                  # "cổ phiếu nổi bật" trong PDF: chỉ mã GTGD ≥ 10 tỷ (loại mã thanh khoản rất thấp)
   control_lookback: 120                 # thanh khoản bình quân 120 phiên trước E1
 
 # ── Cảnh báo (mục 8.6) ───────────────────────────────────────────────────────
@@ -112,29 +128,21 @@ alerts:
   priority: {high: 1, medium: 2, low: 3, system: 0}
   backtest_sessions: 60
 
-# ── Nguồn dữ liệu ────────────────────────────────────────────────────────────
+# ── Nguồn dữ liệu: CHỈ SSI FastConnect V3 (developers.ssi.com.vn) ─────────────
+# REST  : POST /api/v3/auth/token {apiKey, apiSecret} → Bearer JWT; GET /api/v3/data/*
+# Stream: wss://stream.ssi.com.vn/ws/v3 (SDK chính thức ssi-sdk) – indexsummary, trade.index, room, trade
 ssi:
-  base_url: "https://fc-data.ssi.com.vn/"
-  min_interval_sec: 1.2
+  base_url: "https://api.ssi.com.vn"          # .env SSI_BASE_URL ghi đè
+  stream_url: "wss://stream.ssi.com.vn/ws/v3" # .env SSI_STREAM_URL ghi đè
+  min_interval_sec: 0.06      # máy chủ báo X-RateLimit-Limit = 20 yêu cầu/giây
   retries: 3
   backoff_sec: [2, 4, 8]
   page_size: 1000
-  timeout_sec: 30
-neo:
-  # Theo SDK Python của VPBankS (NeoInvestSDK 0.2.5) – môi trường thật
-  base_url: "https://neoapi.vpbanks.com.vn/neo-api"
-  auth_base_url: "https://external.vpbanks.com.vn"
-  ws_url: "wss://neoapi.vpbanks.com.vn/stock-stream/broker"
-  schema_cache: "data/neo_schemas.bin"
-  timeout_sec: 20
-  page_size: 1000
-  max_rps: 5
-  reconnect_backoff_sec: [2, 4, 8, 16]
-  reconnect_max_sec: 60
-failover:
-  ssi_fail_count: 3
-  silence_sec: 120
-  recover_stable_min: 5
+  timeout_sec: 60
+  intraday_timeframe: "5m"
+stream:
+  silence_sec: 120            # luồng im lặng > 120 giây trong phiên → ghi sự cố, SDK tự kết nối lại
+  flush_rows: 200
 
 # ── Lịch phiên & tác vụ (giờ Việt Nam) ───────────────────────────────────────
 session:
@@ -144,8 +152,26 @@ session:
   recorder_end: "15:05"
 schedule:
   midday_brief: "11:35"
-  close_update: "15:05"
+  midday_until: "13:00"       # khởi động muộn hơn → bỏ bản tin giữa phiên
+  close_update: "15:05"       # tải bù mọi phiên thiếu + dựng lại chỉ báo/kiểm định/triển vọng (src/data/updater.py)
+  update_until: "20:00"
+  update_retry_min: 30        # lỗi API → thử lại sau 30 phút
   quality_check: "15:10"
   closing_report: "15:15"
+  closing_until: "21:00"
+  late_update: "22:00"        # lượt dự phòng mỗi tối
+update:
+  repair_lookback: 10         # tải lại các phiên trong 10 phiên gần nhất mà SSI để trống khối ngoại cho mọi mã
 
 watchlist_default: ["FPT", "HPG", "MBB", "VNM", "SSI"]
+watchlist_max: 15
+
+# ── Tối ưu danh mục theo khẩu vị rủi ro (src/analytics/portfolio.py) ─────────
+portfolio:
+  lookback: 250               # số phiên ước lượng (≈ 1 năm)
+  risk_free: 0.045            # lãi suất phi rủi ro năm (tham chiếu tiền gửi 12 tháng)
+  backtest_months: 24         # kiểm chứng ngoài mẫu, tái cân bằng hằng tháng
+  profiles:                   # biến động năm mục tiêu · trần tỷ trọng một mã · beta tối đa phù hợp
+    "Thận trọng": {target_vol: 0.15, max_weight: 0.25, max_beta: 0.9}
+    "Cân bằng": {target_vol: 0.22, max_weight: 0.30, max_beta: 1.1}
+    "Tăng trưởng": {target_vol: 0.30, max_weight: 0.40, max_beta: 1.4}

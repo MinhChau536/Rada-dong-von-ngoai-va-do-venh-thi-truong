@@ -1,69 +1,69 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # TỪ ĐIỂN DỮ LIỆU (bước B1.3) – ánh xạ trường API → lược đồ chung
 #
-# Nguồn đối chiếu:
-#  • SSI FastConnect Data v2 – đặc tả guide.ssi.com.vn/ssi-products/fastconnect-data/api-specs và SDK chính thức
-#    ssi-fc-data 2.2.2. Lưu ý: tài liệu SSI viết tên trường không thống nhất hoa/thường (ClosePrice / Closeprice),
-#    có lỗi chính tả (Toreignsellvaltotal) → bộ ánh xạ so khớp KHÔNG phân biệt hoa/thường và chấp nhận danh sách bí danh.
-#    Giá trị trả về dạng CHUỖI số (không dấu phân cách nghìn); ngày dạng dd/mm/yyyy.
-#  • VPBankS NEO API – neoinvest.vpbanks.com.vn/neo-openapi (stock/stockDetail, market/marketIndexDetail, WS stockInfo,
-#    marketInfo). Giá trị dạng số; tradingDate dd/mm/yyyy.
-# `verified` chuyển true sau khi đối chiếu JSON thật trong docs/api_samples/ (python -m src.ssi_api.ssi_client --samples).
+# Nguồn DUY NHẤT: SSI FastConnect V3 (developers.ssi.com.vn, SDK chính thức ssi-sdk 3.3.x).
+#  • securitiesSummary → daily_stock; masterdata (refPrice/ceiling/floor) được ghép vào cùng payload khi tải
+#    (src/ssi_api/ssi_client.py: enrich_stock – quy giá tham chiếu/trần/sàn về thang giá đã điều chỉnh quyền).
+#  • indexSummary (+ open/high/low từ ohlc 1d) → daily_index; securitiesByBoard → securities; ohlc 5m → intraday.
+#  • Giá trị số dạng CHUỖI; ngày dạng yyyy/mm/dd (nến phút: yyyy/mm/dd HH:MM:SS).
+# Bộ ánh xạ so khớp KHÔNG phân biệt hoa/thường và chấp nhận danh sách bí danh (giữ bí danh FastConnect Data v2 để
+# đọc được dữ liệu cũ đã lưu trong kho / tệp kiểm thử).
 # ═══════════════════════════════════════════════════════════════════════════════
-daily_stock:            # SSI DailyStockPrice  /  NEO stock/stockDetail (ảnh chụp cuối phiên)
-  trade_date:   {ssi: [TradingDate],                               neo: [tradingDate],          type: date,  unit: "dd/mm/yyyy",  verified: false, desc: "Ngày giao dịch"}
-  symbol:       {ssi: [Symbol],                                    neo: [symbol],               type: str,   unit: "",            verified: false, desc: "Mã chứng khoán"}
-  ref:          {ssi: [RefPrice],                                  neo: [refPrice],             type: float, unit: VND,           verified: false, desc: "Giá tham chiếu (sở đã điều chỉnh quyền)"}
-  ceiling:      {ssi: [CeilingPrice],                              neo: [ceilingPrice],         type: float, unit: VND,           verified: false, desc: "Giá trần"}
-  floor:        {ssi: [FloorPrice],                                neo: [floorPrice],           type: float, unit: VND,           verified: false, desc: "Giá sàn"}
-  open:         {ssi: [OpenPrice],                                 neo: [openPrice],            type: float, unit: VND,           verified: false, desc: "Giá mở cửa"}
-  high:         {ssi: [HighestPrice],                              neo: [highPrice],            type: float, unit: VND,           verified: false, desc: "Giá cao nhất"}
-  low:          {ssi: [LowestPrice],                               neo: [lowPrice],             type: float, unit: VND,           verified: false, desc: "Giá thấp nhất"}
-  close:        {ssi: [ClosePrice],                                neo: [closePrice],           type: float, unit: VND,           verified: false, desc: "Giá đóng cửa"}
-  vol:          {ssi: [TotalMatchVol],                             neo: [totalTradingVolume],   type: float, unit: "cổ phiếu",    verified: false, desc: "Khối lượng khớp lệnh"}
-  tv:           {ssi: [TotalMatchVal],                             neo: [totalTradingValue],    type: float, unit: VND,           verified: false, desc: "Giá trị khớp lệnh (không gồm thỏa thuận)"}
-  vol_pt:       {ssi: [TotalDealVol],                              neo: [ptTotalTradedQTTY],    type: float, unit: "cổ phiếu",    verified: false, desc: "Khối lượng thỏa thuận"}
-  tv_pt:        {ssi: [TotalDealVal],                              neo: [ptTotalTradedValue],   type: float, unit: VND,           verified: false, desc: "Giá trị thỏa thuận"}
-  fb_vol:       {ssi: [ForeignBuyVolTotal],                        neo: [foreignBuyVolume],     type: float, unit: "cổ phiếu",    verified: false, desc: "KL khối ngoại mua"}
-  fs_vol:       {ssi: [ForeignSellVolTotal],                       neo: [foreignSellVolume],    type: float, unit: "cổ phiếu",    verified: false, desc: "KL khối ngoại bán"}
-  fb:           {ssi: [ForeignBuyValTotal],                        neo: [foreignBuyValue],      type: float, unit: VND,           verified: false, desc: "Giá trị khối ngoại mua (phạm vi kiểm tra ở B2.5)"}
-  fs:           {ssi: [ForeignSellValTotal, Toreignsellvaltotal],  neo: [foreignSellValue],     type: float, unit: VND,           verified: false, desc: "Giá trị khối ngoại bán"}
-  remain:       {ssi: [ForeignCurrentRoom],                        neo: [foreignRemain],        type: float, unit: "cổ phiếu",    verified: false, desc: "Room ngoại còn lại"}
-  room_api:     {ssi: [],                                          neo: [foreignRoom],          type: float, unit: "cổ phiếu",    verified: false, desc: "Tổng room (NEO trả trực tiếp; SSI: giới hạn sở hữu × ListedShare)"}
-  listed_share_api: {ssi: [],                                      neo: [listedShare],          type: float, unit: "cổ phiếu",    verified: false, desc: "Số CP niêm yết (NEO stockDetail)"}
+daily_stock:            # SSI V3 securitiesSummary (+ masterdata)
+  trade_date:   {ssi: [tradingDate],                                      type: date,  unit: "yyyy/mm/dd", verified: true, desc: "Ngày giao dịch"}
+  symbol:       {ssi: [symbol],                                           type: str,   unit: "",           verified: true, desc: "Mã chứng khoán"}
+  ref:          {ssi: [refPrice],                                         type: float, unit: VND,          verified: true, desc: "Giá tham chiếu (masterdata, quy về thang giá điều chỉnh)"}
+  ceiling:      {ssi: [ceiling, CeilingPrice],                            type: float, unit: VND,          verified: true, desc: "Giá trần (masterdata)"}
+  floor:        {ssi: [floor, FloorPrice],                                type: float, unit: VND,          verified: true, desc: "Giá sàn (masterdata)"}
+  open:         {ssi: [open, OpenPrice],                                  type: float, unit: VND,          verified: true, desc: "Giá mở cửa"}
+  high:         {ssi: [high, HighestPrice],                               type: float, unit: VND,          verified: true, desc: "Giá cao nhất"}
+  low:          {ssi: [low, LowestPrice],                                 type: float, unit: VND,          verified: true, desc: "Giá thấp nhất"}
+  close:        {ssi: [close, ClosePrice],                                type: float, unit: VND,          verified: true, desc: "Giá đóng cửa"}
+  vol:          {ssi: [totalMatch, TotalMatchVol],                        type: float, unit: "cổ phiếu",   verified: true, desc: "Khối lượng khớp lệnh"}
+  tv:           {ssi: [totalMatchValue, TotalMatchVal],                   type: float, unit: VND,          verified: true, desc: "Giá trị khớp lệnh (không gồm thỏa thuận)"}
+  vol_pt:       {ssi: [totalDeal, TotalDealVol],                          type: float, unit: "cổ phiếu",   verified: true, desc: "Khối lượng thỏa thuận"}
+  tv_pt:        {ssi: [totalDealValue, TotalDealVal],                     type: float, unit: VND,          verified: true, desc: "Giá trị thỏa thuận"}
+  fb_vol:       {ssi: [totalForeignBuy, ForeignBuyVolTotal],              type: float, unit: "cổ phiếu",   verified: true, desc: "KL khối ngoại mua"}
+  fs_vol:       {ssi: [totalForeignSell, ForeignSellVolTotal],            type: float, unit: "cổ phiếu",   verified: true, desc: "KL khối ngoại bán"}
+  fb:           {ssi: [totalForeignBuyValue, ForeignBuyValTotal],         type: float, unit: VND,          verified: true, desc: "Giá trị khối ngoại mua (khớp + thỏa thuận)"}
+  fs:           {ssi: [totalForeignSellValue, ForeignSellValTotal],       type: float, unit: VND,          verified: true, desc: "Giá trị khối ngoại bán"}
+  remain:       {ssi: [remainForeignRoom, ForeignCurrentRoom],            type: float, unit: "cổ phiếu",   verified: true, desc: "Room ngoại còn lại"}
+  room_api:     {ssi: [totalForeignRoom],                                 type: float, unit: "cổ phiếu",   verified: true, desc: "Tổng room ngoại (SSI V3 trả trực tiếp)"}
+  board:        {ssi: [board],                                            type: str,   unit: "",           verified: true, desc: "Sàn niêm yết của mã VÀO NGÀY ĐÓ (masterdata) – HOSE/HNX/UPCOM"}
+  listed_share_api: {ssi: [],                                             type: float, unit: "cổ phiếu",   verified: true, desc: "Không dùng – ListedShare lấy từ securitiesByBoard"}
 
-daily_index:            # SSI DailyIndex (+ OHLC từ DailyOhlc)  /  NEO market/marketIndexDetail
-  trade_date:   {ssi: [TradingDate, "Trading Date"],  neo: [tradingDate, dateString], type: date,  unit: "",         verified: false, desc: "Ngày"}
-  index_code:   {ssi: [IndexId, IndexCode],           neo: [indexCode],               type: str,   unit: "",         verified: false, desc: "Mã chỉ số (lưu theo mã chuẩn VNINDEX, VN30, HNXINDEX, UPCOMINDEX)"}
-  value:        {ssi: [IndexValue],                   neo: [indexValue],              type: float, unit: "điểm",     verified: false, desc: "Điểm chỉ số"}
-  change:       {ssi: [Change],                       neo: [indexChange],             type: float, unit: "điểm",     verified: false, desc: "Thay đổi điểm"}
-  ratio_change: {ssi: [RatioChange],                  neo: [indexPercentChange],      type: float, unit: "%",        verified: false, desc: "Thay đổi %"}
-  advances:     {ssi: [Advances],                     neo: [advances],                type: int,   unit: "mã",       verified: false, desc: "Số mã tăng"}
-  declines:     {ssi: [Declines],                     neo: [declines],                type: int,   unit: "mã",       verified: false, desc: "Số mã giảm"}
-  no_changes:   {ssi: [NoChanges],                    neo: [noChange],                type: int,   unit: "mã",       verified: false, desc: "Số mã đứng"}
-  ceilings:     {ssi: [Ceilings, Ceiling],            neo: [numberOfCe],              type: int,   unit: "mã",       verified: false, desc: "Số mã trần"}
-  floors:       {ssi: [Floors, Floor],                neo: [numberOfFl],              type: int,   unit: "mã",       verified: false, desc: "Số mã sàn"}
-  vol:          {ssi: [TotalMatchVol],                neo: [totalVolume],             type: float, unit: "cổ phiếu", verified: false, desc: "KL khớp"}
-  tv:           {ssi: [TotalMatchVal],                neo: [totalValue],              type: float, unit: VND,        verified: false, desc: "GTGD khớp"}
-  open:         {ssi: [OpenIndex],                    neo: [openIndex],               type: float, unit: "điểm",     verified: false, desc: "Mở cửa – ghép từ DailyOhlc của mã chỉ số"}
-  high:         {ssi: [HighestIndex],                 neo: [highestIndex],            type: float, unit: "điểm",     verified: false, desc: "Cao nhất – ghép từ DailyOhlc"}
-  low:          {ssi: [LowestIndex],                  neo: [lowestIndex],             type: float, unit: "điểm",     verified: false, desc: "Thấp nhất – ghép từ DailyOhlc"}
-  oddlot_value: {ssi: [],                             neo: [oddLotTotalValue],        type: float, unit: VND,        verified: false, desc: "Giá trị lô lẻ (NEO marketIndexDetail/marketInfo)"}
+daily_index:            # SSI V3 indexSummary (+ open/high/low từ ohlc 1d)
+  trade_date:   {ssi: [tradingDate],                             type: date,  unit: "yyyy/mm/dd", verified: true, desc: "Ngày"}
+  index_code:   {ssi: [index, IndexId],                          type: str,   unit: "",         verified: true, desc: "Mã chỉ số (VNINDEX, VN30, HNXINDEX, UPCOMINDEX)"}
+  value:        {ssi: [indexValue],                              type: float, unit: "điểm",     verified: true, desc: "Điểm chỉ số"}
+  change:       {ssi: [indexChange, Change],                     type: float, unit: "điểm",     verified: true, desc: "Thay đổi điểm"}
+  ratio_change: {ssi: [indexChangePercentage, RatioChange],      type: float, unit: "%",        verified: true, desc: "Thay đổi %"}
+  advances:     {ssi: [totalAdvanceStock, Advances],             type: int,   unit: "mã",       verified: true, desc: "Số mã tăng"}
+  declines:     {ssi: [totalDeclineStock, Declines],             type: int,   unit: "mã",       verified: true, desc: "Số mã giảm"}
+  no_changes:   {ssi: [totalNoChangeStock, NoChanges],           type: int,   unit: "mã",       verified: true, desc: "Số mã đứng"}
+  ceilings:     {ssi: [totalCeilingStock, Ceilings],             type: int,   unit: "mã",       verified: true, desc: "Số mã trần"}
+  floors:       {ssi: [totalFloorStock, Floors],                 type: int,   unit: "mã",       verified: true, desc: "Số mã sàn"}
+  vol:          {ssi: [totalMatch, TotalMatchVol],               type: float, unit: "cổ phiếu", verified: true, desc: "KL khớp"}
+  tv:           {ssi: [totalMatchValue, TotalMatchVal],          type: float, unit: VND,        verified: true, desc: "GTGD khớp"}
+  open:         {ssi: [open, OpenIndex],                         type: float, unit: "điểm",     verified: true, desc: "Mở cửa – ghép từ ohlc 1d của mã chỉ số"}
+  high:         {ssi: [high, HighestIndex],                      type: float, unit: "điểm",     verified: true, desc: "Cao nhất – ghép từ ohlc 1d"}
+  low:          {ssi: [low, LowestIndex],                        type: float, unit: "điểm",     verified: true, desc: "Thấp nhất – ghép từ ohlc 1d"}
+  oddlot_value: {ssi: [],                                        type: float, unit: VND,        verified: true, desc: "Không có trong REST V3"}
 
-securities:             # SSI SecuritiesDetails (RepeatedInfo / repeatedinfoList)  /  NEO stockDetail
-  symbol:       {ssi: [Symbol],              neo: [symbol],       type: str,   unit: "",         verified: false, desc: "Mã"}
-  sec_type:     {ssi: [SecType],             neo: [stockType],    type: str,   unit: "",         verified: false, desc: "Loại CK – cổ phiếu thường: ST (đặc tả) hoặc S (mẫu SSI)"}
-  exchange:     {ssi: [Exchange, MarketId],  neo: [exchangeCode], type: str,   unit: "",         verified: false, desc: "Sàn"}
-  listed_share: {ssi: [ListedShare],         neo: [listedShare],  type: float, unit: "cổ phiếu", verified: false, desc: "Số cổ phiếu niêm yết S_i"}
+securities:             # SSI V3 securitiesByBoard
+  symbol:       {ssi: [symbol],                type: str,   unit: "",         verified: true, desc: "Mã"}
+  sec_type:     {ssi: [stockType, SecType],    type: str,   unit: "",         verified: true, desc: "Loại CK – cổ phiếu thường: 'Stock' (V3)"}
+  exchange:     {ssi: [board, Exchange],       type: str,   unit: "",         verified: true, desc: "Sàn"}
+  listed_share: {ssi: [listedShare],           type: float, unit: "cổ phiếu", verified: true, desc: "Số cổ phiếu niêm yết S_i"}
 
-intraday:               # SSI IntradayOhlc (resolution phút)
-  open:         {ssi: [Open],   type: float, unit: VND, verified: false, desc: ""}
-  high:         {ssi: [High],   type: float, unit: VND, verified: false, desc: ""}
-  low:          {ssi: [Low],    type: float, unit: VND, verified: false, desc: ""}
-  close:        {ssi: [Close],  type: float, unit: VND, verified: false, desc: ""}
-  vol:          {ssi: [Volume], type: float, unit: "cổ phiếu", verified: false, desc: ""}
+intraday:               # SSI V3 ohlc timeFrame=5m
+  open:         {ssi: [open],   type: float, unit: VND, verified: true, desc: ""}
+  high:         {ssi: [high],   type: float, unit: VND, verified: true, desc: ""}
+  low:          {ssi: [low],    type: float, unit: VND, verified: true, desc: ""}
+  close:        {ssi: [close],  type: float, unit: VND, verified: true, desc: ""}
+  vol:          {ssi: [volume], type: float, unit: "cổ phiếu", verified: true, desc: ""}
 
-streaming:              # SSI streaming (SignalR FcMarketDataV2Hub) & NEO WebSocket stock-stream
-  side:         {ssi: ["X-TRADE.Side"],     neo: [],                    type: str,   unit: "BU/SD", desc: "Chiều khớp chủ động – chỉ có thời gian thực"}
-  oddlot_value: {ssi: ["OL"],               neo: [oddLotTotalValue],    type: float, unit: VND,     desc: "Giá trị lô lẻ"}
-  market_status: {ssi: ["F.TradingSession"], neo: [marketStatus],        type: str,   unit: "",      desc: "Trạng thái phiên"}
+streaming:              # SSI V3 WebSocket wss://stream.ssi.com.vn/ws/v3 (src/data/recorder_ssi.py)
+  index_tick:   {ssi: ["indexsummary.<INDEX>"],   type: json, unit: "",    desc: "Điểm, số mã tăng/giảm, GT khớp, khối ngoại toàn sàn – theo thời gian thực"}
+  trade:        {ssi: ["trade.<SYMBOL>@tick"],    type: json, unit: "",    desc: "Lệnh khớp (giá, KL, chiều chủ động)"}
+  room:         {ssi: ["room.<SYMBOL>"],          type: json, unit: "",    desc: "Room ngoại, KL/GT khối ngoại mua/bán lũy kế trong phiên"}

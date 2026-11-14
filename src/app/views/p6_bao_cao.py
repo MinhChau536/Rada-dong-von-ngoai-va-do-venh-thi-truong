@@ -18,7 +18,7 @@ from src.reports import closing, snapshot
 ALERT_TYPES = {"index_concentrated": "1 · Chỉ số do ít mã dẫn dắt", "high_divergence": "2 · Độ vênh cao",
                "foreign_market": "3 · Dòng vốn ngoại toàn sàn bất thường", "wl_foreign": "4 · Mã watchlist có dòng vốn bất thường",
                "wl_deviation": "5 · Mã watchlist lệch mạnh khỏi thị trường", "wl_leader": "6 · Mã watchlist trong nhóm dẫn dắt",
-               "wl_room": "7 · Room sắp cạn", "system_failover": "8 · Sự cố dữ liệu (hệ thống)"}
+               "wl_room": "7 · Room sắp cạn", "system_failover": "8 · Sự cố nguồn SSI (hệ thống)"}
 
 
 def render() -> None:

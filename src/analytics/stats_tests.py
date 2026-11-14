@@ -42,9 +42,16 @@ def block_permutation_diff(x: np.ndarray, split: int, block: int, reps: int, see
     return (cnt + 1) / (reps + 1)
 
 
-def h1a(day: pd.DataFrame) -> List[Dict]:
+def h1a(day: pd.DataFrame, pre_sessions: int | None = None) -> List[Dict]:
+    """So sánh trước/sau mốc hiệu lực. Nhóm 'trước' giới hạn `events.h1a_pre_sessions` phiên liền trước mốc (mặc định
+    250 ≈ 1 năm) để không trộn nhiều chu kỳ thị trường 2016–2025 vào phép so sánh; 0 = dùng toàn bộ lịch sử."""
     split_date = pd.Timestamp(get("events.regime_split_date", "2026-09-21"))
+    pre_n = int(get("events.h1a_pre_sessions", 250) if pre_sessions is None else pre_sessions)
     d = day.sort_values("trade_date")
+    if pre_n > 0:
+        td = pd.to_datetime(d["trade_date"])
+        pre_idx = d.index[td < split_date][-pre_n:]
+        d = d.loc[pre_idx.union(d.index[td >= split_date])].sort_values("trade_date")
     narrow = d["session_type"].isin(NARROW).astype(int).to_numpy()
     post = (pd.to_datetime(d["trade_date"]) >= split_date).to_numpy()
     n1, n0 = int(post.sum()), int((~post).sum())
@@ -156,6 +163,102 @@ def h2c(day: pd.DataFrame) -> List[Dict]:
     return out
 
 
+# ── H4: cấu trúc thị trường theo giai đoạn nâng hạng ──────────────────────────
+H4_METRICS = {                              # cột indicator_daily → (nhãn, phép biến đổi)
+    "D": ("D – độ vênh (điểm %)", None),
+    "CR5": ("CR5 – tập trung đóng góp", None),
+    "IQR_pct": ("IQR lợi suất (%)", None),
+    "abs_rvni": ("|r VN-Index| (%) – biến động", None),
+    "ln_tv": ("ln giá trị khớp toàn sàn", None),
+    "FPR_total": ("FPR – tỷ trọng GD khối ngoại", None),
+    "nf_total_ratio": ("nf toàn sàn – cường độ ròng", None),
+    "HHI": ("HHI – tập trung dòng vốn ngoại", None),
+    "narrow": ("Tỷ lệ phiên thiếu lan tỏa", None),
+}
+
+
+def period_labels(td: pd.Series) -> pd.Series:
+    """Gán giai đoạn: 0 = trước công bố E1, 1 = từ E1 đến trước ngày hiệu lực, 2 = từ ngày hiệu lực."""
+    e1 = pd.Timestamp(get("periods.announce", "2025-10-08"))
+    eff = pd.Timestamp(get("periods.effective", get("events.regime_split_date", "2026-09-21")))
+    td = pd.to_datetime(td)
+    return pd.Series(np.select([td < e1, td < eff], [0, 1], 2), index=td.index)
+
+
+def h4_frame(day: pd.DataFrame, pre_sessions: int | None = None, pre_start: str | None = None) -> pd.DataFrame:
+    """Chuỗi ngày dùng cho H4: nhóm cơ sở = `pre_sessions` phiên ngay trước E1 (0 → từ `pre_start`)."""
+    d = day.copy()
+    d["trade_date"] = pd.to_datetime(d["trade_date"])
+    d = d.sort_values("trade_date")
+    d["period"] = period_labels(d["trade_date"]).to_numpy()
+    d["abs_rvni"] = d["r_vni_pct"].abs()
+    d["ln_tv"] = np.log(d["tv_total"].where(d["tv_total"] > 0))
+    d["narrow"] = d["session_type"].isin(NARROW).astype(float)
+    pre_n = int(get("periods.pre_sessions", 250) if pre_sessions is None else pre_sessions)
+    start = pd.Timestamp(pre_start or get("periods.pre_start", "2019-01-02"))
+    pre = d[d["period"] == 0]
+    pre = pre.tail(pre_n) if pre_n > 0 else pre[pre["trade_date"] >= start]
+    return pd.concat([pre, d[d["period"] > 0]])
+
+
+def h4(day: pd.DataFrame, pre_sessions: int | None = None, pre_start: str | None = None,
+       variant: str = "base") -> List[Dict]:
+    """y_t = a + b1·1[E1 ≤ t < hiệu lực] + b2·1[t ≥ hiệu lực] + e_t, sai số Newey–West.
+    Mô tả thay đổi so với nhóm cơ sở trước công bố, KHÔNG quy nhân quả (trùng biến động vĩ mô).
+    MDE 80% (α = 5%, hai phía) ≈ 2,8 × SE – thay đổi nhỏ hơn mức này mẫu hiện tại chưa phát hiện được."""
+    lags = int(get("events.nw_lags", 5))
+    d = h4_frame(day, pre_sessions, pre_start)
+    n_pre, n_mid, n_post = (int((d["period"] == k).sum()) for k in (0, 1, 2))
+    win = {1: "E1 → hiệu lực", 2: "Sau hiệu lực"}
+    pre_n = int(get("periods.pre_sessions", 250) if pre_sessions is None else pre_sessions)
+    base = (f"cơ sở {n_pre} phiên trước E1" if pre_n > 0
+            else f"cơ sở từ {pre_start or get('periods.pre_start', '2019-01-02')} ({n_pre} phiên)")
+    out = []
+    for col, (label, _) in H4_METRICS.items():
+        x = d[["period", col]].dropna()
+        if x["period"].nunique() < 2 or (x["period"] == 0).sum() < 30:
+            continue
+        X = pd.DataFrame({"mid": (x["period"] == 1).astype(float), "post": (x["period"] == 2).astype(float)},
+                         index=x.index)
+        X = X.loc[:, X.sum() > 0]
+        res = sm.OLS(x[col], sm.add_constant(X)).fit(cov_type="HAC", cov_kwds={"maxlags": lags})
+        means = x.groupby("period")[col].mean()
+        for k, name in ((1, "mid"), (2, "post")):
+            if name not in res.params:
+                continue
+            se = float(res.bse[name])
+            ci = res.conf_int().loc[name]
+            n_k = int((x["period"] == k).sum())
+            note = (f"TB cơ sở {means.get(0, np.nan):.4g} → {means.get(k, np.nan):.4g}; {base}, {n_k} phiên; "
+                    f"MDE 80% ≈ {2.8 * se:.3g}")
+            if n_k < 60:
+                note += "; < 60 phiên – công suất thấp, kết quả sơ bộ"
+            out.append(_row("H4", "OLS giả biến giai đoạn (HAC 5 trễ)", float(res.tvalues[name]),
+                            float(res.pvalues[name]), int(res.nobs), float(res.params[name]), float(ci[0]),
+                            float(ci[1]), metric=label, window=win[k], note=note, variant=variant))
+        post = x.loc[x["period"] == 2, col]
+        pre = x.loc[x["period"] == 0, col]
+        if len(post) >= 10:
+            u, p = stats.mannwhitneyu(post, pre, alternative="two-sided")
+            out.append(_row("H4", "Mann–Whitney (sau hiệu lực vs cơ sở)", float(u), float(p), len(post) + len(pre),
+                            float(post.median() - pre.median()), metric=label, window=win[2],
+                            note="Ước lượng = chênh trung vị; bỏ qua tự tương quan – chỉ tham khảo", variant=variant))
+    return out
+
+
+def period_summary(day: pd.DataFrame) -> pd.DataFrame:
+    """Bảng mô tả theo giai đoạn (trung bình, trung vị, số phiên) cho trang 8 / báo cáo."""
+    d = h4_frame(day)
+    names = {0: "Cơ sở trước E1", 1: "E1 → hiệu lực", 2: "Sau hiệu lực"}
+    rows = []
+    for col, (label, _) in H4_METRICS.items():
+        for k, g in d.groupby("period")[col]:
+            g = g.dropna()
+            rows.append({"metric": label, "period": names[k], "n": len(g), "mean": g.mean(), "median": g.median(),
+                         "d0": d.loc[g.index, "trade_date"].min(), "d1": d.loc[g.index, "trade_date"].max()})
+    return pd.DataFrame(rows)
+
+
 def holm(df: pd.DataFrame) -> pd.DataFrame:
     """Holm theo họ kiểm định cùng giả thuyết, cùng phép kiểm định, nhiều cửa sổ/mốc (B6.12)."""
     if df.empty:
@@ -172,5 +275,5 @@ def holm(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_all(day: pd.DataFrame, stock: pd.DataFrame) -> pd.DataFrame:
-    rows = h1a(day) + h1b(day) + h2(stock) + h2c(day)
+    rows = h1a(day) + h1b(day) + h2(stock) + h2c(day) + h4(day)
     return pd.DataFrame(rows)

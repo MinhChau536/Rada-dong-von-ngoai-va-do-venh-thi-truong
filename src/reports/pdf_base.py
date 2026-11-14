@@ -33,7 +33,8 @@ class FFRPdf(FPDF):
 
     # Be Vietnam Pro không có chữ Hy Lạp → thay ký hiệu bằng chữ Latin tương đương trong PDF
     GREEK = {"ε": "eps", "β": "beta", "Ω": "Omega", "⁺": "+", "⁻": "-", "Δ": "Δ".replace("Δ", "d"), "Σ": "Tổng ", "τ": "tau",
-             "ρ": "rho", "δ": "delta", "μ": "mu", "λ": "lambda", "α": "alpha", "≥": ">=", "≤": "<="}
+             "ρ": "rho", "δ": "delta", "μ": "mu", "λ": "lambda", "α": "alpha", "≥": ">=", "≤": "<=",
+             "σ": "sigma", "√": "căn ", "→": "->", "▲": "trên ", "▼": "dưới "}
 
     def normalize_text(self, text):
         for k, v in self.GREEK.items():
@@ -69,7 +70,7 @@ class FFRPdf(FPDF):
             self.set_fill_color(254, 243, 199)
             self.set_text_color(146, 64, 14)
             self.set_font("BVP", "B", 7.5)
-            self.cell(0, 5, "DỮ LIỆU MẪU TỔNG HỢP (DEMO_DATA) – không phải số liệu thị trường thật", fill=True, align="C",
+            self.cell(0, 5, "DỮ LIỆU KIỂM THỬ – không phải số liệu thị trường thật", fill=True, align="C",
                       new_x="LMARGIN", new_y="NEXT")
             self.ln(1)
 
@@ -77,7 +78,7 @@ class FFRPdf(FPDF):
         self.set_y(-12)
         self.set_font("BVP", "", 7)
         self.color("muted")
-        self.cell(0, 5, f"Nguồn: SSI FastConnect Data (chính), VPBankS NEO API (phụ) · giờ Việt Nam · {get('app.disclaimer')}",
+        self.cell(0, 5, f"Nguồn: SSI FastConnect V3 (REST + WebSocket) · giờ Việt Nam · {get('app.disclaimer')}",
                   align="L")
         self.cell(0, 5, f"Trang {self.page_no()}", align="R")
 
@@ -151,6 +152,88 @@ class FFRPdf(FPDF):
         self.set_xy(self.l_margin, y + 1)
         return y
 
+    def bullets(self, items: Sequence[str], size: float = 8.8):
+        self.set_font("BVP", "", size)
+        self.color("text")
+        for t in items:
+            if self.get_y() > 272:
+                self.add_page()
+            x0 = self.l_margin
+            self.set_x(x0)
+            self.cell(4, 4.6, "•")
+            self.set_x(x0 + 4)
+            self.multi_cell(0, 4.6, t, new_x="LMARGIN", new_y="NEXT")
+            self.ln(0.6)
+        self.ln(1)
+
+    def line_chart(self, series: dict, h: float = 52, events: Optional[Sequence[Tuple]] = None,
+                   colors: Optional[dict] = None, title: str = ""):
+        """series: {tên: pd.Series có index ngày}; đường đầu là chuỗi chính (đậm). events: [(ngày, nhãn)]."""
+        import pandas as pd
+        x0, w = self.l_margin, 210 - self.l_margin - self.r_margin
+        if title:
+            self.set_font("BVP", "B", 8)
+            self.color("muted")
+            self.cell(0, 4.5, title, new_x="LMARGIN", new_y="NEXT")
+        y0 = self.get_y()
+        allv = pd.concat([s.dropna() for s in series.values()])
+        if allv.empty:
+            return
+        lo, hi = float(allv.min()), float(allv.max())
+        pad = (hi - lo) * 0.06 or 1
+        lo, hi = lo - pad, hi + pad
+        t0, t1 = allv.index.min(), allv.index.max()
+        span = max((t1 - t0).days, 1)
+        plot_x, plot_w = x0 + 12, w - 12
+        X = lambda t: plot_x + (pd.Timestamp(t) - t0).days / span * plot_w  # noqa: E731
+        Y = lambda v: y0 + h - (v - lo) / (hi - lo) * h  # noqa: E731
+        self.color("border", "draw")
+        self.set_line_width(0.15)
+        self.set_font("BVP", "", 6.2)
+        self.color("muted")
+        for k in range(5):
+            v = lo + (hi - lo) * k / 4
+            self.line(plot_x, Y(v), plot_x + plot_w, Y(v))
+            self.set_xy(x0, Y(v) - 1.6)
+            self.cell(11, 3.2, f"{v:,.0f}".replace(",", "."), align="R")
+        for k in range(6):
+            t = t0 + pd.Timedelta(days=span * k / 5)
+            self.set_xy(X(t) - 8, y0 + h + 0.6)
+            self.cell(16, 3, f"{t:%m/%Y}", align="C")
+        if events:
+            for t, lab in events:
+                t = pd.Timestamp(t)
+                if t0 <= t <= t1:
+                    self.color("#F59E0B", "draw")
+                    self.set_line_width(0.3)
+                    self.set_dash_pattern(dash=1, gap=1)
+                    self.line(X(t), y0, X(t), y0 + h)
+                    self.set_dash_pattern()
+                    self.set_xy(X(t) - 6, y0 - 0.5)
+                    self.set_font("BVP", "B", 6.2)
+                    self.color("#B45309")
+                    self.cell(12, 3, lab, align="C")
+        palette = colors or {}
+        default = ["accent", "#94A3B8", "#F97316", "#8B5CF6"]
+        for i, (name, s) in enumerate(series.items()):
+            s = s.dropna()
+            if len(s) < 2:
+                continue
+            self.color(palette.get(name, default[i % len(default)]), "draw")
+            self.set_line_width(0.55 if i == 0 else 0.3)
+            self.polyline([(X(t), Y(float(v))) for t, v in s.items()])
+        lx = plot_x + 2
+        self.set_font("BVP", "", 6.5)
+        for i, name in enumerate(series):
+            self.color(palette.get(name, default[i % len(default)]), "fill")
+            self.rect(lx, y0 + 1.5, 4, 1.4, "F")
+            self.color("text")
+            self.set_xy(lx + 5, y0 + 0.4)
+            self.cell(self.get_string_width(name) + 2, 3.6, name)
+            lx += self.get_string_width(name) + 10
+        self.set_line_width(0.2)
+        self.set_xy(self.l_margin, y0 + h + 5)
+
     def table(self, headers: List[str], rows: List[List[str]], widths: List[float], size: float = 7.5,
               aligns: Optional[List[str]] = None):
         aligns = aligns or ["L"] + ["R"] * (len(headers) - 1)
@@ -162,6 +245,8 @@ class FFRPdf(FPDF):
         self.ln()
         self.set_font("BVP", "", size)
         self.color("text")
+        self.color("border", "draw")
+        self.set_line_width(0.2)
         for r in rows:
             if self.get_y() > 275:
                 self.add_page()

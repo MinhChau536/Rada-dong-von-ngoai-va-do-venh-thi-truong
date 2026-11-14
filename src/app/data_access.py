@@ -29,7 +29,7 @@ def ready() -> bool:
 
 @st.cache_data(ttl=TTL, show_spinner=False)
 def session_sources(date=None) -> dict:
-    """Số mã theo nguồn (SSI/NEO) của một phiên (mặc định phiên mới nhất) trong fact_daily_stock."""
+    """Số mã theo nguồn (SSI) của một phiên (mặc định phiên mới nhất) trong fact_daily_stock."""
     if not db.table_exists("fact_daily_stock"):
         return {}
     if date is None:
@@ -44,7 +44,7 @@ def session_sources(date=None) -> dict:
 def raw_counts() -> dict:
     """Số bản ghi tầng raw theo bảng và nguồn – trang Kết nối dữ liệu."""
     out = {}
-    for t in ("raw_daily_stock", "raw_daily_index", "raw_securities", "raw_intraday", "raw_stream_neo"):
+    for t in ("raw_daily_stock", "raw_daily_index", "raw_securities", "raw_intraday", "raw_stream"):
         if db.table_exists(t):
             df = _q(f"SELECT source, COUNT(*) AS n FROM {t} GROUP BY 1")
             out[t] = dict(zip(df["source"], df["n"].astype(int))) if not df.empty else {}
@@ -130,16 +130,22 @@ def source_status() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=15, show_spinner=False)
-def neo_stream_stats() -> pd.DataFrame:
+def stream_stats() -> pd.DataFrame:
+    """Thống kê luồng WebSocket SSI V3 đã lưu theo phiên."""
+    if not db.table_exists("raw_stream"):
+        return pd.DataFrame()
     return _q("""SELECT session_date, source, COUNT(*) AS n_msg, MIN(recv_ts) AS first_ts, MAX(recv_ts) AS last_ts,
                         COUNT(DISTINCT channel) AS n_channels
-                 FROM raw_stream_neo GROUP BY 1, 2 ORDER BY 1""")
+                 FROM raw_stream GROUP BY 1, 2 ORDER BY 1""")
 
 
 @st.cache_data(ttl=15, show_spinner=False)
-def neo_gaps() -> pd.DataFrame:
-    """Tổng thời gian mất kết nối (khoảng trống > 90 giây giữa 2 tin marketInfo liên tiếp) theo phiên."""
-    df = _q("SELECT session_date, recv_ts FROM raw_stream_neo WHERE channel = 'marketInfo' ORDER BY recv_ts")
+def stream_gaps() -> pd.DataFrame:
+    """Tổng thời gian mất kết nối (khoảng trống > 90 giây giữa 2 tin indexsummary.VNINDEX liên tiếp) theo phiên."""
+    if not db.table_exists("raw_stream"):
+        return pd.DataFrame()
+    df = _q("SELECT session_date, recv_ts FROM raw_stream WHERE channel = 'indexsummary' AND symbol = 'VNINDEX' "
+            "ORDER BY recv_ts")
     if df.empty:
         return df
     df["recv_ts"] = pd.to_datetime(df["recv_ts"])

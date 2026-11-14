@@ -68,7 +68,14 @@ def compute(path: Optional[Path] = None, write: bool = True) -> Dict[str, object
     # ── chỉ số VN-Index ──
     vni = index[index["index_code"] == "VNINDEX"].set_index("trade_date").sort_index().copy()
     vni["prev_value"] = vni["value"].shift(1)
-    vni.loc[vni["prev_value"].isna(), "prev_value"] = vni["value"] - vni["change"]
+    # SSI không có VNINDEX ở một số phiên (23 phiên cuối tháng 2016–2018) → phiên kế tiếp KHÔNG được lấy điểm của
+    # 2 phiên trước làm I_{t−1}; khi phiên liền trước theo lịch giao dịch vắng chỉ số, dùng I_t − ΔI_t của SSI.
+    sessions = pd.Index(sorted(stock["trade_date"].unique()))
+    pos = sessions.get_indexer(vni.index)
+    prev_session = pd.Series([sessions[p - 1] if p > 0 else pd.NaT for p in pos], index=vni.index)
+    prev_vni_date = pd.Series(vni.index, index=vni.index).shift(1)
+    gap = prev_session.notna() & (prev_vni_date != prev_session)
+    vni.loc[vni["prev_value"].isna() | gap, "prev_value"] = vni["value"] - vni["change"]
     r_vni = vni["value"] / vni["prev_value"] - 1
 
     # ── mã × phiên ──
@@ -79,7 +86,9 @@ def compute(path: Optional[Path] = None, write: bool = True) -> Dict[str, object
         s["trade_date"] = pd.to_datetime(s["trade_date"])
     else:
         s["listed_share"] = np.nan
-    s = fb.add_validity(s, sec_type)
+    if "listed_share_est" in s.columns:                 # mã đã hủy niêm yết: ước từ room ngoại (build_facts)
+        s["listed_share"] = s["listed_share"].fillna(s["listed_share_est"])
+    s = fb.add_validity(s, sec_type, board=get("history.exchange", "HOSE"))
     s["ret_w"] = s.groupby("trade_date")["ret"].transform(
         lambda x: x.clip(x.quantile(get("cleaning.winsor_lower", .01)), x.quantile(get("cleaning.winsor_upper", .99))))
 
@@ -157,11 +166,13 @@ def compute(path: Optional[Path] = None, write: bool = True) -> Dict[str, object
     day["source"] = s.groupby("trade_date")["source"].agg(lambda x: x.mode().iat[0] if len(x) else None)
     day = day.reset_index().rename(columns={"index": "trade_date"})
 
-    s_cols = ["trade_date", "symbol", "source", "sector", "family", "ref", "ceiling", "floor", "open", "high", "low",
+    s_cols = ["trade_date", "symbol", "source", "board", "sector", "family", "ref", "ceiling", "floor", "open", "high", "low",
               "close", "vol", "tv", "tv_pt", "fb", "fs", "remain", "room", "listed_share", "is_valid", "is_ceiling",
               "is_floor", "ret", "ret_w", "w", "C", "C_raw", "net_flow", "nf", "FPR", "U", "room_changed", "z_nf",
               "pct60_nf", "streak", "reversal", "absorb_state", "ER_I", "ER_M", "ma20", "above_ma20", "new_high20",
               "new_low20", "vol_ratio", "ret_5d", "ret_20d"]
+    if "board" not in s.columns:
+        s["board"] = None
     stock_ind = s[s_cols].sort_values(["trade_date", "symbol"]).reset_index(drop=True)
     meta.update({"denominator": den})
     if write:

@@ -1,9 +1,9 @@
 """
 Dựng bảng chuẩn từ tầng raw (bước B2.1).
 
-- Đọc payload JSON gốc, ánh xạ tên trường theo config/data_dictionary.yaml (SSI hoặc NEO).
+- Đọc payload JSON gốc (SSI FastConnect V3), ánh xạ tên trường theo config/data_dictionary.yaml.
 - Đổi kiểu số, GIỮ NULL (không điền 0), chuẩn ngày theo giờ Việt Nam.
-- Loại trùng theo (trade_date, symbol): giữ nguồn ưu tiên cao nhất (SSI > NEO), ghi data_quality_log.
+- Loại trùng theo (trade_date, symbol), ghi data_quality_log.
 - Dựng dim_securities (ListedShare theo ngày lấy), dim_universe (VN30, FTSE, CONTROL), dim_events, fact_intraday.
 """
 from __future__ import annotations
@@ -20,6 +20,7 @@ from src.common.config import events, field_map, ftse_universe, control_group, s
 from src.common.logging import get_logger
 from src.common.timeutil import now_vn
 from src.data import database as db
+from src.ssi_api.ssi_client import reenrich_stock
 
 log = get_logger(__name__)
 
@@ -30,7 +31,7 @@ INT_INDEX = ["advances", "declines", "no_changes", "ceilings", "floors"]
 
 
 def source_priority() -> List[str]:
-    return ["SSI", "NEO"]          # SSI là nguồn chính; NEO thay thế khi SSI thiếu phiên/mã
+    return ["SSI"]                 # nguồn duy nhất: SSI FastConnect V3
 
 
 _THOUSANDS = re.compile(r"^-?\d{1,3}(,\d{3})+(\.\d+)?$")
@@ -45,14 +46,17 @@ def _num(s: pd.Series) -> pd.Series:
 
 
 def _parse(raw: pd.DataFrame, table: str) -> pd.DataFrame:
-    """payload JSON → DataFrame cột chuẩn. So khớp tên trường KHÔNG phân biệt hoa/thường, theo nguồn SSI hoặc NEO."""
+    """payload JSON → DataFrame cột chuẩn. So khớp tên trường KHÔNG phân biệt hoa/thường."""
     out = []
     for src, g in raw.groupby("source"):
-        fmap = field_map(table, "neo" if src.upper().startswith("NEO") else "ssi")
+        fmap = field_map(table, "ssi")
         recs = []
         for p in g["payload"]:
             d = json.loads(p)
             row = {}
+            if table == "daily_stock":
+                d = reenrich_stock(d)          # quy đổi thang giá theo logic hiện hành (sửa payload tải bằng bản cũ)
+                row["_no_chg"] = d.get("priceChange") in (None, "") and d.get("priceChangePercentage") in (None, "")
             for k, v in d.items():
                 col = fmap.get(str(k).lower())
                 if col is not None and col not in row:
@@ -91,20 +95,82 @@ def build_daily_stock(path: Optional[Path] = None) -> pd.DataFrame:
         df[c] = _num(df[c]) if c in df.columns else np.nan
     qrows: list = []
     df = _dedupe(df, ["trade_date", "symbol"], "daily_stock", qrows)
+    # SSI V3 trả null (không phải 0) khi phiên đó mã KHÔNG có giao dịch khối ngoại / thỏa thuận (đối chiếu phản hồi thật:
+    # phiên cũ trả "0", phiên gần đây trả null). Mã có giao dịch khớp (close có giá trị) → null nghĩa là 0.
+    # Room còn lại / tổng room chỉ đổi khi khối ngoại giao dịch → mang giá trị gần nhất của chính mã đó.
+    # SSI V3 trả giá = 0 ở một số phiên cũ (vd. 10–14/01/2020) → coi là THIẾU, không phải giá 0 (tránh r = −100%)
+    for c in ("open", "high", "low", "close"):
+        bad = df[c].le(0)
+        if bad.any():
+            df.loc[bad, c] = np.nan
+            qrows.append({"trade_date": None, "check_name": "zero_price_as_null", "metric": c, "value": int(bad.sum()),
+                          "status": "info", "detail": "SSI V3 trả giá 0 → NULL (loại khỏi Ω_t)"})
+    n_unit = fix_value_units(df)
+    if n_unit:
+        qrows.append({"trade_date": None, "check_name": "value_unit_million", "metric": "rows", "value": n_unit,
+                      "status": "info", "detail": "SSI V3 trả giá trị theo TRIỆU đồng ở một số phiên (13/09/2018, "
+                                                  "25/04/2019): giá trị/khối lượng < 50 đ/cp → nhân 10^6"})
+    df = df.sort_values(["symbol", "trade_date"])
+    n_fix = fill_ref_from_prev_close(df)
+    if n_fix:
+        qrows.append({"trade_date": None, "check_name": "ref_from_prev_close", "metric": "rows", "value": n_fix,
+                      "status": "info", "detail": "Phiên cũ SSI không trả priceChange/%: ref điều chỉnh = close điều chỉnh "
+                                                  "phiên trước của chính mã; trần/sàn quy cùng hệ số"})
+    has_trade = df["close"].notna()
+    # Phiên SSI bỏ trống khối ngoại cho TOÀN BỘ mã (vd. 12/11/2026: cả securitiesSummary lẫn indexSummary = null/0)
+    # là THIẾU DỮ LIỆU, không phải "không ai giao dịch" → giữ NULL (chỉ báo khối ngoại phiên đó để trống, updater tải lại).
+    gap_days = foreign_gap_sessions(df)
+    for d in gap_days:
+        qrows.append({"trade_date": d, "check_name": "foreign_missing_session", "metric": "fb", "value": 0,
+                      "status": "warn", "detail": "SSI không trả khối ngoại cho mọi mã trong phiên – để trống, sẽ tải lại"})
+    fillable = has_trade & ~df["trade_date"].isin(gap_days)
+    for c in ("fb_vol", "fs_vol", "fb", "fs"):
+        n_fill = int((df[c].isna() & fillable).sum())
+        df.loc[fillable, c] = df.loc[fillable, c].fillna(0.0)
+        if n_fill:
+            qrows.append({"trade_date": None, "check_name": "null_as_zero", "metric": c, "value": n_fill,
+                          "status": "info", "detail": "SSI V3 trả null khi không có giao dịch → 0"})
+    for c in ("vol_pt", "tv_pt"):
+        n_fill = int((df[c].isna() & has_trade).sum())
+        df.loc[has_trade, c] = df.loc[has_trade, c].fillna(0.0)
+        if n_fill:
+            qrows.append({"trade_date": None, "check_name": "null_as_zero", "metric": c, "value": n_fill,
+                          "status": "info", "detail": "SSI V3 trả null khi không có giao dịch → 0"})
+    for c in ("remain", "room_api"):
+        n_before = int(df[c].isna().sum())
+        df[c] = df.groupby("symbol")[c].ffill()
+        if n_before - int(df[c].isna().sum()):
+            qrows.append({"trade_date": None, "check_name": "room_ffill", "metric": c,
+                          "value": n_before - int(df[c].isna().sum()), "status": "info",
+                          "detail": "Room không đổi khi không có giao dịch khối ngoại → mang giá trị phiên trước"})
     # NULL theo cột – ghi nhật ký (không điền giá trị)
     for c in NUM_STOCK:
         n_null = int(df[c].isna().sum())
         if n_null:
             qrows.append({"trade_date": None, "check_name": "null_count", "metric": c, "value": n_null,
                           "status": "info", "detail": "fact_daily_stock"})
+    # Sàn niêm yết theo ngày (masterdata). Ngày thiếu masterdata → mang sàn của phiên gần nhất của chính mã đó.
+    if "board" not in df.columns:
+        df["board"] = None
+    df["board"] = df["board"].astype("string").str.upper().str.strip().replace({"": pd.NA, "NONE": pd.NA})
+    df["board"] = df.groupby("symbol")["board"].transform(lambda x: x.ffill().bfill())
+    n_off = int((df["board"].notna() & (df["board"] != "HOSE")).sum())
+    if n_off:
+        qrows.append({"trade_date": None, "check_name": "off_board", "metric": "rows_not_on_HOSE", "value": n_off,
+                      "status": "info", "detail": "Phiên mã còn ở UPCOM/HNX (trước khi chuyển sàn) – loại khỏi Ω_t HOSE"})
     # Tổng room = giới hạn sở hữu × ListedShare (as-of)
     sec = build_securities(path, write=False)
     df = attach_shares(df, sec)
     lim = stock_groups().set_index("symbol")["foreign_limit"] if not stock_groups().empty else pd.Series(dtype=float)
     df["listed_share"] = df["listed_share"].fillna(df["listed_share_api"])
     df["room"] = df["room_api"].where(df["room_api"] > 0, df["symbol"].map(lim).fillna(0.49) * df["listed_share"])
+    df["listed_share_est"] = estimate_shares_from_room(df)
+    n_est = int((df["listed_share"].isna() & df["listed_share_est"].notna()).sum())
+    if n_est:
+        qrows.append({"trade_date": None, "check_name": "listed_share_est", "metric": "rows", "value": n_est,
+                      "status": "warn", "detail": "Mã đã hủy niêm yết: số CP niêm yết ước từ tổng room ngoại SSI / 49%"})
     df["loaded_at"] = now_vn().replace(tzinfo=None)
-    cols = ["trade_date", "symbol", "source"] + NUM_STOCK + ["room", "loaded_at"]
+    cols = ["trade_date", "symbol", "source"] + NUM_STOCK + ["room", "loaded_at", "board", "listed_share_est"]
     fact = df[cols].copy()
     with db.connect(path=path) as con:
         con.execute("DELETE FROM fact_daily_stock")
@@ -112,6 +178,62 @@ def build_daily_stock(path: Optional[Path] = None) -> pd.DataFrame:
     db.log_quality(qrows, path)
     log.info("fact_daily_stock: %d dòng, %d mã, %d phiên", len(fact), fact["symbol"].nunique(), fact["trade_date"].nunique())
     return fact
+
+
+def foreign_gap_sessions(df: pd.DataFrame, min_traded: int = 50) -> List:
+    """Phiên có ≥ `min_traded` mã khớp lệnh nhưng KHÔNG mã nào có giá trị khối ngoại (fb, fs đều NULL)."""
+    t = df[df["close"].notna()]
+    if t.empty:
+        return []
+    g = t.assign(has=t["fb"].notna() | t["fs"].notna()).groupby("trade_date").agg(n=("has", "size"), k=("has", "sum"))
+    return sorted(g.index[(g["n"] >= min_traded) & (g["k"] == 0)])
+
+
+VALUE_VOL_PAIRS =(("tv", "vol"), ("tv_pt", "vol_pt"), ("fb", "fb_vol"), ("fs", "fs_vol"))
+
+
+def fix_value_units(df: pd.DataFrame, min_vnd_per_share: float = 50.0) -> int:
+    """Giá trị giao dịch bị trả theo triệu đồng: giá bình quân ngầm định = giá trị/khối lượng < 50 đ/cp (không thể có
+    với cổ phiếu HOSE, mệnh giá 10.000 đ) nhưng ×10^6 thì hợp lý → nhân 10^6. Sửa tại chỗ, trả số ô đã sửa."""
+    n = 0
+    for val, vol in VALUE_VOL_PAIRS:
+        if val not in df.columns or vol not in df.columns:
+            continue
+        px = df[val] / df[vol].where(df[vol] > 0)
+        bad = px.gt(0) & px.lt(min_vnd_per_share) & (px * 1e6).between(100, 1e7)
+        df.loc[bad, val] = df.loc[bad, val] * 1e6
+        n += int(bad.sum())
+    return n
+
+
+def fill_ref_from_prev_close(df: pd.DataFrame) -> int:
+    """Quy ref/trần/sàn về thang giá điều chỉnh cho phiên SSI không trả priceChange lẫn priceChangePercentage.
+
+    Chuỗi giá điều chỉnh liên tục qua ngày GDKHQ nên ref điều chỉnh của phiên t = close điều chỉnh phiên trước
+    của chính mã; hệ số k = ref_điều_chỉnh / ref_gốc dùng cho trần/sàn. df phải sắp theo (symbol, trade_date);
+    sửa tại chỗ, trả số dòng đã sửa. Phiên đầu tiên của mã (không có phiên trước) giữ nguyên.
+    """
+    from src.ssi_api.ssi_client import K_MAX, K_MIN
+    if "_no_chg" not in df.columns:
+        return 0
+    prev = df.groupby("symbol")["close"].transform(lambda x: x.ffill().shift(1))
+    k = prev / df["ref"]
+    m = df["_no_chg"].fillna(False).astype(bool) & df["ref"].gt(0) & prev.gt(0) & k.gt(K_MIN) & k.lt(K_MAX)
+    m &= (k - 1).abs() > 1e-6
+    df.loc[m, "ref"] = prev[m]
+    for c in ("ceiling", "floor"):
+        df.loc[m, c] = (df.loc[m, c] * k[m]).round(3)
+    return int(m.sum())
+
+
+def estimate_shares_from_room(df: pd.DataFrame, default_limit: float = 0.49) -> pd.Series:
+    """Số cổ phiếu niêm yết ƯỚC từ tổng room ngoại của chính SSI (room = giới hạn sở hữu × số CP niêm yết).
+    Chỉ dùng khi securitiesByBoard không còn mã (đã hủy niêm yết). Giới hạn sở hữu: tỷ lệ room/CP niêm yết quan sát
+    được của chính mã nếu có, nếu không 49% (mức phổ biến)."""
+    room = df["room_api"].where(df["room_api"] > 0)
+    ratio = (room / df["listed_share"]).where(df["listed_share"] > 0)
+    lim = ratio.groupby(df["symbol"]).transform("median").where(lambda x: (x > 0.05) & (x <= 1.0001))
+    return room / lim.fillna(default_limit)
 
 
 def attach_shares(df: pd.DataFrame, sec: pd.DataFrame) -> pd.DataFrame:
@@ -139,7 +261,7 @@ def build_securities(path: Optional[Path] = None, write: bool = True) -> pd.Data
     raw = raw[raw["source"].isin(pri)]
     recs = []
     for src, payload, as_of in zip(raw["source"], raw["payload"], raw["as_of"]):
-        fmap = field_map("securities", "neo" if src.upper().startswith("NEO") else "ssi")
+        fmap = field_map("securities", "ssi")
         d = {fmap[k.lower()]: v for k, v in json.loads(payload).items() if k.lower() in fmap}
         d.update({"as_of": as_of, "source": src})
         recs.append(d)
@@ -207,11 +329,13 @@ def build_dims(path: Optional[Path] = None) -> None:
     rows = []
     comp = db.query_df("SELECT index_code, symbol, as_of, source FROM raw_index_components", path=path)
     if not comp.empty:
-        comp = comp[comp["source"].isin(source_priority())]
+        comp = comp[comp["source"].isin(source_priority()) & comp["symbol"].astype(str).str.fullmatch(r"[A-Z0-9]{3}")]
+    # SSI V3 securitiesByBoard?index=VN30 chỉ trả CHÍNH mã chỉ số (không có thành phần) → < 20 mã thì coi là không có
+    if not comp.empty and comp.loc[comp["as_of"] == comp["as_of"].max(), "symbol"].nunique() >= 20:
         latest = comp["as_of"].max()
         for s in comp.loc[comp["as_of"] == latest, "symbol"]:
             rows.append({"universe": "VN30", "symbol": s, "effective_date": latest, "source": "IndexComponents"})
-    else:  # dự phòng: cột in_vn30 của stock_groups.csv
+    else:  # dự phòng: cột in_vn30 của stock_groups.csv (danh mục rổ do nhóm cập nhật – KHÔNG phải số liệu thị trường)
         g = stock_groups()
         for s in g.loc[g["in_vn30"], "symbol"]:
             rows.append({"universe": "VN30", "symbol": s, "effective_date": None, "source": "stock_groups.csv"})

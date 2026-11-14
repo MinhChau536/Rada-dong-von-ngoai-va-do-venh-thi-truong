@@ -67,8 +67,8 @@ def main() -> None:
          "kết quả": f"{bt['k'].iloc[0] / max(bt['n'].iloc[0], 1):.2f}/ngày", "đạt": "Đạt", "ghi chú": "docs/notes/alert_backtest.md"},
         {"kiểm thử": "B12.6 đối chiếu nguồn ngoài", "mục tiêu": "Cùng dấu NF với số công bố ở 10 phiên", "dữ liệu dùng": "—",
          "kết quả": "Chưa thực hiện", "đạt": "Chưa", "ghi chú": "Cần dữ liệu SSI thật – xem docs/notes/external_check.md"},
-        {"kiểm thử": "B1.4b luồng NEO ≥ 10 phiên", "mục tiêu": "≥ 10 phiên, mất kết nối < 5 phút/phiên", "dữ liệu dùng": "—",
-         "kết quả": "Chưa thực hiện (dữ liệu mẫu)", "đạt": "Chưa", "ghi chú": "Cần chạy recorder_neo với tài khoản NEO thật"},
+        {"kiểm thử": "B1.4b luồng WebSocket SSI ≥ 10 phiên", "mục tiêu": "≥ 10 phiên, mất kết nối < 5 phút/phiên", "dữ liệu dùng": "—",
+         "kết quả": "Chưa thực hiện (dữ liệu mẫu)", "đạt": "Chưa", "ghi chú": "Chạy python -m src.data.recorder_ssi mỗi phiên"},
     ]
     df = pd.DataFrame(rows)
     df.to_csv(ROOT / "docs" / "test_summary.csv", index=False, encoding="utf-8-sig")

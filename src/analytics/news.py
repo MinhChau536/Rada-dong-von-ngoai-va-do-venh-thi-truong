@@ -1,7 +1,7 @@
 """
-Tin liên quan (bước B7.7 – tùy chọn, nguồn BỔ TRỢ ngoài SSI/NEO).
+Tin liên quan (bước B7.7 – tùy chọn, nguồn BỔ TRỢ ngoài SSI).
 Rút gọn từ core/tin_tuc.py của đồ án giữa kỳ: chỉ đọc Google News RSS, có timeout, lỗi thì trả rỗng.
-Giao diện luôn ghi nhãn "Nguồn ngoài SSI/NEO".
+Giao diện luôn ghi nhãn "Nguồn ngoài SSI".
 """
 from __future__ import annotations
 

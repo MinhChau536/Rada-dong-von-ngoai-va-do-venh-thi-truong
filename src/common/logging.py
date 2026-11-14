@@ -16,11 +16,11 @@ from zoneinfo import ZoneInfo
 from src.common.config import abs_path, get
 
 VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
-_SECRET_ENV = ("SSI_CONSUMER_ID", "SSI_CONSUMER_SECRET", "NEO_USERNAME", "NEO_PASSWORD",
+_SECRET_ENV = ("SSI_API_KEY", "SSI_API_SECRET",
                "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS")
 _PATTERNS = [
     re.compile(r"(?i)(bearer\s+)[A-Za-z0-9\-_\.=]+"),
-    re.compile(r'(?i)("?(?:access_?token|accessToken|token|consumerSecret|consumer_secret|password|secret|jwt)"?\s*[:=]\s*"?)([^",\s}]+)'),
+    re.compile(r'(?i)("?(?:access_?token|accessToken|refreshToken|token|apiSecret|api_secret|consumerSecret|consumer_secret|password|secret|jwt)"?\s*[:=]\s*"?)([^",\s}]+)'),
     re.compile(r"\b\d{8,10}:[A-Za-z0-9_\-]{30,}\b"),            # dạng token bot Telegram
     re.compile(r"eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+"),  # JWT
 ]

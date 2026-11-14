@@ -37,7 +37,7 @@ def test_each_rule():
     assert 5 in rules(evaluate(_day(), LEAD.iloc[:0], FLOW, _wl(ER_M=0.03, ret=0.03)))
     assert 6 in rules(evaluate(_day(), LEAD, FLOW, _wl()))
     assert 7 in rules(evaluate(_day(), LEAD.iloc[:0], FLOW, _wl(U=0.97)))
-    assert 8 in rules(evaluate(_day(), LEAD, FLOW, None, {"source": "NEO", "since": "10:05"}))
+    assert 8 in rules(evaluate(_day(), LEAD, FLOW, None, {"status": "degraded", "since": "10:05"}))
     assert rules(evaluate(_day(), LEAD.iloc[:0], FLOW, _wl())) == []
 
 
@@ -59,7 +59,7 @@ def test_daily_limit_and_system_unlimited():
     al = []
     for i in range(8):
         al += evaluate(_day(), LEAD.iloc[:0], FLOW, _wl(symbol=f"S{i}", U=0.99))
-    al += evaluate(_day(), LEAD, FLOW, None, {"source": "NEO", "since": "10:00"})
+    al += evaluate(_day(), LEAD, FLOW, None, {"status": "degraded", "since": "10:00"})
     out = dispatch(al, datetime(2026, 10, 1, 11, 0), mode="backtest", history=_hist())
     kept = out[out["status"] == "simulated"]
     assert (kept["priority"] != "system").sum() == 5

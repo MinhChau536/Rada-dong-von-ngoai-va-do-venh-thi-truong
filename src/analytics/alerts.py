@@ -77,9 +77,10 @@ def evaluate(day: pd.Series, leaders: pd.DataFrame, top_flow: pd.DataFrame, wl: 
             out.append(_a(7, "wl_room", r.symbol, "low", f"Room ngoại của {r.symbol} đã dùng {fmt.frac_pct(r.U, 1)}", sess))
     # 8. Sự cố dữ liệu
     if system:
-        if system.get("source") == "NEO":
+        if system.get("status") in ("error", "degraded"):
             out.append(_a(8, "system_failover", "", "system",
-                          f"Đang dùng nguồn dự phòng NEO từ {system.get('since', '?')}", sess))
+                          f"Nguồn SSI FastConnect gián đoạn từ {system.get('since', '?')}: {system.get('message', '')}".rstrip(": "),
+                          sess))
         if system.get("stale_minutes") is not None and system["stale_minutes"] > A["stale_minutes"]:
             out.append(_a(8, "system_stale", "", "system",
                           f"Dữ liệu cũ hơn {int(system['stale_minutes'])} phút trong phiên", sess))
@@ -190,3 +191,75 @@ def backtest(n_sessions: Optional[int] = None, path: Optional[Path] = None, writ
                  "", "_Tạo tự động bởi `src/analytics/alerts.py::backtest` – chạy lại khi đổi ngưỡng trong settings.yaml._"]
         p.write_text("\n".join(lines), encoding="utf-8")
     return summary
+
+
+# ── B8.4b – backtest DỰ BÁO: sau phiên có cảnh báo thị trường, VN-Index các phiên kế tiếp có khác không? ──────────
+def predictive(path: Optional[Path] = None, write_note: bool = True) -> pd.DataFrame:
+    """Đánh giá giá trị thông tin của quy tắc 1–3 trên TOÀN BỘ lịch sử indicator_daily.
+
+    Tín hiệu phiên t chỉ dùng dữ liệu đến t (ngưỡng phân vị/z từ cửa sổ [t−k, t−1]) → không nhìn trước.
+    Kết quả: lợi suất VN-Index phiên t+1 và lũy kế t+1…t+5, nhân với hướng tín hiệu (mua ròng/chỉ số tăng = +1),
+    so với các phiên không có tín hiệu (Welch t, Mann–Whitney), tỷ lệ cùng hướng. Lũy kế 5 phiên chồng lấp → p chỉ
+    mang tính tham khảo; đây là đánh giá MÔ TẢ, không phải chiến lược giao dịch.
+    """
+    from scipy import stats as sst
+    A = get("alerts")
+    d = db.query_df("SELECT trade_date, vni, prev_value, dI, CR5, high_divergence, z_NF_total, D FROM indicator_daily "
+                    "ORDER BY trade_date", path=path)
+    if d.empty or len(d) < 60:
+        return pd.DataFrame()
+    r = (d["vni"] / d["prev_value"] - 1) * 100
+    d["fwd1"] = r.shift(-1)
+    d["fwd5"] = sum(r.shift(-k) for k in range(1, 6))
+    d["dD1"] = d["D"].shift(-1) - d["D"]
+    sig = {
+        "1. Chỉ số do ít mã dẫn dắt": ((d["dI"].abs() >= A["dI_min"]) & (d["CR5"] >= A["cr5_min"]), np.sign(d["dI"])),
+        "2. Độ vênh cao (D ≥ P90 250 phiên)": (d["high_divergence"].fillna(False).astype(bool), pd.Series(1.0, index=d.index)),
+        "3. Khối ngoại toàn sàn bất thường (|z| ≥ 2)": (d["z_NF_total"].abs() >= A["z_total_nf"], np.sign(d["z_NF_total"])),
+        "3a. Khối ngoại MUA ròng mạnh (z ≥ 2)": (d["z_NF_total"] >= A["z_total_nf"], pd.Series(1.0, index=d.index)),
+        "3b. Khối ngoại BÁN ròng mạnh (z ≤ −2)": (d["z_NF_total"] <= -A["z_total_nf"], pd.Series(-1.0, index=d.index)),
+    }
+    rows = []
+    for name, (mask, direction) in sig.items():
+        mask = mask.fillna(False).astype(bool)
+        for h in ("fwd1", "fwd5"):
+            ok = d[h].notna()
+            x = (d.loc[mask & ok, h] * direction[mask & ok]).to_numpy()
+            y = (d.loc[~mask & ok, h]).to_numpy()
+            if len(x) < 5:
+                rows.append({"rule": name, "horizon": h, "n_signal": len(x)})
+                continue
+            tw = sst.ttest_ind(x, y, equal_var=False)
+            mw = sst.mannwhitneyu(x, y, alternative="two-sided")
+            rows.append({"rule": name, "horizon": "t+1" if h == "fwd1" else "t+1…t+5", "n_signal": len(x),
+                         "n_base": len(y), "mean_signal_pct": float(np.mean(x)), "mean_base_pct": float(np.mean(y)),
+                         "hit_rate": float((x > 0).mean()), "base_up_rate": float((y > 0).mean()),
+                         "welch_t": float(tw.statistic), "welch_p": float(tw.pvalue), "mw_p": float(mw.pvalue)})
+        if name.startswith("2."):
+            x = d.loc[mask, "dD1"].dropna()
+            if len(x) >= 5:
+                w = sst.wilcoxon(x)
+                rows.append({"rule": name, "horizon": "ΔD phiên t+1", "n_signal": len(x),
+                             "mean_signal_pct": float(x.mean()), "hit_rate": float((x < 0).mean()),
+                             "welch_p": np.nan, "mw_p": float(w.pvalue)})
+    out = pd.DataFrame(rows)
+    out["sessions"] = len(d)
+    out["from"], out["to"] = str(pd.Timestamp(d["trade_date"].min()).date()), str(pd.Timestamp(d["trade_date"].max()).date())
+    db.replace_table("alert_predictive", out, path)
+    from src.common.config import is_main_store
+    if write_note and is_main_store(path):
+        p = abs_path("docs/notes/alert_backtest.md")
+        old = p.read_text(encoding="utf-8").split("\n## Giá trị dự báo")[0] if p.exists() else ""
+        f = lambda v, k=".2f": "–" if v is None or (isinstance(v, float) and np.isnan(v)) else format(v, k)
+        lines = [old.rstrip(), "", "## Giá trị dự báo (B8.4b) – toàn bộ lịch sử", "",
+                 f"{len(d)} phiên ({out['from'].iat[0]} → {out['to'].iat[0]}). Lợi suất VN-Index sau tín hiệu, "
+                 "nhân hướng tín hiệu (+1 khi chỉ số tăng / khối ngoại mua ròng). Lũy kế 5 phiên chồng lấp – p tham khảo.", "",
+                 "| Quy tắc | Kỳ | n tín hiệu | TB sau tín hiệu (%) | TB phiên thường (%) | Tỷ lệ cùng hướng | p Welch | p MW |",
+                 "|---|---|---|---|---|---|---|---|"]
+        for x in out.itertuples():
+            lines.append(f"| {x.rule} | {x.horizon} | {x.n_signal} | {f(getattr(x, 'mean_signal_pct', np.nan), '.3f')} | "
+                         f"{f(getattr(x, 'mean_base_pct', np.nan), '.3f')} | {f(getattr(x, 'hit_rate', np.nan), '.1%')} | "
+                         f"{f(getattr(x, 'welch_p', np.nan), '.3f')} | {f(getattr(x, 'mw_p', np.nan), '.3f')} |")
+        lines += ["", "_Tạo tự động bởi `src/analytics/alerts.py::predictive`._", ""]
+        p.write_text("\n".join(lines), encoding="utf-8")
+    return out

@@ -72,9 +72,10 @@ def market_flows(stock: pd.DataFrame) -> pd.DataFrame:
     v = stock[stock["is_valid"]].copy()
     v["absNF"] = v["net_flow"].abs()
     g = v.groupby("trade_date")
+    # min_count=1: phiên thiếu toàn bộ dữ liệu khối ngoại → NaN (không phải 0)
     out = pd.DataFrame({
-        "NF_total": g["net_flow"].sum(), "FB_total": g["fb"].sum(), "FS_total": g["fs"].sum(),
-        "tv_total_f": g["tv"].sum(), "absNF_total": g["absNF"].sum(),
+        "NF_total": g["net_flow"].sum(min_count=1), "FB_total": g["fb"].sum(min_count=1),
+        "FS_total": g["fs"].sum(min_count=1), "tv_total_f": g["tv"].sum(), "absNF_total": g["absNF"].sum(min_count=1),
     })
     share2 = v.assign(sh=v["absNF"] / v["trade_date"].map(out["absNF_total"]).replace(0, np.nan))
     out["HHI"] = share2.groupby("trade_date")["sh"].apply(lambda s: float((s ** 2).sum()))
@@ -94,7 +95,8 @@ def group_flows(stock: pd.DataFrame, mapping: pd.Series, group_type: str) -> pd.
     d = stock[stock["is_valid"]].copy()
     d["grp"] = d["symbol"].map(mapping)
     d = d.dropna(subset=["grp"])
-    g = d.groupby(["trade_date", "grp"]).agg(net_flow=("net_flow", "sum"), FB=("fb", "sum"), FS=("fs", "sum"),
+    s1 = lambda x: x.sum(min_count=1)  # noqa: E731 – thiếu khối ngoại cả nhóm → NaN
+    g = d.groupby(["trade_date", "grp"]).agg(net_flow=("net_flow", s1), FB=("fb", s1), FS=("fs", s1),
                                               TV=("tv", "sum"), n=("symbol", "nunique"),
                                               ret_eq=("ret", "mean")).reset_index()
     g["nf"] = g["net_flow"] / g["TV"].replace(0, np.nan)

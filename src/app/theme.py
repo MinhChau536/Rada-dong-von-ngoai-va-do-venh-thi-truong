@@ -79,9 +79,17 @@ section[data-testid="stSidebar"] input {{ background:rgba(255,255,255,.06) !impo
   border:1px solid rgba(255,255,255,.12) !important; }}
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{ background:rgba(255,255,255,.06) !important;
   border:1px solid rgba(255,255,255,.14) !important; }}
-section[data-testid="stSidebar"] div[data-baseweb="select"] * {{ color:#C7D2E0 !important; }}
+section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{ background:#16263D !important; }}
+section[data-testid="stSidebar"] div[data-baseweb="select"] * {{ color:#E6EDF5 !important; }}
+section[data-testid="stSidebar"] div[data-baseweb="select"] input::placeholder {{ color:#93A4B8 !important; }}
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] div:has(> input) {{ background:#16263D !important;
+  border:1px solid rgba(255,255,255,.16) !important; border-radius:10px !important; }}
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] input {{ background:transparent !important; color:#E6EDF5 !important; }}
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] input::placeholder {{ color:#93A4B8 !important; opacity:1; }}
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {{ background:transparent !important; border:none !important; }}
 section[data-testid="stSidebar"] button {{ background:rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.14) !important; }}
-section[data-testid="stSidebar"] button p {{ color:#E6EDF5 !important; }}
+section[data-testid="stSidebar"] button p {{ color:#E6EDF5 !important; font-size:13px; white-space:nowrap; }}
+section[data-testid="stSidebar"] button {{ padding:4px 8px !important; }}
 .ffr-brand {{ display:flex; align-items:center; gap:10px; margin:2px 0 14px; }}
 .ffr-logo {{ width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#14B8A6,#0F766E);
   display:flex; align-items:center; justify-content:center; color:#fff !important; font-weight:800; font-size:18px; }}
@@ -113,7 +121,7 @@ section[data-testid="stSidebar"] button p {{ color:#E6EDF5 !important; }}
 .ffr-sec h3 {{ font-size:17px; font-weight:800; color:{p['text']}; margin:0; padding:0; }}
 .ffr-sec span {{ font-size:12.5px; color:{p['muted']}; }}
 .ffr-new {{ font-size:10px; font-weight:800; background:{p['accent']}; color:#fff !important; padding:2px 6px; border-radius:5px; letter-spacing:.5px; }}
-.ffr-chip {{ display:inline-block; padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:700; }}
+.ffr-chip {{ display:inline-block; padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:700; white-space:nowrap; }}
 .ffr-intro {{ background:{p['card']}; border:1px solid {p['border']}; border-left:4px solid {p['accent']}; border-radius:10px;
   padding:9px 14px; font-size:13px; color:{p['muted']}; margin:4px 0 14px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }}
 .ffr-intro b {{ color:{p['text']}; }}
@@ -128,8 +136,9 @@ section[data-testid="stSidebar"] button p {{ color:#E6EDF5 !important; }}
 table.ffr-t {{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }}
 table.ffr-t th {{ text-align:right; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:{p['muted']};
   font-weight:700; padding:7px 8px; border-bottom:1px solid {p['border']}; white-space:nowrap; }}
-table.ffr-t td {{ text-align:right; padding:6px 8px; border-bottom:1px solid {p['track']}; color:{p['text']}; }}
+table.ffr-t td {{ white-space:nowrap; text-align:right; padding:6px 8px; border-bottom:1px solid {p['track']}; color:{p['text']}; }}
 table.ffr-t th.l, table.ffr-t td.l {{ text-align:left; }}
+table.ffr-t td.l {{ white-space:normal; }}
 table.ffr-t td:first-child {{ white-space:nowrap; }}
 table.ffr-t tr:hover td {{ background:{p['soft']}; }}
 .ffr-sym {{ font-weight:800; color:{p['accent']}; }}

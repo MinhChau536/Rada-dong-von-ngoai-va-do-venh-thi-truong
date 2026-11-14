@@ -3,7 +3,7 @@ FTSE Flow Radar – điểm vào ứng dụng Streamlit.
 
     streamlit run src/app/main.py
 
-Ứng dụng chỉ đọc dữ liệu thật tải từ SSI FastConnect Data / NEO API. Khi kho chỉ báo còn trống, chỉ mở trang
+Ứng dụng chỉ đọc dữ liệu thật tải từ SSI FastConnect V3. Khi kho chỉ báo còn trống, chỉ mở trang
 "Kết nối dữ liệu" (chẩn đoán API, IP cần đăng ký, nút tải dữ liệu) và trang "Phương pháp & giới hạn".
 """
 from __future__ import annotations
@@ -22,7 +22,12 @@ from src.app.theme import css, register_plotly  # noqa: E402
 from src.common.config import get  # noqa: E402
 
 st.set_page_config(page_title=f"{get('app.name')}", page_icon="📡", layout="wide", initial_sidebar_state="expanded")
-st.session_state.setdefault("theme", "light")
+from src.app.components.banners import background_css, banner_css, load_prefs  # noqa: E402
+
+_prefs = load_prefs()                                   # giao diện đã chọn lần trước (data/ui_prefs.json)
+st.session_state.setdefault("theme", _prefs.get("theme", "light"))
+st.session_state.setdefault("bg_choice", _prefs.get("background", "Mặc định"))
+st.session_state.setdefault("bg_overlay", float(_prefs.get("overlay", 0.82)))
 st.session_state.setdefault("bg_fx", False)  # B4.3: tắt hiệu ứng nền động, không còn tùy chọn bật
 
 from src.app.views import (p0_ket_noi, p1_tong_quan, p2_dan_dat, p3_khoi_ngoai, p4_su_kien, p5_watchlist,  # noqa: E402
@@ -67,14 +72,16 @@ if not da.ready():
                                         url_path="ket-noi", default=True))
 st.session_state["_pages"] = {pg.url_path: pg for grp in PAGES.values() for pg in grp}
 
-mode = st.session_state["theme"]
-register_plotly(mode)
-st.markdown(css(mode), unsafe_allow_html=True)
-
 nav = st.navigation(PAGES, position="hidden")
 from src.app.components import sidebar  # noqa: E402
 
-sidebar.render(PAGES, nav)
+sidebar.render(PAGES, nav)                              # thanh bên đặt theme/nền TRƯỚC khi chèn CSS
+mode = st.session_state["theme"]
+register_plotly(mode)
+st.markdown(css(mode), unsafe_allow_html=True)
+st.markdown("<style>" + banner_css(mode == "dark")
+            + background_css(st.session_state["bg_choice"], mode == "dark", st.session_state["bg_overlay"]) + "</style>",
+            unsafe_allow_html=True)
 if st.session_state.pop("sb_search_go", False) and nav.url_path != "watchlist" and "watchlist" in st.session_state["_pages"]:
     st.switch_page(st.session_state["_pages"]["watchlist"])
 nav.run()

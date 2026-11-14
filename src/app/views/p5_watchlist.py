@@ -31,24 +31,58 @@ def profiles(symbols: tuple, date) -> dict:
     return {"profile": res["profile"], "reaction": res["reaction"], "stats": res["stats"]}
 
 
+def _changed() -> None:
+    da.clear_cache()
+    st.cache_data.clear()
+    st.rerun()
+
+
 def manage(wl: List[str]) -> None:
-    with st.expander(f"⚙️ Quản lý danh mục theo dõi ({len(wl)} mã · khuyến nghị 5–10 mã)", expanded=False):
-        c1, c2, c3 = st.columns([2, 1, 2])
-        new = c1.selectbox("Thêm mã", ["—"] + [s for s in da.symbols() if s not in wl], key="p5_add")
-        if c2.button("Thêm", width="stretch") and new != "—":
-            if len(wl) >= 10:
-                st.warning("Tối đa 10 mã.")
-            else:
-                wi.add(new, "người dùng thêm")
-                da.clear_cache()
-                st.rerun()
-        rm = c3.multiselect("Xóa mã", wl, key="p5_rm")
-        if rm and st.button("Xóa các mã đã chọn"):
-            for s in rm:
-                wi.remove(s)
-            da.clear_cache()
+    """Quản lý danh mục: mỗi mã có nút ✕ xóa ngay; thêm nhiều mã cùng lúc; xóa hết / khôi phục mặc định."""
+    from src.common.config import get
+    p = pal()
+    mx = int(get("watchlist_max", 15))
+    md(f'<div class="ffr-lbl" style="margin:4px 0 6px">Danh mục đang theo dõi · {len(wl)}/{mx} mã · bấm ✕ để xóa</div>')
+    if wl:
+        per = 8
+        for i in range(0, len(wl), per):
+            cols = st.columns(per)
+            for c, s in zip(cols, wl[i:i + per]):
+                if c.button(f"✕  {s}", key=f"p5_del_{s}", width="stretch", help=f"Xóa {s} khỏi danh mục"):
+                    wi.remove(s)
+                    st.toast(f"Đã xóa {s}")
+                    _changed()
+    else:
+        md(f'<div class="ffr-card" style="color:{p["muted"]}">Danh mục trống – thêm mã bên dưới.</div>')
+    ver = st.session_state.get("p5_form_ver", 0)            # đổi key sau mỗi thao tác → ô chọn tự trống
+    c1, c2, c3, c4 = st.columns([3, 1, 1, 1.2], vertical_alignment="bottom")
+    new = c1.multiselect("Thêm mã", [s for s in da.symbols() if s not in wl], key=f"p5_add_many_{ver}",
+                         placeholder="Chọn một hoặc nhiều mã HOSE…")
+    if c2.button("➕ Thêm", width="stretch", disabled=not new, key="p5_add_btn"):
+        room = mx - len(wl)
+        for s in new[:max(room, 0)]:
+            wi.add(s, "người dùng thêm")
+        if len(new) > room:
+            st.warning(f"Tối đa {mx} mã – chỉ thêm {max(room, 0)} mã đầu.")
+        st.session_state["p5_form_ver"] = ver + 1
+        _changed()
+    confirm = c4.checkbox("Xác nhận xóa hết", key=f"p5_confirm_clear_{ver}")
+    if c3.button("🗑 Xóa hết", width="stretch", disabled=not (wl and confirm), key="p5_clear_btn"):
+        wi.clear()
+        st.session_state["p5_form_ver"] = ver + 1
+        _changed()
+    sel = st.session_state.get("selected_symbol")
+    if sel and sel not in wl:
+        a, b, c = st.columns([4, 1.2, 1.2], vertical_alignment="center")
+        a.info(f"Đang xem tạm **{sel}** (mở từ ô tra cứu / trang Tổng quan) – chưa thuộc danh mục.")
+        if b.button(f"➕ Thêm {sel}", width="stretch", key="p5_add_sel"):
+            wi.add(sel, "người dùng thêm")
+            _changed()
+        if c.button("✕ Bỏ xem tạm", width="stretch", key="p5_drop_sel"):
+            st.session_state.pop("selected_symbol", None)
             st.rerun()
-        st.caption("Danh mục lưu trong DuckDB (bảng watchlist) nên giữ nguyên sau khi tải lại trang. Không đọc tài khoản giao dịch.")
+    st.caption("Danh mục lưu trong DuckDB (bảng watchlist) – giữ nguyên sau khi tải lại trang và dùng chung với bot Telegram. "
+               "Không đọc tài khoản giao dịch.")
 
 
 @safe_block("bảng hồ sơ")
@@ -65,12 +99,13 @@ def profile_table(pf: pd.DataFrame) -> None:
                      colored(r.net_flow, fmt.bn(r.net_flow, 1)), fmt.num(r.pct60_nf, 0), f"{int(r.streak):+d}",
                      soft_chip(ABSORB_LABELS[r.absorb_state], ABSORB_COLORS[r.absorb_state]),
                      fmt.frac_pct(r.U, 1), f"{fmt.num(r.beta_dimson, 2)} / {fmt.num(r.beta_intraday, 2)}"])
-    md(table_html(["Mã", "Giá", "%", "ER^I (đ.%)", "ER^M (đ.%)", "Đóng góp (đ)", "NN ròng", "Phân vị nf 60", "Chuỗi",
-                   "Hấp thụ", "Room", "β Dimson / nội ngày"], rows, left=(0,)))
+    md(table_html(["Mã", "Giá", "%", "ERᴵ (đ.%)", "ERᴹ (đ.%)", "Đóng góp (đ)", "NN ròng", "Phân vị nf 60", "Chuỗi",
+                   "Hấp thụ", "Room", "βᴰ / βᴵᴰ"], rows, left=(0,)))
 
 
 def render() -> None:
-    header("Watchlist Impact", "Trạng thái thị trường và dòng vốn đã tác động thế nào đến từng mã bạn theo dõi")
+    header("Watchlist Impact", "Trạng thái thị trường và dòng vốn đã tác động thế nào đến từng mã bạn theo dõi · "
+           "tối ưu danh mục theo khẩu vị rủi ro")
     status_bar.render()
     wi.ensure_default()
     wl = wi.get_watchlist()
@@ -85,7 +120,7 @@ def render() -> None:
         return
     data = profiles(tuple(syms), date)
     pf = data["profile"]
-    section("Hồ sơ phản ứng hôm nay", "ER^I = r − r_VNI · ER^M = r − trung vị thị trường · β Dimson 120 phiên · β nội ngày 5 phút vs VN30")
+    section("Hồ sơ phản ứng hôm nay", "ERᴵ = r − r_VNI · ERᴹ = r − trung vị thị trường · β Dimson 120 phiên · β nội ngày 5 phút vs VN30")
     profile_table(pf)
     for s in pf.itertuples():
         md(f'<div style="font-size:13px;margin:3px 0">• {esc(s.sentence)}</div>')
@@ -117,6 +152,8 @@ def render() -> None:
             k = kw[kw["test"] == "Kruskal–Wallis"]
             st.caption("Kruskal–Wallis (chỉ khi mỗi loại ≥ 15 phiên): " + " · ".join(
                 f"{r.group}: p = {fmt.num(r.p_value, 4)}" for r in k.itertuples()))
+    from src.app.views import p5_portfolio
+    p5_portfolio.render(wl, date)
     section("Chi tiết từng mã")
     pick = st.selectbox("Mã", syms, index=syms.index(sel) if sel in syms else 0, key="p5_pick")
     r = pf[pf["symbol"] == pick].iloc[0]
@@ -139,11 +176,11 @@ def render() -> None:
     h = h[h["trade_date"] <= date].tail(120)
     plot(charts.line(h.assign(nf_ma=h["nf"].rolling(5).mean()), "trade_date", {"nf": "nf", "nf_ma": "nf trung bình 5 phiên"}, p,
                      260, f"Dòng vốn ngoại chuẩn hóa nf của {pick} – 120 phiên"), "p5_nf")
-    with st.expander("📰 Tin liên quan (nguồn ngoài SSI/NEO – Google News RSS)"):
+    with st.expander("📰 Tin liên quan (nguồn ngoài SSI – Google News RSS)"):
         from src.analytics.news import latest
         items = latest(pick)
         if not items:
             st.caption("Không lấy được tin (mạng bị chặn hoặc chưa có tin).")
         for it in items:
             st.markdown(f"- [{it['title']}]({it['link']}) · _{it['source']}_ · {it['date']}")
-        st.caption("Nhãn: Nguồn ngoài SSI/NEO – chỉ để tham khảo bối cảnh.")
+        st.caption("Nhãn: Nguồn ngoài SSI – chỉ để tham khảo bối cảnh.")

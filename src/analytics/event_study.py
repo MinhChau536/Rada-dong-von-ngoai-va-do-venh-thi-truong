@@ -7,8 +7,9 @@ B6.1 Nhóm đối chứng: mỗi mã FTSE ghép 1 mã HOSE ngoài rổ gần nh�
 B6.2 Mô hình thị trường r_i = α + β r_m trên cửa sổ ước lượng [−130; −11]; mã có w ≥ 3% dùng
      VN-Index loại trừ chính mã: r_m,−i = (ΔI − C_i) / (I_{t−1}(1 − w_i)).
 B6.3 (9)  AR = r − (α̂ + β̂ r_m);  CAR(τ1,τ2) = Σ AR;  CAAR = mean CAR. Độ vững: mô hình điều chỉnh thị trường.
-B6.4 Kiểm định t cắt ngang; BMP (Boehmer–Musumeci–Poulsen 1991) có hiệu chỉnh sai số dự báo; dấu tổng quát
-     (Cowan 1992); bootstrap 2000 lần; FTSE vs đối chứng: Welch t, Mann–Whitney.
+B6.4 Kiểm định t cắt ngang; BMP (Boehmer–Musumeci–Poulsen 1991) có hiệu chỉnh sai số dự báo; BMP điều chỉnh
+     tương quan chéo Kolari–Pynnönen (2010) – mọi mã FTSE chung MỘT ngày sự kiện nên phần dư tương quan, BMP thường
+     bác bỏ quá mức; dấu tổng quát (Cowan 1992); bootstrap 2000 lần; FTSE vs đối chứng: Welch t, Mann–Whitney.
 B6.5 (10) AFF = nf − mean(nf_est);  AVol = ln TV − mean(ln TV_est); cộng dồn như CAR.
 """
 from __future__ import annotations
@@ -74,7 +75,8 @@ def match_control(s: pd.DataFrame, write: bool = True) -> Optional[pd.DataFrame]
                      "liq_pct_control": round(feat.loc[c1, "liq_pct"], 4) if c1 else None})
     out = pd.DataFrame(rows)
     if write:
-        out.to_csv(CONFIG_DIR / "control_group.csv", index=False, encoding="utf-8")
+        from src.common.config import control_group_path
+        out.to_csv(control_group_path(), index=False, encoding="utf-8")
     return out
 
 
@@ -165,6 +167,7 @@ class EventStudy:
         avol = lt.iloc[w0:w1 + 1].to_numpy() - lt_e.mean()
         saff = aff / (nf_e.std() if nf_e.std() > 0 else np.nan)
         return {"symbol": sym, "alpha": a, "beta": b, "sigma": sigma, "n_est": T, "p_pos": p_pos,
+                "resid": pd.Series(resid, index=er.index[ok.to_numpy()]),
                 "taus": taus, "ar": ar, "sar": sar, "aff": aff, "saff": saff, "avol": avol,
                 "market": "VNI_ex" if m is not self.rm else "VNI"}
 
@@ -196,8 +199,20 @@ def bootstrap_ci(x: np.ndarray, reps: int, seed: int = 7, alpha: float = 0.05) -
     return float(np.quantile(means, alpha / 2)), float(np.quantile(means, 1 - alpha / 2))
 
 
-def car_tests(cars: np.ndarray, scars: np.ndarray, p_pos: np.ndarray, reps: int) -> List[Dict]:
-    """t cắt ngang, BMP, dấu tổng quát, bootstrap."""
+def mean_cross_corr(results: List[Dict]) -> float:
+    """r̄ – tương quan chéo bình quân của phần dư cửa sổ ước lượng giữa các mã (Kolari–Pynnönen 2010)."""
+    cols = {r["symbol"]: r["resid"] for r in results if isinstance(r.get("resid"), pd.Series)}
+    if len(cols) < 2:
+        return 0.0
+    m = pd.DataFrame(cols).corr(min_periods=30).to_numpy()
+    iu = np.triu_indices_from(m, k=1)
+    v = m[iu]
+    v = v[~np.isnan(v)]
+    return float(v.mean()) if len(v) else 0.0
+
+
+def car_tests(cars: np.ndarray, scars: np.ndarray, p_pos: np.ndarray, reps: int, rbar: Optional[float] = None) -> List[Dict]:
+    """t cắt ngang, BMP, BMP điều chỉnh Kolari–Pynnönen (nếu có r̄), dấu tổng quát, bootstrap."""
     out = []
     c = cars[~np.isnan(cars)]
     n = len(c)
@@ -211,6 +226,14 @@ def car_tests(cars: np.ndarray, scars: np.ndarray, p_pos: np.ndarray, reps: int)
             tb = sc.mean() * np.sqrt(len(sc)) / sc.std(ddof=1)
             out.append({"test": "BMP", "statistic": tb, "p_value": 2 * stats.t.sf(abs(tb), len(sc) - 1),
                         "n": len(sc), "estimate": c.mean(), "ci_lo": lo, "ci_hi": hi})
+            if rbar is not None and np.isfinite(rbar):
+                nn = len(sc)
+                f = (1 - rbar) / (1 + (nn - 1) * rbar) if 1 + (nn - 1) * rbar > 0 else np.nan
+                if f == f and f > 0:
+                    ta = tb * np.sqrt(f)
+                    out.append({"test": "BMP điều chỉnh Kolari–Pynnönen", "statistic": ta,
+                                "p_value": 2 * stats.t.sf(abs(ta), nn - 1), "n": nn, "estimate": c.mean(),
+                                "ci_lo": lo, "ci_hi": hi, "note": f"r̄ = {rbar:.3f}"})
         pp = np.nanmean(p_pos) if len(p_pos) else 0.5
         wpos = int((c > 0).sum())
         if 0 < pp < 1:
@@ -284,14 +307,15 @@ def run_all(stock: pd.DataFrame, day: pd.DataFrame, variant: str = "base", est_w
                 if sub.empty:
                     continue
                 pp = np.array([r["p_pos"] for r in lst])
-                for t in car_tests(sub["CAR"].to_numpy(), sub["SCAR"].to_numpy(), pp, reps):
+                rbar = mean_cross_corr(lst)
+                for t in car_tests(sub["CAR"].to_numpy(), sub["SCAR"].to_numpy(), pp, reps, rbar):
                     srows.append({"hypothesis": "H3a", "metric": "CAR", "event_id": e.event_id, "group": gname,
                                   "window": wl, "model": model, "variant": variant, **t})
                 for metric, std_col, hyp in (("CAFF", "SCAFF", "H3b"), ("CAVol", None, "H3b")):
                     x = sub[metric].to_numpy()
                     sx = sub[std_col].to_numpy() if std_col else x
                     for t in car_tests(x, sx, np.full(len(x), 0.5), reps):
-                        if metric == "CAVol" and t["test"] == "BMP":
+                        if metric == "CAVol" and t["test"].startswith("BMP"):
                             continue
                         srows.append({"hypothesis": hyp, "metric": metric, "event_id": e.event_id, "group": gname,
                                       "window": wl, "model": model, "variant": variant, **t})

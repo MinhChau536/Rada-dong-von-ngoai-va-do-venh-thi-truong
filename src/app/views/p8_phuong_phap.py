@@ -39,7 +39,7 @@ INHERITED = [
     ("reports/pdf_generator.py, reports/cover.py, assets/fonts/", "src/reports/*, assets/fonts/", "Giữ khung & font Be Vietnam Pro"),
     ("core/tin_tuc.py", "src/analytics/news.py", "Rút gọn, chỉ Google News RSS, nhãn nguồn ngoài"),
     ("WatchlistService", "src/analytics/watchlist_impact.py", "Giữ quản lý danh sách, thêm hồ sơ phản ứng"),
-    ("tests/fakes.py, máy chủ WebSocket giả lập", "tests/test_failover.py, tests/test_clients.py", "Ý tưởng kiểm thử không cần mạng"),
+    ("tests/fakes.py", "tests/test_operations.py", "Ý tưởng kiểm thử không cần mạng (phiên HTTP giả)"),
     ("components/background_fx.py", "—", "Tắt (B4.3) – giao diện tĩnh"),
 ]
 
@@ -90,7 +90,7 @@ def render() -> None:
     • Khác biệt trước/sau 21/9/2026 không quy hoàn toàn cho nâng hạng (lãi suất, tỷ giá, kết quả kinh doanh đồng thời).<br>
     • Nghiên cứu sự kiện ~25–30 mã nhóm xử lý → độ mạnh thống kê hạn chế; giai đoạn sau hiệu lực còn ngắn.<br>
     • Danh sách FTSE trong cấu hình phải đối chiếu thông báo chính thức (≥ 2 nguồn) trước khi diễn giải.<br>
-    • Mọi số liệu tải từ SSI FastConnect Data (nguồn chính) và luồng WebSocket NEO API (phụ); phiên dùng nguồn NEO được gắn nhãn trên trang Chất lượng dữ liệu.
+    • Mọi số liệu tải từ SSI FastConnect V3 (REST + WebSocket). Giá lịch sử của SSI đã điều chỉnh quyền; giá tham chiếu/trần/sàn được quy về cùng thang nên lợi suất ngày khớp % thay đổi chính thức.
     </div>""")
     section("Mã kế thừa từ đồ án giữa kỳ", "Kho web_phantichchungkhoan – ghi nguồn theo yêu cầu liêm chính học thuật")
     md(table_html(["Thành phần giữa kỳ", "Vị trí trong bản 3.2", "Cách dùng"], [list(x) for x in INHERITED], left=(0, 1, 2)))

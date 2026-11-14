@@ -6,8 +6,10 @@
 # Dữ liệu, nhật ký, đầu ra
 data/*.duckdb
 data/*.duckdb.wal
-data/neo_schemas.bin
 data/checkpoints/
+data/ui_prefs.json
+data/ui_background.*
+data/.update.lock
 logs/
 reports_out/
 *.log

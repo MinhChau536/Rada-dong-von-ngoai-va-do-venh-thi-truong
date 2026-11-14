@@ -375,7 +375,7 @@ def render_performance(data: Dict) -> None:
         s = sh[sh["trade_date"] <= d].set_index("trade_date")["close"]
         series[target] = s[s.index >= d - pd.Timedelta(days=365)]
         rows[target] = period_returns(s)
-    c1, c2 = st.columns([1, 1.2], gap="medium")
+    c1, c2 = st.columns([1, 1.35], gap="medium")
     with c1:
         plot(charts.line_comparison(series, p), "p1_perf")
     with c2:
@@ -387,7 +387,7 @@ def render_performance(data: Dict) -> None:
 
 
 def render_footer() -> None:
-    md(f'<div class="ffr-foot"><span>Nguồn: SSI FastConnect Data (chính), VPBankS NEO API (phụ) · giờ Việt Nam'
+    md(f'<div class="ffr-foot"><span>Nguồn: SSI FastConnect V3 (REST + WebSocket) · giờ Việt Nam'
        f' · phương pháp tại trang "Phương pháp & giới hạn"</span>'
        f'<span>{get("app.disclaimer")}</span></div>')
 

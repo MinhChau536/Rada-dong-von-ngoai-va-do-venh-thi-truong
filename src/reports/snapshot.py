@@ -1,6 +1,7 @@
 """
-Mẫu Market Snapshot (bước B9.1) – 3 trang: (1) trạng thái + thẻ + nhận định; (2) dẫn dắt + độ rộng + khối ngoại;
-(3) watchlist. Dòng "số liệu trong phiên, chưa hoàn tất", giờ chụp, nguồn. Tên tệp FFR_snapshot_yyyymmdd_hhmm.pdf.
+Mẫu Market Snapshot (bước B9.1): (1) tóm tắt điều hành + 4 chỉ số + diễn biến VN-Index; (2) trạng thái phiên +
+nhận định + triển vọng thống kê; (3) tổng quan thị trường (sức khỏe, độ rộng mở rộng, hiệu suất kỳ, ngành, cổ phiếu
+nổi bật); (4) dẫn dắt + độ rộng + khối ngoại; (5) watchlist. Dòng "số liệu trong phiên, chưa hoàn tất", giờ chụp, nguồn. Tên tệp FFR_snapshot_yyyymmdd_hhmm.pdf.
 """
 from __future__ import annotations
 
@@ -116,8 +117,14 @@ def build(date=None, db_path=None) -> Optional[Path]:
     ts = now_vn().replace(tzinfo=None)
     pdf = FFRPdf("Market Snapshot", f"Chụp lúc {ts:%H:%M %d/%m/%Y} (giờ VN) · phiên {ctx['date']:%d/%m/%Y}",
                  "SỐ LIỆU TRONG PHIÊN, CHƯA HOÀN TẤT", ctx["is_demo"])
+    from src.reports import sections
+    pdf.add_page()
+    sections.page_summary(pdf, ctx)
     pdf.add_page()
     page_market(pdf, ctx)
+    sections.page_outlook(pdf, ctx)
+    pdf.add_page()
+    sections.page_overview(pdf, ctx)
     pdf.add_page()
     page_leaders(pdf, ctx)
     pdf.add_page()

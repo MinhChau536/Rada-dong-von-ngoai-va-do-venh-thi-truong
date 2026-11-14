@@ -1,7 +1,7 @@
 """
 Chạy lại TOÀN BỘ chuỗi xử lý từ raw (bước B12.3 – tái lập).
 
-    python -m src.data.rebuild_all                 # dựng lại toàn bộ chỉ báo từ bảng raw_* (dữ liệu SSI/NEO đã tải)
+    python -m src.data.rebuild_all                 # dựng lại toàn bộ chỉ báo từ bảng raw_* (dữ liệu SSI FastConnect V3 đã tải)
     python -m src.data.rebuild_all --hash          # in mã băm kết quả để so sánh hai lần chạy
 
 raw → fact → indicator_* → nghiên cứu sự kiện, DiD, kiểm định → watchlist → chạy lại cảnh báo.
@@ -74,7 +74,7 @@ def robustness_table(st: pd.DataFrame, day: pd.DataFrame, path: Optional[Path] =
         if res.empty:
             continue
         sel = res[(res["metric"] == "CAR") & (res["window"] == "[-1;1]") &
-                  (res["test"].isin(["BMP", "Welch t (FTSE − đối chứng)"]))]
+                  (res["test"].isin(["BMP", "BMP điều chỉnh Kolari–Pynnönen", "Welch t (FTSE − đối chứng)"]))]
         for r in sel.itertuples():
             rows.append({"variant": name, "event_id": r.event_id, "group": r.group, "test": r.test,
                          "estimate": r.estimate, "statistic": r.statistic, "p_value": r.p_value, "n": r.n})
@@ -86,6 +86,17 @@ def robustness_table(st: pd.DataFrame, day: pd.DataFrame, path: Optional[Path] =
             rows.append({"variant": "D dùng trung bình đồng trọng số", "event_id": "", "group": "Toàn sàn",
                          "test": "H1a " + r["test"], "estimate": r["estimate"], "statistic": r["statistic"],
                          "p_value": r["p_value"], "n": r["n"]})
+    for r in stats_tests.h1a(day, pre_sessions=0):
+        if r["test"].startswith("Mann") or r["test"].startswith("Kiểm định hai"):
+            rows.append({"variant": "H1a so với TOÀN BỘ lịch sử trước mốc", "event_id": "", "group": "Toàn sàn",
+                         "test": "H1a " + r["test"], "estimate": r["estimate"], "statistic": r["statistic"],
+                         "p_value": r["p_value"], "n": r["n"]})
+    # H4: nhóm cơ sở dài (từ periods.pre_start) thay vì 250 phiên ngay trước E1
+    for r in stats_tests.h4(day, pre_sessions=0, variant="H4 cơ sở dài"):
+        if r["test"].startswith("OLS"):
+            rows.append({"variant": "H4 cơ sở từ " + str(get("periods.pre_start", "2019-01-02")), "event_id": "",
+                         "group": r["window"], "test": "H4 " + r["metric"], "estimate": r["estimate"],
+                         "statistic": r["statistic"], "p_value": r["p_value"], "n": r["n"]})
     df = pd.DataFrame(rows)
     df["sign"] = np.sign(df["estimate"])
     df["sig_5pct"] = df["p_value"] < 0.05
@@ -122,6 +133,8 @@ def main(path: Optional[Path] = None, robustness: bool = True, backtest: bool = 
     out["analytics"] = run_analytics(path, robustness)
     if backtest:
         out["alerts_backtest"] = alerts.backtest(path=path)
+        pred = alerts.predictive(path=path)
+        out["alerts_predictive_rows"] = len(pred)
     out["hash"] = results_hash(path)
     out["seconds"] = round(time.time() - t0, 1)
     log.info("Hoàn tất rebuild_all trong %.1f giây – hash %s", out["seconds"], out["hash"])

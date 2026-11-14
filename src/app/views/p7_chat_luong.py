@@ -1,5 +1,5 @@
-"""Trang 7 – Chất lượng dữ liệu (bước B11.1, B12.7): trạng thái SSI/NEO; lịch sử chuyển nguồn; độ đầy đủ theo phiên;
-biểu đồ ε; đối chiếu độ rộng; đối chiếu SSI–NEO; luồng NEO lưu trữ; nhật ký lỗi; xuất CSV."""
+"""Trang 7 – Chất lượng dữ liệu (bước B11.1, B12.7): trạng thái nguồn SSI; nhật ký sự cố; độ đầy đủ theo phiên;
+biểu đồ ε; đối chiếu độ rộng; luồng WebSocket SSI lưu trữ; đối chiếu luồng ↔ REST cuối phiên; nhật ký lỗi; xuất CSV."""
 from __future__ import annotations
 
 import json
@@ -15,38 +15,54 @@ from src.common import fmt
 from src.common.config import get
 
 
-def ssi_neo_compare() -> pd.DataFrame:
-    """B12.7 – so giá đóng cửa (tin stockInfo cuối phiên của NEO) với SSI cho các phiên có cả hai nguồn."""
-    neo = da.table("raw_stream_neo")
-    if neo.empty:
+def stream_vs_rest() -> pd.DataFrame:
+    """B12.7 – so tin cuối phiên của luồng WebSocket SSI (giá khớp cuối, khối ngoại lũy kế kênh room) với số liệu REST
+    securitiesSummary cuối phiên, cho các mã có cả hai."""
+    raw = da.table("raw_stream")
+    if raw.empty:
         return pd.DataFrame()
-    neo = neo[neo["channel"] == "stockInfo"].sort_values("recv_ts").groupby(["session_date", "symbol"]).tail(1)
-    rows = []
-    for r in neo.itertuples():
+    raw = raw[raw["channel"].isin(["trade", "room"])].sort_values("recv_ts")
+    last = raw.groupby(["session_date", "symbol", "channel"]).tail(1)
+    rows = {}
+    for r in last.itertuples():
         try:
             pl = json.loads(r.payload)
         except ValueError:
             continue
-        rows.append({"trade_date": pd.Timestamp(r.session_date), "symbol": r.symbol, "neo_close": pl.get("closePrice"),
-                     "neo_fb": pl.get("foreignBuyValue"), "neo_ts": pd.Timestamp(r.recv_ts)})
-    n = pd.DataFrame(rows)
+        k = (pd.Timestamp(r.session_date), r.symbol)
+        d = rows.setdefault(k, {"trade_date": k[0], "symbol": k[1]})
+        if r.channel == "trade":
+            d["ws_close"] = pl.get("price")
+        else:
+            d["ws_fb"], d["ws_fs"] = pl.get("buy_value"), pl.get("sell_value")
+    n = pd.DataFrame(list(rows.values()))
     if n.empty:
         return n
-    s = pd.concat([da.stock_day(d)[["trade_date", "symbol", "close", "fb"]] for d in n["trade_date"].unique()])
-    m = n.merge(s, on=["trade_date", "symbol"], how="left")
+    have = {pd.Timestamp(x) for x in da.sessions()}
+    days = [pd.Timestamp(d) for d in n["trade_date"].unique() if pd.Timestamp(d) in have]
+    if not days:
+        return pd.DataFrame()
+    s = pd.concat([da.stock_day(d)[["trade_date", "symbol", "close", "fb", "fs"]] for d in days])
+    m = n.merge(s, on=["trade_date", "symbol"], how="inner")
+    for c in ("ws_close", "ws_fb", "ws_fs"):
+        if c not in m:
+            m[c] = None
+        m[c] = pd.to_numeric(m[c], errors="coerce")
 
     def cls(r):
-        if pd.isna(r["close"]) or pd.isna(r["neo_close"]):
+        if pd.isna(r["close"]) or (pd.isna(r["ws_close"]) and pd.isna(r["ws_fb"])):
             return "Thiếu dữ liệu"
-        if abs(r["neo_close"] - r["close"]) < 1e-6:
-            return "Khớp" if abs((r["neo_fb"] or 0) - (r["fb"] or 0)) <= 0.02 * max(r["fb"] or 1, 1) else "Lệch thời điểm"
-        return "Khác phạm vi / lệch"
+        price_ok = pd.isna(r["ws_close"]) or abs(r["ws_close"] - r["close"]) < 1e-6
+        fb_ok = pd.isna(r["ws_fb"]) or abs(r["ws_fb"] - (r["fb"] or 0)) <= 0.02 * max(r["fb"] or 1, 1)
+        if price_ok and fb_ok:
+            return "Khớp"
+        return "Lệch thời điểm (luồng dừng trước ATC / thỏa thuận cuối ngày)" if price_ok else "Lệch giá"
     m["kết quả"] = m.apply(cls, axis=1)
     return m
 
 
 def render() -> None:
-    header("Chất lượng dữ liệu", "Minh bạch nguồn, độ đầy đủ, sai số tái lập và đối chiếu chéo SSI–NEO")
+    header("Chất lượng dữ liệu", "Minh bạch nguồn SSI FastConnect V3, độ đầy đủ, sai số tái lập và đối chiếu luồng ↔ REST")
     status_bar.render()
     p = pal()
     q = da.table("data_quality_log")
@@ -67,7 +83,7 @@ def render() -> None:
                             "khớp lệnh" if not meta.empty and meta["denominator"].iloc[0] == "match" else "khớp + thỏa thuận")]):
         with c:
             md(h)
-    section("Trạng thái nguồn & lịch sử chuyển nguồn")
+    section("Trạng thái nguồn & nhật ký sự cố")
     c1, c2 = st.columns(2)
     with c1:
         ss = da.source_status()
@@ -76,11 +92,11 @@ def render() -> None:
     with c2:
         ev = da.table("source_events")
         if ev.empty:
-            st.caption("Chưa có sự kiện chuyển nguồn (quy tắc: SSI lỗi 3 lần hoặc im lặng > 120 giây → NEO; SSI ổn định 5 phút → quay lại).")
+            st.caption(f"Chưa có sự cố (quy tắc: luồng WebSocket SSI im lặng > {get('stream.silence_sec', 120)} giây trong phiên → ghi sự cố, báo Telegram).")
         else:
-            md(table_html(["Thời điểm", "Từ", "Sang", "Lý do"], [[str(r.ts)[:19], r.from_source, r.to_source, r.reason]
+            md(table_html(["Thời điểm", "Nguồn", "Sự cố"], [[str(r.ts)[:19], r.from_source, r.reason]
                                                                   for r in ev.sort_values("ts", ascending=False).head(10).itertuples()],
-                          left=(0, 1, 2, 3)))
+                          left=(0, 1, 2)))
     c1, c2 = st.columns(2, gap="medium")
     with c1:
         section("Độ đầy đủ theo phiên")
@@ -90,26 +106,26 @@ def render() -> None:
     with c2:
         section("Sai số tái lập ε theo phiên (điểm)", "ε = ΔI − ΣC")
         plot(charts.line(d, "trade_date", {"eps": "ε"}, p), "p7_eps")
-    section("Đối chiếu độ rộng với SSI", "Tự đếm − Advances/Declines/NoChanges của DailyIndex")
+    section("Đối chiếu độ rộng với SSI", "Tự đếm − totalAdvanceStock/totalDeclineStock/totalNoChangeStock của indexSummary")
     if not br.empty:
         bad = br[br["status"] != "ok"].sort_values("trade_date", ascending=False)
         st.caption(f"{len(br) - len(bad)}/{len(br)} phiên lệch ≤ {get('cleaning.breadth_tolerance')} mã.")
         md(table_html(["Phiên", "Lệch lớn nhất", "Chi tiết"],
                       [[f"{pd.Timestamp(r.trade_date):%d/%m/%Y}", str(int(r.value)), r.detail] for r in br.sort_values("value", ascending=False).head(8).itertuples()],
                       left=(0, 2)))
-    section("Luồng NEO WebSocket có lưu trữ", "Chuẩn tối thiểu của đề: ≥ 1 luồng WebSocket có lưu trữ · mục tiêu ≥ 10 phiên, mất kết nối < 5 phút/phiên")
-    ns, gaps = da.neo_stream_stats(), da.neo_gaps()
+    section("Luồng WebSocket SSI V3 có lưu trữ", "Chuẩn tối thiểu của đề: ≥ 1 luồng WebSocket có lưu trữ · mục tiêu ≥ 10 phiên, mất kết nối < 5 phút/phiên")
+    ns, gaps = da.stream_stats(), da.stream_gaps()
     if ns.empty:
-        empty("Chưa có tin NEO – chạy `python -m src.data.recorder_neo` trong giờ giao dịch.")
+        empty("Chưa có tin – chạy `python -m src.data.recorder_ssi` trong giờ giao dịch (hoặc nút trên trang Kết nối dữ liệu).")
     else:
         m = ns.merge(gaps, on="session_date", how="left") if not gaps.empty else ns
         md(table_html(["Phiên", "Nguồn", "Số tin", "Tin đầu", "Tin cuối", "Mất kết nối (phút)"],
                       [[f"{pd.Timestamp(r.session_date):%d/%m/%Y}", r.source, f"{r.n_msg:,}".replace(",", "."), str(r.first_ts)[11:19],
                         str(r.last_ts)[11:19], fmt.num(getattr(r, "gap_minutes", None), 1)] for r in m.itertuples()], left=(0, 1)))
-    section("Đối chiếu SSI–NEO", "Giá đóng cửa & khối ngoại mua của mã có cả hai nguồn – phân loại khớp / lệch thời điểm / khác phạm vi / thiếu")
-    cmp_ = ssi_neo_compare()
+    section("Đối chiếu luồng WebSocket ↔ REST cuối phiên", "Giá khớp cuối & khối ngoại mua lũy kế (kênh room) so với securitiesSummary")
+    cmp_ = stream_vs_rest()
     if cmp_.empty:
-        empty("Chưa có phiên nào có cả hai nguồn.")
+        empty("Chưa có phiên nào có cả luồng WebSocket và số liệu REST cuối phiên.")
     else:
         st.dataframe(cmp_["kết quả"].value_counts().rename("số quan sát"))
         with st.expander("Chi tiết"):
@@ -117,7 +133,7 @@ def render() -> None:
     section("Nhật ký tải dữ liệu & lỗi")
     il = da.table("ingest_log")
     if il.empty:
-        st.caption("Chưa có lần gọi API (chế độ dữ liệu mẫu không gọi SSI/NEO).")
+        st.caption("Chưa có lần gọi API SSI nào được ghi.")
     else:
         st.dataframe(il.sort_values("ts", ascending=False).head(50), width="stretch")
     st.download_button("⬇️ Xuất bảng chất lượng (CSV)", q.to_csv(index=False).encode("utf-8-sig"),

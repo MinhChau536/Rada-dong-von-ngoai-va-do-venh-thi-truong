@@ -1,7 +1,7 @@
 """
 BỘ SINH DỮ LIỆU GIẢ LẬP – CHỈ DÙNG CHO KIỂM THỬ TỰ ĐỘNG (tests/).
 
-Không được import từ src/: ứng dụng, PDF, bot chỉ dùng dữ liệu tải từ SSI/NEO.
+Không được import từ src/: ứng dụng, PDF, bot chỉ dùng dữ liệu tải từ SSI FastConnect V3.
 Mô-đun ghi vào kho DuckDB TẠM của pytest (tmp_path) để kiểm thử chuỗi raw → fact → chỉ báo → phân tích
 có đúng công thức, không nhìn trước và tái lập được – giống "fixture" trong kiểm thử phần mềm.
 """
@@ -21,7 +21,6 @@ from src.data import database as db
 
 log = get_logger(__name__)
 SRC = "SSI"
-SRC_NEO = "NEO"
 
 # Ngày nghỉ lễ HOSE (gần đúng, chỉ dùng cho lịch mẫu)
 HOLIDAYS = {
@@ -80,7 +79,7 @@ class DemoMarket:
     def __init__(self, end: Optional[date] = None, seed: Optional[int] = None):
         self.seed = int(seed or 20251008)
         self.rng = np.random.default_rng(self.seed)
-        self.start = pd.Timestamp(get("history.start_date", "2025-04-01")).date()
+        self.start = date(2025, 4, 1)          # cố định: bộ kiểm thử không phụ thuộc history.start_date của kho thật
         self.end = end or today_vn()
         self.days = trading_days(self.start, self.end)
         g = stock_groups()
@@ -280,7 +279,8 @@ class DemoMarket:
             n_ce, n_fl = int((close >= ceil_).sum() - (halted & (close >= ceil_)).sum()), int((close <= floor_).sum())
             jitter = int(rng.random() < 0.08)  # đôi khi SSI đếm thêm CCQ/ETF → lệch 1 mã (kiểm tra B2.4)
             for code, rr, a, dcl, nc, vv, tt in (
-                ("VNINDEX", r_vni, adv + jitter, dec, noc, vol[valid].sum(), tv[valid].sum()),
+                # quy ước SSI V3: số mã tăng KHÔNG gồm mã trần, số mã giảm KHÔNG gồm mã sàn (trần/sàn đếm riêng)
+                ("VNINDEX", r_vni, adv - n_ce + jitter, dec - n_fl, noc, vol[valid].sum(), tv[valid].sum()),
                 ("VN30", r_v30, int((close > ref)[v30].sum()), int((close < ref)[v30].sum()),
                  int((close == ref)[v30].sum()), vol[v30].sum(), tv[v30].sum()),
                 ("HNXINDEX", r_hnx, None, None, None, 6.8e7 * np.exp(rng.normal(0, .3)), 1.2e12 * np.exp(rng.normal(0, .3))),
@@ -356,47 +356,6 @@ class DemoMarket:
                          "Volume": _s(v), "Value": _s(v * c)})
             prev = c
 
-    # ── luồng NEO mẫu ─────────────────────────────────────────────────────────
-    def neo_stream(self, stock: pd.DataFrame, index: pd.DataFrame, sessions: int, watch: List[str]) -> pd.DataFrame:
-        rng = np.random.default_rng(self.seed + 11)
-        rows = []
-        ix = index[index["IndexId"] == "VNINDEX"].copy()
-        ix["d"] = pd.to_datetime(ix["TradingDate"], format="%d/%m/%Y")
-        st = stock.copy()
-        st["d"] = pd.to_datetime(st["TradingDate"], format="%d/%m/%Y")
-        for d in self.days[-sessions:]:
-            irow = ix[ix["d"] == d].iloc[0]
-            o, c = float(irow["OpenIndex"]), float(irow["IndexValue"])
-            minutes = [datetime.combine(d.date(), datetime.min.time()) + timedelta(hours=9, minutes=m) for m in range(0, 151)] + \
-                      [datetime.combine(d.date(), datetime.min.time()) + timedelta(hours=13, minutes=m) for m in range(0, 106)]
-            gap_start = rng.integers(20, len(minutes) - 20)          # một lần mất kết nối ngắn mỗi phiên
-            gap_len = int(rng.integers(0, 3))
-            path = np.linspace(o, c, len(minutes)) + rng.normal(0, 1.2, len(minutes)).cumsum() * 0.15
-            path[-1] = c
-            for k_, (ts, v) in enumerate(zip(minutes, path)):
-                if gap_start <= k_ < gap_start + gap_len:
-                    continue
-                rows.append({"recv_ts": ts, "session_date": d.date(), "channel": "marketInfo", "symbol": "VNINDEX",
-                             "payload": json.dumps({"marketCode": "VNINDEX", "indexValue": round(float(v), 2),
-                                                    "advances": int(irow.get("Advances") or 0),
-                                                    "declines": int(irow.get("Declines") or 0),
-                                                    "marketStatus": "O" if ts.hour < 15 else "C"})})
-            day = st[st["d"] == d].set_index("Symbol")
-            for s in watch:
-                if s not in day.index:
-                    continue
-                r = day.loc[s]
-                for k_, ts in enumerate(minutes[::5]):
-                    frac = (k_ + 1) / len(minutes[::5])
-                    rows.append({"recv_ts": ts, "session_date": d.date(), "channel": "stockInfo", "symbol": s,
-                                 "payload": json.dumps({"symbol": s, "closePrice": float(r["ClosePrice"]),
-                                                        "foreignBuyValue": float(r["ForeignBuyValTotal"]) * frac,
-                                                        "foreignSellValue": float(r["ForeignSellValTotal"]) * frac,
-                                                        "foreignRemain": float(r["ForeignCurrentRoom"])})})
-        df = pd.DataFrame(rows)
-        df["source"] = SRC_NEO
-        return df
-
 
 def generate(end: Optional[date] = None, path=None, force: bool = False) -> Dict[str, int]:
     """Sinh và ghi dữ liệu mẫu vào các bảng raw_* (bỏ qua nếu đã có, trừ khi force=True)."""
@@ -408,7 +367,6 @@ def generate(end: Optional[date] = None, path=None, force: bool = False) -> Dict
     with db.connect(path=path) as con:
         for t in ("raw_daily_stock", "raw_daily_index", "raw_securities", "raw_index_components", "raw_intraday"):
             con.execute(f"DELETE FROM {t} WHERE source = ?", [SRC])
-        con.execute("DELETE FROM raw_stream_neo WHERE source = ?", [SRC_NEO])
     mk = DemoMarket(end=end)
     log.info("Sinh dữ liệu mẫu %d phiên × %d mã …", len(mk.days), len(mk.symbols))
     sim = mk.simulate()
@@ -434,18 +392,13 @@ def generate(end: Optional[date] = None, path=None, force: bool = False) -> Dict
         "ts": pd.to_datetime(intr["TradingDate"] + " " + intr["Time"], format="%d/%m/%Y %H:%M:%S"),
         "symbol": intr["Symbol"], "source": SRC,
         "payload": [json.dumps(r) for r in intr.to_dict("records")], "loaded_at": now})
-    neo = mk.neo_stream(stock, index, 10, list(get("watchlist_default", [])))
     with db.connect(path=path) as con:
         db.upsert("raw_daily_stock", rs, con=con)
         db.upsert("raw_daily_index", ri, con=con)
         db.upsert("raw_securities", rsec, con=con)
         db.upsert("raw_index_components", comp, con=con)
         db.upsert("raw_intraday", rin, con=con)
-        con.register("_neo", neo)
-        con.execute("INSERT INTO raw_stream_neo (recv_ts, session_date, channel, symbol, source, payload) "
-                    "SELECT recv_ts, session_date, channel, symbol, source, payload FROM _neo")
-    out = {"sessions": len(mk.days), "stock_rows": len(rs), "index_rows": len(ri), "intraday_rows": len(rin),
-           "neo_rows": len(neo)}
+    out = {"sessions": len(mk.days), "stock_rows": len(rs), "index_rows": len(ri), "intraday_rows": len(rin)}
     log.info("Đã ghi dữ liệu mẫu: %s", out)
     return out
 

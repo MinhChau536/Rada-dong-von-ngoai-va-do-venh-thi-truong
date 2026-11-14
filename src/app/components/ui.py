@@ -36,9 +36,10 @@ def section(title: str, sub: str = "", new: bool = False) -> None:
 
 
 def header(title: str, sub: str, pills: Sequence[str] = ()) -> None:
+    """Banner đầu trang: nền chuyển màu riêng từng trang + hình minh họa SVG (src/app/components/banners.py)."""
+    from src.app.components.banners import banner_html
     ph = "".join(f'<span class="ffr-pill">{p}</span>' for p in pills)
-    md(f'<div class="ffr-head"><div><div class="ffr-title">{title}</div><div class="ffr-sub">{sub}</div></div>'
-       f'<div>{ph}</div></div>')
+    md(banner_html(title, sub, ph))
 
 
 def spark(values: Iterable, color: str, w: int = 170, h: int = 40, fill: bool = True) -> str:

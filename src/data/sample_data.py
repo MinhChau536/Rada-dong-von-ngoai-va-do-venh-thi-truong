@@ -4,7 +4,7 @@ Bộ dữ liệu mẫu THẬT cho người chấm (bước B13.2) – trích t�
     python -m src.data.sample_data export            # xuất N phiên gần nhất của bảng raw_* ra data_sample/
     python -m src.data.sample_data load              # nạp data_sample/ vào kho rồi chạy rebuild_all
 
-Chỉ xuất bảng raw (phản hồi JSON gốc của SSI/NEO) + danh mục chứng khoán; không chứa khóa, token hay dữ liệu tài khoản.
+Chỉ xuất bảng raw (phản hồi JSON gốc của SSI FastConnect V3) + danh mục chứng khoán; không chứa khóa, token hay dữ liệu tài khoản.
 Kết quả phụ thuộc lịch sử ngắn (phân vị 250 phiên, nghiên cứu sự kiện) sẽ hiển thị "chưa đủ dữ liệu" – đúng như thiết kế.
 """
 from __future__ import annotations

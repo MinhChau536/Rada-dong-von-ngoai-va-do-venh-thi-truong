@@ -12,31 +12,22 @@ from src.common.timeutil import in_session, now_vn
 
 
 def source_state() -> dict:
-    """Nguồn đang dùng & màu chấm trạng thái cho SSI và NEO."""
+    """Màu chấm trạng thái của nguồn duy nhất SSI FastConnect V3."""
     st_df = da.source_status()
     out = {}
-    for src in ("SSI", "NEO"):
-        r = st_df[st_df["source"] == src]
-        if r.empty:
-            out[src] = ("#94A3B8", "chưa kết nối", None)
-            continue
+    r = st_df[st_df["source"] == "SSI"] if not st_df.empty else st_df
+    if r.empty:
+        out["SSI"] = ("#94A3B8", "chưa kết nối", None)
+    else:
         r = r.iloc[0]
         status = str(r["status"])
         color = {"ok": "#16A34A", "degraded": "#F59E0B", "error": "#DC2626"}.get(status, "#94A3B8")
-        out[src] = (color, status, r["last_ok"])
+        out["SSI"] = (color, status, r["last_ok"])
     return out
 
 
 def active_source() -> str:
-    ev = da.table("source_events")
-    if not ev.empty:
-        last = ev.sort_values("ts").iloc[-1]
-        if last["to_source"] == "NEO":
-            return "NEO (dự phòng)"
-    src = da.session_sources()
-    if src and src.get("NEO", 0) and not src.get("SSI", 0):
-        return "NEO API (ảnh chụp cuối phiên)"
-    return "SSI FastConnect"
+    return "SSI FastConnect V3"
 
 
 def render(session_date=None) -> None:

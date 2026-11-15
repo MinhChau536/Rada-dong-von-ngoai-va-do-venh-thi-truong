@@ -132,13 +132,28 @@ def line_comparison(series: Dict[str, pd.Series], p: Dict, height: int = 330) ->
     return _lay(fig, p, height, hovermode="x unified")
 
 
-def waterfall(names: List[str], values: List[float], p: Dict, height: int = 380, total_label: str = "ΔVN-Index") -> go.Figure:
-    fig = go.Figure(go.Waterfall(x=names + [total_label], y=values + [sum(values)],
+def waterfall(names: List[str], values: List[float], p: Dict, height: Optional[int] = None,
+              total_label: str = "ΔVN-Index") -> go.Figure:
+    """Thác nước nằm ngang: nhãn mã/ngành đọc ngang bên trái, đi từ trên xuống, tổng ở dòng cuối."""
+    labels = names + [total_label]
+    vals = values + [sum(values)]
+    if height is None:
+        height = max(320, 30 * len(labels) + 90)
+    fig = go.Figure(go.Waterfall(orientation="h", y=labels, x=vals,
                                  measure=["relative"] * len(values) + ["total"],
                                  increasing=dict(marker=dict(color=p["up"])), decreasing=dict(marker=dict(color=p["down"])),
                                  totals=dict(marker=dict(color=p["accent"])), connector=dict(line=dict(color=p["border"])),
-                                 text=[f"{v:+.2f}".replace(".", ",") for v in values + [sum(values)]], textposition="outside"))
-    return _lay(fig, p, height, showlegend=False)
+                                 text=[f"{v:+.2f}".replace(".", ",") for v in vals], textposition="outside",
+                                 textfont=dict(size=12), cliponaxis=False,
+                                 hovertemplate="%{y}: %{x:+.2f} điểm<extra></extra>"))
+    lo, hi, run = 0.0, 0.0, 0.0
+    for v in values:
+        run += v
+        lo, hi = min(lo, run), max(hi, run)
+    pad = (hi - lo) * 0.18 or 0.5
+    fig.update_yaxes(autorange="reversed", automargin=True, tickfont=dict(size=13))
+    fig.update_xaxes(range=[lo - pad, hi + pad], zeroline=True, zerolinecolor=p["muted"], title_text="Điểm đóng góp")
+    return _lay(fig, p, height, showlegend=False, margin=dict(l=10, r=20, t=20, b=40))
 
 
 def d_series(day: pd.DataFrame, p: Dict, height: int = 330) -> go.Figure:

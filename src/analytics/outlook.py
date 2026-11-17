@@ -35,6 +35,20 @@ def ewma_sigma(r: pd.Series, lam: float = 0.94, warmup: int = 30) -> pd.Series:
     return np.sqrt(v)
 
 
+def band_multipliers(r: pd.Series, sig: pd.Series, h: int, min_obs: int = 250) -> Dict[str, pd.Series]:
+    """Hệ số biên hiệu chỉnh đuôi dày (thay z = 1 / 1,645 của phân phối chuẩn).
+
+    z_s = |lợi suất h phiên sau s| / (σ_s·√h). Tại phiên t chỉ biết z của các dự báo phát ra ở t − h trở về trước
+    (kết quả đã xảy ra) → hệ số k68_t, k90_t = phân vị 68% / 90% của các z đó (cửa sổ mở rộng, ≥ `min_obs` quan sát).
+    Không dùng dữ liệu tương lai. Trước khi đủ quan sát, dùng hệ số chuẩn."""
+    fwd = sum(r.shift(-k) for k in range(1, h + 1))
+    known = (fwd.abs() / (sig * np.sqrt(h))).shift(h)
+    out = {}
+    for name, q, z in (("k68", 0.68, Z68), ("k90", 0.90, Z90)):
+        out[name] = known.expanding(min_periods=min_obs).quantile(q).fillna(z)
+    return out
+
+
 def vol_range(close: pd.Series, horizons=(5, 20), lam: float | None = None,
               start: str | None = None) -> Dict[int, Dict]:
     """Biên 68%/90% cho h phiên tới + tỷ lệ bao phủ lịch sử của biên 90% (từ `start`)."""
@@ -47,11 +61,15 @@ def vol_range(close: pd.Series, horizons=(5, 20), lam: float | None = None,
     out = {}
     for h in horizons:
         fwd = sum(r.shift(-k) for k in range(1, h + 1))
+        km = band_multipliers(r, sig, h)
         ok = fwd.notna() & sig.notna() & (c.index >= start)
-        cover = float((fwd[ok].abs() <= Z90 * sig[ok] * np.sqrt(h)).mean()) if ok.any() else np.nan
+        cover = float((fwd[ok].abs() <= km["k90"][ok] * sig[ok] * np.sqrt(h)).mean()) if ok.any() else np.nan
+        cover68 = float((fwd[ok].abs() <= km["k68"][ok] * sig[ok] * np.sqrt(h)).mean()) if ok.any() else np.nan
+        k68, k90 = float(km["k68"].iloc[-1]), float(km["k90"].iloc[-1])
         band = lambda z: (last * np.exp(-z * s * np.sqrt(h)), last * np.exp(z * s * np.sqrt(h)))  # noqa: E731
-        out[h] = {"sigma_d": s, "lo68": band(Z68)[0], "hi68": band(Z68)[1], "lo90": band(Z90)[0],
-                  "hi90": band(Z90)[1], "coverage90": cover, "n_backtest": int(ok.sum())}
+        out[h] = {"sigma_d": s, "lo68": band(k68)[0], "hi68": band(k68)[1], "lo90": band(k90)[0],
+                  "hi90": band(k90)[1], "coverage90": cover, "coverage68": cover68, "k68": k68, "k90": k90,
+                  "n_backtest": int(ok.sum())}
     return out
 
 
@@ -137,8 +155,8 @@ def outlook_sentences(vni_close: pd.Series, vr: Dict, an: Dict, sig: List[Dict])
                f"biên 90% là {fmt.num(v5['lo90'], 0)} – {fmt.num(v5['hi90'], 0)} điểm (hiện {fmt.num(last, 0)})")
         if v20:
             txt += f"; 20 phiên tới (90%): {fmt.num(v20['lo90'], 0)} – {fmt.num(v20['hi90'], 0)} điểm"
-        txt += (f". Kiểm chứng lịch sử: biên 90% của 5 phiên bao trùm {fmt.frac_pct(v5['coverage90'], 0)} số lần "
-                f"({v5['n_backtest']} phiên).")
+        txt += (f". Kiểm chứng lịch sử: VN-Index thực tế nằm trong biên 90% của 5 phiên ở "
+                f"{fmt.frac_pct(v5['coverage90'], 0)} số lần ({v5['n_backtest']} phiên).")
         out.append(txt)
     if an.get("available"):
         for h in (5, 20):

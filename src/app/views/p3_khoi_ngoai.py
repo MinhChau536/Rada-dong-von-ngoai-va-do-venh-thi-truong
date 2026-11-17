@@ -6,10 +6,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from src.analytics import narrative
 from src.app import data_access as da
 from src.app.components import charts, status_bar
+from src.app.components import widgets as W
 from src.app.components.states import empty, safe_block
-from src.app.components.ui import colored, header, kpi, md, pal, plot, section, soft_chip, table_html
+from src.app.components.ui import colored, esc, header, kpi, md, pal, plot, soft_chip, table_html
 from src.app.theme import ABSORB_COLORS, color_for
 from src.common import fmt
 from src.finance.domestic import ABSORB_LABELS
@@ -37,6 +39,45 @@ def ranking(date, group: str) -> None:
                "(phát hành thêm/đổi giới hạn). z và phân vị chỉ dùng 60 phiên trước (không nhìn trước).")
 
 
+@safe_block("khối ngoại theo ngành")
+def sector_foreign(date) -> None:
+    g = da.groups(date, "sector").sort_values("net_flow", ascending=False)
+    rows = [[f"<b>{esc(r.group_name)}</b>", fmt.num(r.FB / 1e9, 1), fmt.num(r.FS / 1e9, 1), colored(r.net_flow, fmt.num(r.net_flow / 1e9, 1, True)),
+             fmt.num(r.nf, 3, True), fmt.frac_pct(r.FPR, 1), soft_chip(ABSORB_LABELS[r.absorb_state], ABSORB_COLORS[r.absorb_state])]
+            for r in g.itertuples()]
+    md(table_html(["Ngành", "Mua (tỷ)", "Bán (tỷ)", "Ròng (tỷ)", "nf", "FPR", "Ngoại – nội"], rows, left=(0, 6)))
+
+
+@safe_block("lũy kế theo nhóm")
+def group_windows(date) -> None:
+    sess = [x for x in da.sessions() if x <= date]
+    g = da.groups(None, "universe")
+    d = da.daily().set_index("trade_date")["NF_total"]
+    rows = []
+    names = {"FTSE": "Nhóm FTSE", "CONTROL": "Nhóm đối chứng", "VN30": "VN30"}
+    for key, lbl in [("ALL", "Toàn sàn HOSE")] + list(names.items()):
+        cells = [f"<b>{lbl}</b>"]
+        for n in (1, 5, 20, 60):
+            win = sess[-n:]
+            v = d.reindex(win).sum() if key == "ALL" else g[(g["group_name"] == key) & g["trade_date"].isin(win)]["net_flow"].sum()
+            cells.append(colored(v, fmt.num(v / 1e9, 0, True)))
+        rows.append(cells)
+    md(table_html(["Nhóm", "1 phiên", "5 phiên", "20 phiên", "60 phiên"], rows, left=(0,)))
+    st.caption("Khối ngoại ròng cộng dồn (tỷ đồng); phiên SSI chưa công bố khối ngoại không được tính.")
+
+
+@safe_block("chuỗi mua bán ròng")
+def streaks(date) -> None:
+    s = da.stock_day(date)
+    s = s[s["is_valid"] & s["streak"].notna()]
+    rows = []
+    for lbl, df in (("Mua ròng", s.nlargest(6, "streak")), ("Bán ròng", s.nsmallest(6, "streak"))):
+        for i, r in enumerate(df.itertuples()):
+            rows.append([lbl if i == 0 else "", f'<span class="ffr-sym">{r.symbol}</span>', f"{int(r.streak):+d}",
+                         colored(r.net_flow, fmt.num(r.net_flow / 1e9, 1, True)), colored(r.ret, fmt.pct(r.ret * 100, 1))])
+    md(table_html(["Chiều", "Mã", "Số phiên", "Ròng (tỷ)", "Giá %"], rows, left=(0, 1)))
+
+
 def render() -> None:
     header("Ra-đa khối ngoại", "Dòng vốn ngoại tập trung vào đâu, có đi cùng giá không, và khối nội phản ứng ra sao")
     status_bar.render()
@@ -58,24 +99,61 @@ def render() -> None:
                         kpi("FPR toàn sàn", fmt.frac_pct(x["FPR_total"], 1), sub="phần còn lại thuộc khối nội")]):
         with c:
             md(h)
-    section("Bảng xếp hạng dòng vốn", f"Phiên {date:%d/%m/%Y} · {group}")
-    ranking(date, group)
+    D = W.load(date)
+    c1, c2 = st.columns([1, 2], gap="small")
+    with c1, W.card("p3_top"):
+        W.w_foreign_top(D)
+    with c2, W.card("p3_flow"):
+        W.w_foreign_flow(D)
+    s_ = da.stock_day(date)
+    s_ = s_[s_["is_valid"]]
+    md(f'<div class="ffr-insight" style="margin:4px 0 10px"><b>Nhận định theo quy tắc</b><br>'
+       f'{esc(narrative.foreign_summary(x, s_.nlargest(5, "net_flow"), s_.nsmallest(5, "net_flow")))}</div>')
+    with W.card("p3_rank"):
+        W.title("Bảng xếp hạng dòng vốn", f"Phiên {date:%d/%m/%Y} · {group}")
+        ranking(date, group)
+    with W.card("p3_sec"):
+        W.title("Khối ngoại theo ngành", f"Phiên {date:%d/%m/%Y} · sắp theo giá trị ròng")
+        sector_foreign(date)
+    c1, c2 = st.columns(2, gap="small")
+    with c1, W.card("p3_gw"):
+        W.title("Lũy kế theo nhóm", "Tỷ đồng · 1 / 5 / 20 / 60 phiên")
+        group_windows(date)
+    with c2, W.card("p3_streak"):
+        W.title("Chuỗi mua / bán ròng dài nhất", f"Phiên {date:%d/%m/%Y}")
+        streaks(date)
     rng = d[d["trade_date"].between(lo, hi)]
-    c1, c2 = st.columns(2, gap="medium")
-    with c1:
-        section("Mức tập trung HHI theo thời gian")
-        plot(charts.line(rng.assign(HHI_ma=rng["HHI"].rolling(10).mean()), "trade_date",
-                         {"HHI": "HHI", "HHI_ma": "Trung bình 10 phiên"}, p), "p3_hhi")
-    with c2:
-        section("NF toàn sàn lũy kế (tỷ đồng)")
-        plot(charts.line(rng.assign(cum=rng["NF_total"].cumsum() / 1e9), "trade_date", {"cum": "NF lũy kế"}, p), "p3_cum")
-    section("Dòng vốn theo nhóm", "Cộng dồn trong khoảng phiên đã chọn")
-    g = da.groups()
-    g = g[g["trade_date"].between(lo, hi)]
-    uni = g[g["group_type"].isin(["universe", "sector"])].groupby(["group_type", "group_name"])["net_flow"].sum().div(1e9).reset_index()
-    uni["group_name"] = uni["group_name"].replace({"FTSE": "★ Nhóm FTSE", "CONTROL": "★ Đối chứng", "VN30": "★ VN30"})
-    plot(charts.sector_bars(uni.rename(columns={"net_flow": "val"}), "val", p, " tỷ"), "p3_groups")
-    section("Trạng thái hấp thụ của khối nội", "Tỷ lệ mã–phiên khối ngoại bán ròng có ý nghĩa mà giá vẫn tăng (khối nội hấp thụ)")
+    c1, c2 = st.columns(2, gap="small")
+    with c1, W.card("p3_hhi"):
+        W.title("Diễn biến theo khoảng phiên", f"{lo:%d/%m/%Y} – {hi:%d/%m/%Y}")
+        t1, t2 = st.tabs(["Mức tập trung HHI", "NF toàn sàn lũy kế"])
+        with t1:
+            plot(charts.line(rng.assign(HHI_ma=rng["HHI"].rolling(10).mean()), "trade_date",
+                             {"HHI": "HHI", "HHI_ma": "Trung bình 10 phiên"}, p), "p3_hhi")
+        with t2:
+            plot(charts.line(rng.assign(cum=rng["NF_total"].fillna(0).cumsum() / 1e9), "trade_date", {"cum": "NF lũy kế (tỷ)"}, p),
+                 "p3_cum")
+    with c2, W.card("p3_groups"):
+        W.title("Dòng vốn theo nhóm và ngành", "Cộng dồn trong khoảng phiên · 3 nhóm chính, 5 ngành mua ròng và 5 ngành bán ròng nhiều nhất · tỷ đồng")
+        g = da.groups()
+        g = g[g["trade_date"].between(lo, hi)]
+        uni = g[g["group_type"].isin(["universe", "sector"])].groupby(["group_type", "group_name"])["net_flow"].sum().div(1e9).reset_index()
+        sec = uni[uni["group_type"] == "sector"]
+        uni = pd.concat([uni[uni["group_type"] == "universe"], sec.nlargest(5, "net_flow"), sec.nsmallest(5, "net_flow")])
+        uni = uni.drop_duplicates("group_name")                       # 3 nhóm chính + 5 ngành mua ròng + 5 ngành bán ròng nhiều nhất
+        uni["group_name"] = uni["group_name"].replace({"FTSE": "★ Nhóm FTSE", "CONTROL": "★ Đối chứng", "VN30": "★ VN30"})
+        fig = charts.sector_bars(uni.rename(columns={"net_flow": "val"}), "val", p, " tỷ")
+        fig.update_traces(textposition="auto", insidetextanchor="end",                # nhãn vào trong thanh dài, không đè tên nhóm
+                          text=[fmt.num(v, 0, True, " tỷ") for v in fig.data[0].x])
+        plot(fig, "p3_groups")
+    with W.card("p3_abs"):
+        W.title("Trạng thái hấp thụ của khối nội", "Mã–phiên khối ngoại bán ròng có ý nghĩa mà giá vẫn tăng = khối nội hấp thụ")
+        absorb(lo, hi, group)
+
+
+@safe_block("trạng thái hấp thụ")
+def absorb(lo, hi, group: str) -> None:
+    p = pal()
     sr = da.stock_range(lo, hi)
     sr = sr[sr["is_valid"]]
     if group != "Toàn sàn":

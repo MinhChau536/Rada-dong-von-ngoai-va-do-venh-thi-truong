@@ -32,7 +32,7 @@ COMMANDS = [("menu", "🏠 Menu chính"), ("market", "📊 Tổng quan thị tr�
             ("sector", "🏭 Ngành của mã: /sector FPT"), ("chart", "🖼 Biểu đồ ngày: /chart FPT"),
             ("alerts", "🔔 Cảnh báo tự động: bật/tắt, chọn loại, độ nhạy"), ("watch", "👁 Danh mục theo dõi"), ("add", "➕ Thêm mã: /add FPT"), ("remove", "➖ Bỏ mã: /remove FPT"),
             ("portfolio", "💼 Tối ưu danh mục theo khẩu vị"), ("report", "📄 PDF báo cáo gần nhất"),
-            ("status", "🛰 Tình trạng dữ liệu"), ("help", "❓ Hướng dẫn")]
+            ("status", "🛰 Tình trạng dữ liệu"), ("legend", "📖 Giải thích ký hiệu, thuật ngữ"), ("help", "❓ Hướng dẫn")]
 PROFILE_ALIASES = {"than": "Thận trọng", "thận": "Thận trọng", "can": "Cân bằng", "cân": "Cân bằng",
                    "tang": "Tăng trưởng", "tăng": "Tăng trưởng"}
 
@@ -109,6 +109,8 @@ def main() -> None:
             await send(update, M.menu_text(), M.MENU, edit)
         elif name == "help":
             await send(update, M.HELP, M.MENU, edit)
+        elif name == "legend":
+            await send(update, M.LEGEND, M.BACK, edit)
         elif name in ("market", "leaders", "foreign", "outlook"):
             text, rows = getattr(M, name)(ctx_cached(), with_buttons=True)
             await send(update, text, rows, edit)
@@ -251,6 +253,10 @@ def main() -> None:
             await asyncio.sleep(monitor.interval())
 
     async def post_init(app: Application) -> None:
+        from src.data import autoupdate
+        autoupdate.start_recorder_if_session()
+        au = autoupdate.start_if_behind()                 # tự tải phiên mới khi khởi động bot (tiến trình nền)
+        log.info("Tự cập nhật khi khởi động bot: %s", au.get("state"))
         await app.bot.set_my_commands([BotCommand(c, d) for c, d in COMMANDS])
         await app.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
         log.info("Đã đăng ký %d lệnh vào thanh Menu", len(COMMANDS))

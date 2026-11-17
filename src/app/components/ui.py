@@ -91,7 +91,7 @@ def table_html(headers: List[str], rows: List[List[str]], left: Sequence[int] = 
     th = "".join(f'<th class="{"l" if i in left else ""}">{h}</th>' for i, h in enumerate(headers))
     body = "".join("<tr>" + "".join(f'<td class="{"l" if i in left else ""}">{c}</td>' for i, c in enumerate(r)) + "</tr>"
                    for r in rows)
-    return f'<div class="ffr-card" style="padding:6px 8px;overflow-x:auto"><table class="ffr-t"><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
+    return f'<div class="ffr-card" style="padding:6px 8px;overflow-x:auto;height:auto"><table class="ffr-t"><thead><tr>{th}</tr></thead><tbody>{body}</tbody></table></div>'
 
 
 def colored(v, text: str) -> str:

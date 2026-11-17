@@ -32,7 +32,7 @@ def render() -> None:
         with st.spinner("Đang kiểm tra chất lượng và dựng PDF…"):
             p, reason = closing.build(date)
         if p:
-            st.success(f"Đã xuất {p.name}")
+            st.success(f"Đã xuất {p.name}" + ("" if reason == "ok" else f" · Lưu ý: {reason.removeprefix('đạt – ')}"))
         else:
             st.error(f"Không xuất Closing Report: {reason} (chỉ xuất khi kiểm tra chất lượng cuối phiên đạt).")
         da.clear_cache()

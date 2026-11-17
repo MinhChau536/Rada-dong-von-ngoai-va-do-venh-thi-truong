@@ -1,5 +1,5 @@
 """
-Mẫu Closing Report (bước B9.2) – tóm tắt điều hành, trạng thái phiên + phân vị 20/60/250, tổng quan thị trường,
+Mẫu Closing Report (bước B9.2) – bìa, mục lục, tóm tắt thị trường, trạng thái phiên + phân vị 20/60/250, tổng quan thị trường,
 diễn biến tuần/tháng, dẫn dắt, triển vọng thống kê + bối cảnh nâng hạng (H4), watchlist đầy đủ, phụ lục phương pháp. CHỈ xuất khi kiểm tra chất lượng cuối phiên đạt.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ from src.data import database as db
 from src.finance.domestic import ABSORB_LABELS
 from src.reports import context
 from src.reports.pdf_base import FFRPdf
-from src.reports.snapshot import _out_path, log_report, page_leaders, page_market, page_watch
+from src.reports.snapshot import _out_path, front_matter, log_report, save_pdf
 
 log = get_logger(__name__)
 
@@ -28,51 +28,27 @@ def quality_gate(date, db_path=None) -> Tuple[bool, str]:
     q = db.query_df("SELECT * FROM data_quality_log WHERE trade_date = ?", [d], path=db_path)
     if q.empty:
         return False, "Chưa có kết quả kiểm tra chất lượng cho phiên"
+    target = float(get("cleaning.completeness_target", .98))
     comp = q[q["check_name"] == "completeness"]["value"]
-    if comp.empty or float(comp.iloc[0]) < float(get("cleaning.completeness_target", .98)):
-        return False, f"Tỷ lệ đầy đủ {fmt.frac_pct(comp.iloc[0] if not comp.empty else None, 1)} dưới mục tiêu"
+    note = ""
+    if comp.empty or float(comp.iloc[0]) < target:
+        # SSI có phiên KHÔNG trả khối ngoại cho mọi mã → độ đầy đủ (gồm fb/fs/remain) = 0 dù giá đầy đủ.
+        # Khi đó chỉ xét các trường giá; báo cáo vẫn xuất, các mục khối ngoại ghi "SSI chưa công bố".
+        if (q["check_name"] == "foreign_missing_session").any():
+            px = db.query_df("SELECT AVG(CASE WHEN ref IS NOT NULL AND close IS NOT NULL AND tv IS NOT NULL THEN 1.0 ELSE 0 END) AS r "
+                             "FROM indicator_stock_daily WHERE trade_date = ? AND is_valid", [d], path=db_path)["r"].iloc[0]
+            if px is None or pd.isna(px) or float(px) < target:
+                return False, f"Tỷ lệ đầy đủ dữ liệu giá {fmt.frac_pct(px, 1)} dưới mục tiêu"
+            note = f" – dữ liệu giá đầy đủ {fmt.frac_pct(px, 1)}; SSI chưa công bố khối ngoại phiên này (mục khối ngoại để trống)"
+        else:
+            return False, f"Tỷ lệ đầy đủ {fmt.frac_pct(comp.iloc[0] if not comp.empty else None, 1)} dưới mục tiêu"
     br = q[q["check_name"] == "breadth_check"]["value"]
     if not br.empty and float(br.iloc[0]) > float(get("cleaning.breadth_tolerance", 2)) + 3:
         return False, f"Độ rộng lệch {int(br.iloc[0])} mã so với SSI"
     eps = q[q["check_name"] == "eps"]["value"]
     if not eps.empty and abs(float(eps.iloc[0])) > 5:
         return False, f"Sai số tái lập ε = {fmt.num(eps.iloc[0], 2)} điểm quá lớn"
-    return True, "đạt"
-
-
-def page_history(pdf: FFRPdf, ctx: Dict) -> None:
-    x = ctx["day"]
-    pdf.h2("So với lịch sử (phân vị, chỉ dùng dữ liệu trước phiên)")
-    rows = []
-    for m, lbl in (("D", "Độ vênh D"), ("CR5", "CR5"), ("IQR_pct", "IQR"), ("AD", "AD"), ("NF_total", "NF HOSE"), ("HHI", "HHI")):
-        rows.append([lbl, fmt.num(x[m] / 1e9 if m == "NF_total" else x[m], 3 if m != "NF_total" else 0, True)]
-                    + [fmt.num(x.get(f"{m}_pct{w}"), 0, False, "%") for w in (20, 60, 250)])
-    pdf.table(["Chỉ báo", "Hôm nay", "Phân vị 20", "Phân vị 60", "Phân vị 250"], rows, [40, 32, 30, 30, 30])
-    g = ctx["groups"]
-    uni = g[g["group_type"] == "universe"]
-    pdf.h2("Dòng vốn theo nhóm FTSE và đối chứng")
-    pdf.table(["Nhóm", "Số mã", "NF", "nf", "FPR", "Trạng thái"],
-              [[r.group_name, str(int(r.n)), fmt.bn(r.net_flow), fmt.num(r.nf, 3, True), fmt.frac_pct(r.FPR, 1),
-                ABSORB_LABELS.get(r.absorb_state, "")] for r in uni.itertuples()], [30, 18, 30, 24, 24, 40])
-    st = ctx["stock"][ctx["stock"]["is_valid"]]
-    cnt = st["absorb_state"].value_counts()
-    pdf.para("Trạng thái hấp thụ toàn sàn: " + "; ".join(f"{ABSORB_LABELS[k]} {int(cnt.get(k, 0))} mã" for k in ABSORB_LABELS) + ".", 8.5)
-
-
-def page_method(pdf: FFRPdf) -> None:
-    pdf.h2("Phụ lục – Phương pháp và giới hạn")
-    for t in [
-        "(1) r = P_c / P_ref − 1 · (2) D = r_VNI − trung vị r_i trên Ω (cổ phiếu thường HOSE, P_ref > 0, có khớp lệnh).",
-        "(3) AD = (N⁺ − N⁻)/N; IQR = Q75 − Q25 · (4) C_i = I_(t−1) · w_i · r_i, w_i theo vốn hóa đầu phiên S_i·P_ref.",
-        "(5) ε = ΔI − ΣC; CR5 = Σ|C| top 5 / Σ|C| · (6) NF = FB − FS; nf = NF/TV; FPR = (FB+FS)/(2TV).",
-        "(7) HHI = Σ(|NF_i|/Σ|NF|)²; U = 1 − Remain/Room · (8) z theo 60 phiên trước (không nhìn trước).",
-        "Giới hạn: vốn hóa xấp xỉ bằng số CP niêm yết (chưa điều chỉnh CP quỹ, free-float); chỉ tách được khối ngoại; "
-        "tương quan không phải nhân quả; nghiên cứu sự kiện có mẫu nhỏ.",
-        "Triển vọng: biên dao động theo σ EWMA (λ = 0,94) và tần suất lịch sử trong các phiên cùng trạng thái – mô tả "
-        "thống kê có kiểm chứng ngoài mẫu, không phải dự báo điểm hay khuyến nghị. H4: so sánh ba giai đoạn (cơ sở 250 phiên "
-        "trước E1 / E1 → hiệu lực / sau hiệu lực), OLS với sai số Newey–West, p hiệu chỉnh Holm.",
-        get("app.disclaimer")]:
-        pdf.para(t, 8.5)
+    return True, "đạt" + note
 
 
 def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path], str]:
@@ -87,25 +63,22 @@ def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path],
     ts = now_vn().replace(tzinfo=None)
     pdf = FFRPdf("Closing Report", f"Báo cáo cuối phiên {ctx['date']:%d/%m/%Y} · xuất {ts:%H:%M %d/%m/%Y}",
                  "SỐ LIỆU CUỐI PHIÊN – ĐÃ QUA KIỂM TRA CHẤT LƯỢNG", ctx["is_demo"])
-    from src.reports import sections
-    pdf.add_page()
-    sections.page_summary(pdf, ctx)
-    pdf.add_page()
-    page_market(pdf, ctx)
-    page_history(pdf, ctx)
-    pdf.add_page()
-    sections.page_overview(pdf, ctx)
-    pdf.add_page()
-    sections.page_recap(pdf, ctx)
-    pdf.add_page()
-    page_leaders(pdf, ctx)
-    pdf.add_page()
-    sections.page_outlook(pdf, ctx)
-    sections.page_phase(pdf, ctx, db_path)
-    pdf.add_page()
-    page_watch(pdf, ctx, full=True)
-    page_method(pdf)
-    out = _out_path("closing", pd.Timestamp(ctx["date"]))
-    pdf.output(str(out))
-    log_report("closing", ctx["date"], out, "ok", "demo" if ctx["is_demo"] else "", db_path)
-    return out, "ok"
+    from src.reports import sections as S
+    chapters = [
+        ("Tóm tắt thị trường", lambda: S.ch_summary(pdf, ctx)),
+        ("Tổng quan thị trường", lambda: S.ch_overview(pdf, ctx)),
+        ("Dẫn dắt & độ vênh", lambda: S.ch_lead_div(pdf, ctx)),
+        ("Ra-đa khối ngoại", lambda: S.ch_foreign(pdf, ctx)),
+        ("Sự kiện nâng hạng FTSE", lambda: S.ch_ftse(pdf, ctx, True, db_path)),
+        ("Watchlist Impact", lambda: S.ch_watch(pdf, ctx, full=True)),
+        ("Kết luận & khuyến nghị tổng quát", lambda: S.ch_conclusion(pdf, ctx)),
+        ("Phương pháp & cơ sở khuyến nghị", lambda: S.ch_method(pdf)),
+    ]
+    front_matter(pdf, ctx, "Closing Report", f"Xuất lúc {ts:%H:%M} ngày {ts:%d/%m/%Y} (giờ Việt Nam)",
+                 [c[0] for c in chapters], "Báo cáo cuối phiên – số liệu đã khớp lệnh xong và qua kiểm tra chất lượng "
+                 "(độ đầy đủ ≥ 98%, độ rộng khớp SSI, sai số tái lập chỉ số trong ngưỡng).")
+    for _, fn in chapters:
+        fn()
+    out = save_pdf(pdf, _out_path("closing", pd.Timestamp(ctx["date"])))
+    log_report("closing", ctx["date"], out, "ok", reason if reason != "đạt" else "", db_path)
+    return out, reason if reason != "đạt" else "ok"

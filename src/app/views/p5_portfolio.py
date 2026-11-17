@@ -144,9 +144,11 @@ def render(wl: List[str], date) -> None:
             fig.add_trace(go.Scatter(x=[res[k]["vol"] * 100], y=[res[k]["ret"] * 100], mode="markers", name=lbl,
                                      marker=dict(color=METHOD_COLORS[k], size=13 if k == "target" else 10,
                                                  symbol="star" if k == "target" else "diamond")))
-        fig.add_vline(x=tv * 100, line_dash="dot", line_color="#DC2626", annotation_text=f"mục tiêu {tv:.0%}")
+        fig.add_vline(x=tv * 100, line_dash="dot", line_color="#DC2626", annotation_text=f"mục tiêu {tv:.0%}",
+                      annotation_position="bottom right", annotation_font_color="#DC2626")
         fig.update_layout(xaxis_title="Biến động năm (%)", yaxis_title="Lợi suất kỳ vọng năm (%)")
-        plot(charts._lay(fig, p, 360), "pf_frontier")
+        plot(charts._lay(fig, p, 470, legend=dict(orientation="h", yanchor="top", y=-0.2, x=0, font=dict(size=11)),
+                         margin=dict(l=8, r=8, t=12, b=8)), "pf_frontier")
 
     h1, h2 = st.columns(2, gap="medium")
     with h1:
@@ -155,7 +157,7 @@ def render(wl: List[str], date) -> None:
         fig.add_trace(go.Bar(x=syms, y=t["w"].values * 100, name="Tỷ trọng (%)", marker_color=p["accent"]))
         fig.add_trace(go.Bar(x=syms, y=rc.values * 100, name="Đóng góp rủi ro (%)", marker_color="#F59E0B"))
         fig.update_layout(barmode="group", title="Tỷ trọng và đóng góp rủi ro – phương án theo khẩu vị")
-        plot(charts._lay(fig, p, 320), "pf_rc")
+        plot(charts._lay(fig, p, 340), "pf_rc")
     with h2:
         cm = a["corr"]
         fig = go.Figure(go.Heatmap(z=cm.values, x=cm.columns, y=cm.index, zmin=-1, zmax=1, colorscale="RdBu_r",

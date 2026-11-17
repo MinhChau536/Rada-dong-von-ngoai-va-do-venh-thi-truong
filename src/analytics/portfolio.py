@@ -100,8 +100,14 @@ def estimate(r: pd.DataFrame, shrink_mu: float = 0.5) -> Dict:
 
 
 # ── tối ưu ────────────────────────────────────────────────────────────────────
+def effective_cap(max_w: float, n: int) -> float:
+    """Trần tỷ trọng thực dùng. Với ít mã, trần ≤ 1/n chỉ còn đúng nghiệm đồng tỷ trọng (mọi phương án trùng nhau),
+    nên nới tối thiểu 1,5/n (3 mã → 50%) để các phương án tối ưu thực sự khác nhau."""
+    return float(min(1.0, max(max_w, 1.5 / n))) if n > 0 else max_w
+
+
 def _solve(obj, n: int, max_w: float, extra=()) -> np.ndarray:
-    max_w = max(max_w, 1.0 / n + 1e-9)                       # trần phải ≥ 1/n để có nghiệm
+    max_w = effective_cap(max_w, n)
     w0 = np.full(n, 1.0 / n)
     cons = [{"type": "eq", "fun": lambda w: w.sum() - 1.0}, *extra]
     res = minimize(obj, w0, method="SLSQP", bounds=[(0.0, max_w)] * n, constraints=cons,
@@ -176,14 +182,19 @@ def frontier(est: Dict, max_w: float, n_pts: int = 25) -> pd.DataFrame:
 
 
 def walk_forward(symbols: List[str], method: str, max_w: float, target_vol: Optional[float], end=None,
-                 lookback: int = 250, months: int = 24, rf: float = 0.0, path=None) -> pd.Series:
-    """Lợi suất ngày ngoài mẫu: đầu mỗi tháng tối ưu bằng `lookback` phiên trước đó, giữ tỷ trọng tới tháng sau."""
+                 lookback: int = 250, months: int = 24, rf: float = 0.0, path=None,
+                 cost: Optional[float] = None) -> pd.Series:
+    """Lợi suất ngày ngoài mẫu, ĐÃ TRỪ chi phí giao dịch: đầu mỗi tháng tối ưu bằng `lookback` phiên trước đó, giữ số
+    cổ phiếu tới tháng sau (tỷ trọng trôi theo giá). Chi phí = cost × Σ|w_mới − w_trôi| tính vào phiên tái cân bằng
+    (cost mặc định 0,25%/lượt: phí môi giới ~0,15% + thuế bán 0,1%)."""
+    cost = float(get("portfolio.cost_per_turnover", 0.0025)) if cost is None else cost
     r_all = load_returns(symbols, end, lookback + months * 22 + 30, path=path, min_obs=0.0)
     if r_all.empty or len(r_all) < lookback + 40:
         return pd.Series(dtype=float)
     idx = r_all.index
     starts = [d for d in pd.Series(idx).groupby([idx.year, idx.month]).min() if idx.get_loc(d) >= lookback]
     out = []
+    drift = pd.Series(0.0, index=r_all.columns)                # tỷ trọng đang nắm (đã trôi theo giá) trước khi tái cân bằng
     for i, d0 in enumerate(starts):
         p0 = idx.get_loc(d0)
         win = r_all.iloc[p0 - lookback:p0]
@@ -191,9 +202,18 @@ def walk_forward(symbols: List[str], method: str, max_w: float, target_vol: Opti
         if not cols:
             continue
         est = estimate(win[cols])
-        w = optimize(est, method, max_w, target_vol, rf)
+        w = pd.Series(optimize(est, method, max_w, target_vol, rf), index=cols).reindex(r_all.columns).fillna(0.0)
+        turnover = float((w - drift).abs().sum())
         p1 = idx.get_loc(starts[i + 1]) if i + 1 < len(starts) else len(idx)
-        out.append(pd.Series(r_all.iloc[p0:p1][cols].to_numpy() @ w, index=idx[p0:p1]))
+        seg = r_all.iloc[p0:p1].fillna(0.0)
+        val = (1 + seg).cumprod().mul(w, axis=1)               # giữ nguyên số cổ phiếu trong tháng
+        port_val = val.sum(axis=1)
+        ret = port_val.pct_change()
+        ret.iloc[0] = port_val.iloc[0] - 1
+        ret.iloc[0] -= cost * turnover
+        out.append(ret)
+        last = val.iloc[-1]
+        drift = last / last.sum() if last.sum() > 0 else w
     return pd.concat(out) if out else pd.Series(dtype=float)
 
 

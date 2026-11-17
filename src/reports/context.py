@@ -43,7 +43,7 @@ def build(date=None, path: Optional[Path] = None) -> Optional[Dict]:
     src = str(day.get("source") or "")
     ctx = {
         "date": d, "day": day, "hist": hist, "stock": stock, "leaders": lead, "groups": groups, "index": idx,
-        "watch": prof, "top_buy": v.nlargest(5, "net_flow"), "top_sell": v.nsmallest(5, "net_flow"),
+        "watch": prof, "wl_hist": wl_hist, "watch_symbols": syms, "top_buy": v.nlargest(5, "net_flow"), "top_sell": v.nsmallest(5, "net_flow"),
         "summary": narrative.market_summary(day, lead, with_disclaimer=False),
         "foreign": narrative.foreign_summary(day, v.nlargest(5, "net_flow"), v.nsmallest(5, "net_flow")),
         "is_demo": False, "source": src,
@@ -97,7 +97,8 @@ def overview(ctx: Dict, path: Optional[Path] = None) -> Dict:
     pred = db.query_df("SELECT * FROM alert_predictive", path=path) if db.table_exists("alert_predictive", path) \
         else pd.DataFrame()
     sig = outlook.signals_today(ctx["day"], pred)
-    return {"idx_hist": idx_hist, "idx_ret": idx_ret, "health": health, "pct_above_ma20": pm,
+    tvh = hist.assign(trade_date=pd.to_datetime(hist["trade_date"])).set_index("trade_date")["tv_total"]
+    return {"idx_hist": idx_hist, "idx_ret": idx_ret, "tv_hist": tvh, "groups_hist": grp, "health": health, "pct_above_ma20": pm,
             "sec1": sec1, "sec5": sec5, "sec20": sec20, "lead20": lead20, "ftse_rel": ftse_rel, "recap": rc,
             "recap_text": outlook.recap_sentences(rc, idx_ret, sec5, lead20, ftse_rel),
             "vol_range": vr, "analog": an, "signals": sig,

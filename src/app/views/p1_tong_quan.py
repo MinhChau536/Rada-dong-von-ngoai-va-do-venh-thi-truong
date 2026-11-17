@@ -1,10 +1,10 @@
 """
 Trang 1 – Tổng quan thị trường (bước B4.5, bảng 11.4, Hình 2a–2d).
 
-Giữ ĐÚNG thứ tự khối của render() trong giao_dien/thi_truong.py (giữa kỳ) và chèn 3 khối mới:
-thanh trạng thái → giới thiệu → (a) 4 thẻ chỉ số → (b) chất lượng xu hướng [MỚI] → (c) danh mục theo dõi →
-(d) diễn biến chỉ số + sức khỏe → (e) mã dẫn dắt [MỚI] → (f) độ rộng → (g) bản đồ nhiệt + ngành →
-(h) dòng vốn khối ngoại [MỚI] → (i) cổ phiếu nổi bật → (j) so sánh hiệu suất → (k) chân trang.
+Bố cục lưới thẻ (src/app/components/widgets.py, phong cách cổng thông tin chứng khoán):
+thanh trạng thái → giới thiệu → 4 thẻ chỉ số (HOSE, VN30, HNX, UPCoM) → chất lượng xu hướng → [top 10 | nhóm dẫn dắt] →
+danh mục theo dõi → diễn biến chỉ số + sức khỏe → [khối ngoại top/nhóm | diễn biến mua–bán–ròng + nhận định] →
+[thanh khoản | độ rộng | ngành] → độ rộng theo rổ → bản đồ thị trường → cổ phiếu nổi bật chi tiết → so sánh hiệu suất.
 Mỗi khối là một hàm render_x(data); dữ liệu đọc một lần qua load_overview(session_date).
 """
 from __future__ import annotations
@@ -20,6 +20,7 @@ from src.analytics.health import market_health, period_returns
 from src.analytics.watchlist_impact import get_watchlist
 from src.app import data_access as da
 from src.app.components import about, charts, status_bar
+from src.app.components import widgets as W
 from src.app.components.states import empty, safe_block
 from src.app.components.ui import (colored, esc, header, kpi, md, pal, plot, section, soft_chip, spark, table_html)
 from src.app.theme import ABSORB_COLORS, SESSION_COLORS, color_for
@@ -171,50 +172,6 @@ def render_health(data: Dict) -> None:
     st.caption(f"Điểm theo quy tắc (tổng trọng số {h['weights_sum']}%) – chỉ để tham khảo, không phải khuyến nghị.")
 
 
-# ── (e) mã dẫn dắt ────────────────────────────────────────────────────────────
-@safe_block("mã dẫn dắt")
-def render_leaders(data: Dict) -> None:
-    p, x, lead = pal(), data["day"], data["leaders"]
-    if lead.empty:
-        empty("Chưa có dữ liệu đóng góp điểm.")
-        return
-    c1, c2 = st.columns([1.15, 1], gap="medium")
-    with c1:
-        pos = lead[lead["side"] == "pos"].head(5)
-        neg = lead[lead["side"] == "neg"].head(5)
-        both = pd.concat([pos, neg])
-        fig = charts.diverging_bars(both["symbol"].tolist(), both["C"].tolist(), p, 330,
-                                    title=f"Đóng góp điểm hôm nay · ΔVN-Index = {fmt.num(x['dI'], 2, True)} điểm")
-        plot(fig, "p1_leaders")
-        rest = x["sumC"] - both["C"].sum()
-        n_rest = int(x["n_valid"]) - len(both)
-        st.caption(f"Còn lại {n_rest} mã: {fmt.num(rest, 2, True)} điểm · sai số tái lập ε = {fmt.num(x['eps'], 2, True)} điểm "
-                   f"(ΣC + ε = ΔVN-Index)")
-    with c2:
-        g = data["groups"]
-        fam = g[g["group_type"] == "family"].sort_values("C", ascending=False)
-        sec = g[g["group_type"] == "sector"].copy()
-        sec = sec.reindex(sec["C"].abs().sort_values(ascending=False).index).head(5)
-        both = pd.concat([fam.assign(kind="Họ"), sec.assign(kind="Ngành")])
-        mx = max(both["C"].abs().max(), 1e-9)
-        rows = ""
-        for r in both.itertuples():
-            w = abs(r.C) / mx * 100
-            name = {"VINGROUP": "Nhóm Vingroup", "MASAN": "Nhóm Masan", "GELEX": "Nhóm Gelex", "HOAPHAT": "Hòa Phát"}.get(r.group_name, r.group_name)
-            rows += (f'<div class="ffr-comp"><span>{esc(name)} <small>· {r.kind}</small></span>'
-                     f'<b style="color:{color_for(r.C, p)}">{fmt.num(r.C, 2, True)}</b></div>'
-                     f'<div class="ffr-track"><i style="width:{w:.0f}%;background:{color_for(r.C, p)}"></i></div>')
-        vin = fam[fam["group_name"] == "VINGROUP"]
-        ex = (f'<div style="font-size:12px;color:{p["muted"]};margin-top:8px">VN-Index loại trừ nhóm Vingroup: '
-              f'{colored(vin["index_ex_group_ret_pct"].iloc[0], fmt.pct(vin["index_ex_group_ret_pct"].iloc[0]))} '
-              f'(thực tế {fmt.pct(x["r_vni_pct"])})</div>') if not vin.empty else ""
-        md(f'<div class="ffr-card"><div class="ffr-lbl">Theo họ cổ phiếu và ngành (điểm)</div>{rows}{ex}</div>')
-        md('<div style="height:10px"></div>')
-        md(f'<div class="ffr-insight"><b>Nhận định theo quy tắc</b><br>{esc(narrative.market_summary(x, lead))}</div>')
-        if st.button("Xem chi tiết dẫn dắt & độ vênh →", key="p1_to_p2"):
-            st.switch_page(st.session_state["_pages"]["dan-dat"])
-
-
 # ── (f) độ rộng ───────────────────────────────────────────────────────────────
 @safe_block("độ rộng thị trường")
 def render_breadth(data: Dict) -> None:
@@ -249,70 +206,6 @@ def render_breadth(data: Dict) -> None:
     for c, h in zip(cols, items):
         with c:
             md(h)
-
-
-# ── (g) bản đồ nhiệt + ngành ──────────────────────────────────────────────────
-@safe_block("bản đồ nhiệt")
-def render_heatmap(data: Dict) -> None:
-    p = pal()
-    c_map, c_sec = st.columns([3, 2], gap="medium")
-    with c_map:
-        plot(charts.treemap(data["stock"], p), "p1_treemap")
-    with c_sec:
-        o1, o2 = st.columns(2)
-        hz = o1.segmented_control("Kỳ", [1, 5, 20], default=1, key="p1_sec_h", format_func=lambda h: f"{h} phiên",
-                                  label_visibility="collapsed") or 1
-        metric = o2.segmented_control("Chỉ tiêu", ["% giá", "Khối ngoại"], default="% giá", key="p1_sec_m",
-                                      label_visibility="collapsed") or "% giá"
-        dates = [x for x in da.sessions() if x <= data["date"]][-hz:]
-        g = da.groups(None, "sector")
-        g = g[g["trade_date"].isin(dates)]
-        st_rng = da.stock_range(dates[0], dates[-1])
-        if metric == "% giá":
-            # Lợi suất ngành bình quân theo vốn hóa (w) trong kỳ
-            st_rng = st_rng[st_rng["is_valid"]]
-            st_rng["wr"] = st_rng["w"] * st_rng["ret"]
-            agg = st_rng.groupby(["trade_date", "sector"]).agg(wr=("wr", "sum"), w=("w", "sum")).reset_index()
-            agg["r"] = agg["wr"] / agg["w"]
-            sec = agg.groupby("sector")["r"].apply(lambda r: ((1 + r).prod() - 1) * 100).reset_index()
-            sec.columns = ["group_name", "val"]
-            plot(charts.sector_bars(sec, "val", p), "p1_secbar")
-        else:
-            sec = g.groupby("group_name")["net_flow"].sum().div(1e9).reset_index(name="val")
-            plot(charts.sector_bars(sec, "val", p, " tỷ"), "p1_secbar_f")
-
-
-# ── (h) dòng vốn khối ngoại ───────────────────────────────────────────────────
-@safe_block("dòng vốn khối ngoại")
-def render_foreign_today(data: Dict) -> None:
-    p, x = pal(), data["day"]
-    s = data["stock"][data["stock"]["is_valid"]]
-    c1, c2 = st.columns([1, 1.1], gap="medium")
-    with c1:
-        top = pd.concat([s.nlargest(5, "net_flow"), s.nsmallest(5, "net_flow")])
-        plot(charts.diverging_bars(top["symbol"].tolist(), (top["net_flow"] / 1e9).tolist(), p, 330, "{:+.0f}",
-                                   "Top mua và bán ròng (tỷ đồng)"), "p1_fbar")
-    with c2:
-        g = data["groups"]
-        uni = g[g["group_type"] == "universe"].set_index("group_name")
-        sec = g[g["group_type"] == "sector"]
-        sec = sec.reindex(sec["net_flow"].abs().sort_values(ascending=False).index).head(2)
-        rows = []
-        for nm, label in (("FTSE", "Nhóm FTSE"), ("CONTROL", "Đối chứng"), ("VN30", "VN30")):
-            if nm in uni.index:
-                r = uni.loc[nm]
-                rows.append([f"<b>{label}</b>", f'{int(r["n"])} mã', colored(r["net_flow"], fmt.bn(r["net_flow"])),
-                             fmt.num(r["nf"], 3, True), soft_chip(ABSORB_LABELS[r["absorb_state"]], ABSORB_COLORS[r["absorb_state"]])])
-        for r in sec.itertuples():
-            rows.append([f"<b>{esc(r.group_name)}</b>", "ngành", colored(r.net_flow, fmt.bn(r.net_flow)), fmt.num(r.nf, 3, True),
-                         soft_chip(ABSORB_LABELS[r.absorb_state], ABSORB_COLORS[r.absorb_state])])
-        md(table_html(["Nhóm", "Số mã", "Ròng", "nf", "Hấp thụ"], rows))
-        st.caption(f"Mức tham gia khối ngoại FPR = {fmt.frac_pct(x['FPR_total'], 1)} GTGD · tỷ trọng lô lẻ: "
-                   f"{'chưa có (cần kênh OL thời gian thực)' if 'oddlot_share' not in x else fmt.frac_pct(x['oddlot_share'], 1)}. "
-                   "Trạng thái hấp thụ chỉ gán khi |nf| ≥ 0,05 và |r| ≥ 0,5%.")
-        md(f'<div class="ffr-insight" style="margin-top:6px">{esc(narrative.foreign_summary(x, s.nlargest(5, "net_flow"), s.nsmallest(5, "net_flow")))}</div>')
-        if st.button("Xem Ra-đa khối ngoại →", key="p1_to_p3"):
-            st.switch_page(st.session_state["_pages"]["khoi-ngoai"])
 
 
 # ── (i) cổ phiếu nổi bật ──────────────────────────────────────────────────────
@@ -402,24 +295,49 @@ def render() -> None:
     with c2:
         status_bar.render(date, show_session=False)        # ô chọn phiên bên trái đã hiện phiên
     about.render_intro()
-    data = load_overview(date)
+    data, D = load_overview(date), W.load(date)
+    # (a) bốn chỉ số: HOSE (VN-Index), VN30, HNX, UPCoM
     render_index_cards(data)
-    section("Chất lượng xu hướng hôm nay", "Chỉ số có phản ánh số đông cổ phiếu không", new=True)
-    render_trend_quality(data)
-    section("Danh mục theo dõi hôm nay", "Kết nối trang Watchlist Impact · bấm để xem hồ sơ")
-    render_watchlist_strip(data)
-    section("Diễn biến chỉ số", "Nến ngày · MA20 · MA50 · khối lượng · mốc FTSE")
-    render_index_chart(data)
-    section("Mã dẫn dắt VN-Index", "Đóng góp điểm C = I(t−1) × tỷ trọng vốn hóa × lợi suất", new=True)
-    render_leaders(data)
-    section("Độ rộng thị trường", "Đo trên rổ đã chọn · phiên đang xem")
-    render_breadth(data)
-    section("Bản đồ nhiệt & dòng tiền theo ngành", "Diện tích = giá trị giao dịch · màu = % thay đổi · viền đậm = |NN ròng| lớn")
-    render_heatmap(data)
-    section("Dòng vốn khối ngoại hôm nay", "Giá trị ròng · trạng thái khối nội · nhóm FTSE và đối chứng", new=True)
-    render_foreign_today(data)
-    section("Cổ phiếu nổi bật", "Toàn sàn HOSE")
-    render_movers(data)
-    section("So sánh hiệu suất", "Chuẩn hóa = 100 · chỉ số và mã đang chọn")
-    render_performance(data)
+    with W.card("p1_trend"):
+        W.title("Chất lượng xu hướng hôm nay", "Chỉ số có phản ánh số đông cổ phiếu không")
+        render_trend_quality(data)
+    # top 10 · nhóm dẫn dắt
+    c1, c2 = st.columns([1.15, 1], gap="small")
+    with c1, W.card("p1_top"):
+        W.w_top(D)
+    with c2, W.card("p1_lead"):
+        W.w_leaders(D)
+        if st.button("Xem chi tiết dẫn dắt & độ vênh →", key="p1_to_p2"):
+            st.switch_page(st.session_state["_pages"]["dan-dat"])
+    with W.card("p1_wl"):
+        W.title("Danh mục theo dõi hôm nay", "Kết nối trang Watchlist Impact · bấm để xem hồ sơ")
+        render_watchlist_strip(data)
+    with W.card("p1_chart"):
+        W.title("Diễn biến chỉ số", "Nến ngày · MA20 · MA50 · khối lượng · mốc FTSE · điểm sức khỏe theo quy tắc")
+        render_index_chart(data)
+    # khối ngoại
+    c1, c2 = st.columns([1, 2], gap="small")
+    with c1, W.card("p1_ft"):
+        W.w_foreign_top(D)
+    with c2, W.card("p1_ff"):
+        W.w_foreign_flow(D)
+        s = data["stock"][data["stock"]["is_valid"]]
+        md(f'<div class="ffr-insight" style="margin-top:8px">{esc(narrative.foreign_summary(data["day"], s.nlargest(5, "net_flow"), s.nsmallest(5, "net_flow")))}</div>')
+        if st.button("Xem Ra-đa khối ngoại →", key="p1_to_p3"):
+            st.switch_page(st.session_state["_pages"]["khoi-ngoai"])
+    # thanh khoản · độ rộng · ngành
+    for i, (col, fn) in enumerate(zip(st.columns(3, gap="small"), (W.w_liquidity, W.w_breadth, W.w_sectors))):
+        with col, W.card(f"p1_r3{i}"):
+            fn(D)
+    with W.card("p1_basket"):
+        W.title("Độ rộng theo rổ cổ phiếu", "HOSE toàn sàn · VN30 · nhóm FTSE · đối chứng · watchlist")
+        render_breadth(data)
+    with W.card("p1_map"):
+        W.w_map(D)
+    with W.card("p1_movers"):
+        W.title("Cổ phiếu nổi bật – bảng chi tiết", "Toàn sàn HOSE · khối lượng, khối ngoại, hiệu suất 20 phiên, diễn biến 30 phiên")
+        render_movers(data)
+    with W.card("p1_perf"):
+        W.title("So sánh hiệu suất", "Chuẩn hóa = 100 · chỉ số và mã đang chọn")
+        render_performance(data)
     render_footer()

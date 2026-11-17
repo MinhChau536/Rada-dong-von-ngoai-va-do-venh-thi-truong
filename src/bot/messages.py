@@ -38,13 +38,49 @@ HELP = ("🤖 <b>FTSE FLOW RADAR BOT</b>\n" + LINE + "\n"
         "💼 /portfolio – tối ưu danh mục theo khẩu vị rủi ro\n"
         "📄 /report – PDF báo cáo gần nhất\n"
         "🛰 /status – tình trạng dữ liệu\n"
+        "📖 /legend – giải thích ký hiệu và thuật ngữ\n"
         "🏠 /menu – mở menu chính")
+
+LEGEND = ("📖 <b>GIẢI THÍCH KÝ HIỆU</b>\n" + LINE + "\n"
+          "🎨 <b>MÀU</b> (so với giá tham chiếu, hoặc so với 0)\n"
+          "🟢 tăng / dương / mua ròng / đạt tiêu chí\n"
+          "🔴 giảm / âm / bán ròng / chưa đạt tiêu chí\n"
+          "🟡 đứng giá (không đổi)\n"
+          "⚪ không có số liệu hoặc mã không giao dịch\n"
+          "▰▰▱▱ thanh độ lớn: càng nhiều ô đậm thì giá trị càng lớn so với mã lớn nhất trong danh sách\n\n"
+          "🏷 <b>BIỂU TƯỢNG MỤC</b>\n"
+          "📈 VN-Index · 🔷 VN30 · 🔶 HNX · 🔸 UPCoM\n"
+          "🏆 mạnh nhất · 🐢 yếu nhất · 🥇 xếp hạng ngành\n"
+          "🧩 đánh giá tổng quát (điểm 0–100 theo số tiêu chí đạt)\n"
+          "🌏 khối ngoại · 🏭 ngành · 🔮 triển vọng thống kê · 🚨 tín hiệu cảnh báo\n\n"
+          "📚 <b>THUẬT NGỮ</b>\n"
+          "• <b>NN ròng</b>: giá trị khối ngoại mua − bán (tỷ đồng)\n"
+          "• <b>GTGD</b>: giá trị giao dịch khớp lệnh · <b>KL</b>: khối lượng\n"
+          "• <b>C</b>: điểm một mã đóng góp vào VN-Index · <b>ΔVN-Index</b>: thay đổi điểm cả phiên\n"
+          "• <b>CR5</b>: tỷ trọng đóng góp của 5 mã ảnh hưởng mạnh nhất\n"
+          "• <b>D (độ vênh)</b>: % VN-Index − % cổ phiếu trung vị; D lớn = chỉ số tăng nhờ ít mã\n"
+          "• <b>AD</b>: (số mã tăng − giảm) / tổng số mã\n"
+          "• <b>z60</b>: khối ngoại hôm nay lệch bao nhiêu độ lệch chuẩn so với 60 phiên trước; |z| ≥ 2 là bất thường\n"
+          "• <b>HHI</b>: độ tập trung dòng vốn ngoại (gần 1 = dồn vào rất ít mã)\n"
+          "• <b>FPR</b>: tỷ lệ khối ngoại tham gia trong tổng GTGD\n"
+          "• <b>Room</b>: phần trăm giới hạn sở hữu nước ngoài đã dùng\n"
+          "• <b>MA20/MA50</b>: giá trung bình 20/50 phiên · <b>RSI14</b>: &gt;70 quá mua, &lt;30 quá bán\n"
+          "• <b>VWAP</b>: giá bình quân theo khối lượng trong phiên\n\n"
+          "🤝 <b>TRẠNG THÁI KHỐI NGOẠI – KHỐI NỘI</b>\n"
+          "• Khối nội hấp thụ: ngoại bán ròng nhưng giá vẫn tăng\n"
+          "• Đồng thuận bán: ngoại bán ròng và giá giảm\n"
+          "• Đồng thuận mua: ngoại mua ròng và giá tăng\n"
+          "• Khối nội chốt hàng: ngoại mua ròng nhưng giá giảm\n"
+          "• Trung tính: dòng vốn hoặc biến động giá quá nhỏ để kết luận\n\n"
+          "🧭 <b>LOẠI PHIÊN</b>\n"
+          "• Tăng lan rộng / Giảm đồng thuận: đa số mã cùng chiều chỉ số\n"
+          "• Tăng (Giảm) thiếu lan tỏa: chỉ số đi một chiều nhưng số đông cổ phiếu không theo")
 
 MENU: Keyboard = [[("📊 Thị trường", "market"), ("🏁 Dẫn dắt", "leaders")],
                   [("🌏 Khối ngoại", "foreign"), ("🔮 Triển vọng", "outlook")],
                   [("👁 Watchlist", "watch"), ("💼 Danh mục", "pf:Cân bằng")],
                   [("📄 Báo cáo PDF", "report"), ("🛰 Trạng thái", "status")],
-                  [("🔔 Cảnh báo tự động", "alerts")]]
+                  [("🔔 Cảnh báo tự động", "alerts"), ("📖 Ký hiệu", "legend")]]
 BACK: Keyboard = [[("🏠 Menu chính", "menu")]]
 
 
@@ -181,15 +217,18 @@ def outlook(ctx: Optional[Dict] = None, with_buttons: bool = False):
         a = an.get("horizons", {}).get(h) if an.get("available") else None
         if a and a["n"]:
             lines.append(f"   • Xác suất cao hơn hiện tại: <b>{fmt.frac_pct(a['p_up'], 0)}</b> {dot(a['p_up'] - a['base_p_up'])} "
-                         f"(nền {fmt.frac_pct(a['base_p_up'], 0)}, {a['n']} phiên tương tự)")
+                         f"(bình thường {fmt.frac_pct(a['base_p_up'], 0)} · dựa trên {a['n']} phiên tương tự)")
             lines.append(f"   • Trung vị {fmt.pct(a['median'], 1)} · 10–90%: {fmt.pct(a['p10'], 1)} → {fmt.pct(a['p90'], 1)}\n")
     if an.get("available"):
         lines.append(f"🧩 Trạng thái hiện tại: {escape(an['state'])}")
     sig = ctx.get("signals") or []
     lines.append("🚨 Tín hiệu hôm nay: " + (", ".join(escape(s["rule"]) for s in sig) if sig else "không có"))
     if 5 in vr:
-        lines.append(f"\n📐 σ ngày (EWMA λ=0,94) ≈ {fmt.num(vr[5]['sigma_d'] * 100, 2)}% · biên 90% bao trùm thực tế "
-                     f"{fmt.frac_pct(vr[5]['coverage90'], 0)} số lần từ 2019")
+        lines.append(f"\n📐 Mức dao động bình thường của VN-Index: khoảng <b>±{fmt.num(vr[5]['sigma_d'] * 100, 2)}% mỗi phiên</b>\n"
+                     f"<i>(độ lệch chuẩn lợi suất ngày, phiên gần đây được tính trọng số cao hơn)</i>\n"
+                     f"✅ Kiểm chứng từ 2019: VN-Index thực tế nằm trong biên 90% ở "
+                     f"<b>{fmt.frac_pct(vr[5]['coverage90'], 0)}</b> số lần")
+        lines.append("<i>🟢/🔴 cạnh xác suất: cao hơn/thấp hơn mức bình thường (tỷ lệ tăng của mọi phiên trong lịch sử).</i>")
     lines.append("<i>Ước lượng thống kê từ dữ liệu quá khứ, không phải dự báo chắc chắn.</i>")
     kb = [[("📊 Thị trường", "market"), ("📈 Biểu đồ VN-Index", "chart:VNINDEX")], [("🏠 Menu", "menu")]]
     text = "\n".join(lines)
@@ -345,9 +384,10 @@ def sector_card(symbol: str, ctx: Optional[Dict] = None):
              "\n📋 <b>CÁC MÃ TRONG NGÀNH</b> (theo GTGD)",
              "<code>   Mã   Hôm nay 20 phiên   NN ròng</code>"]
     for p_ in peers.head(12).itertuples():
-        mark = "👉" if p_.symbol == s else dot(p_.ret)
-        lines.append(f"{mark}<code>{p_.symbol:<4} {fmt.pct(p_.ret * 100, 1):>8} {fmt.pct(p_.ret_20d, 1):>8} "
+        lines.append(f"{dot(p_.ret)}<code>{p_.symbol:<4} {fmt.pct(p_.ret * 100, 1):>8} {fmt.pct(p_.ret_20d, 1):>8} "
                      f"{fmt.bn(p_.net_flow, 0):>9}</code>")
+    lines.append("<i>🟢 tăng · 🔴 giảm · 🟡 đứng giá hôm nay · NN ròng = khối ngoại mua − bán hôm nay "
+                 "(dương: mua ròng, âm: bán ròng). Bảng xếp theo giá trị giao dịch, lớn nhất ở trên.</i>")
     best = peers.dropna(subset=["ret_20d"]).sort_values("ret_20d", ascending=False)
     lines.append("\n🏆 Mạnh nhất 20 phiên: " + " · ".join(f"<b>{x.symbol}</b> {fmt.pct(x.ret_20d, 1)}"
                                                        for x in best.head(3).itertuples()))
@@ -361,7 +401,7 @@ def sector_card(symbol: str, ctx: Optional[Dict] = None):
         lines.append(f"…{sec['rank']}. <b>{escape(sector)}</b>: {fmt.pct(sec['r20'], 1)}")
     others = [x for x in peers["symbol"].head(5) if x != s][:4]
     kb = [[(f"📈 {x}", f"stock:{x}") for x in others[:2]], [(f"📈 {x}", f"stock:{x}") for x in others[2:4]],
-          [(f"↩️ Thẻ {s}", f"stock:{s}"), ("🏠 Menu", "menu")]]
+          [(f"↩️ Thẻ {s}", f"stock:{s}"), ("📖 Ký hiệu", "legend"), ("🏠 Menu", "menu")]]
     return "\n".join(lines), [k for k in kb if k]
 
 

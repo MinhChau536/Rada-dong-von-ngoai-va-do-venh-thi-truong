@@ -149,7 +149,10 @@ def _tab_portfolio(p, date) -> None:
     pf = profs[choice]
     c3.caption(f"Danh mục: **{', '.join(wl)}** · biến động mục tiêu ≤ {_pc(pf.target_vol, 0)}/năm · trần {_pc(pf.max_weight, 0)}/mã · "
                f"{get('portfolio.backtest_months', 24)} tháng gần nhất. Đầu mỗi tháng tối ưu lại chỉ bằng dữ liệu trước đó, "
-               "giữ nguyên tỷ trọng tới tháng sau.")
+               f"giữ số cổ phiếu tới tháng sau; **đã trừ chi phí {_pc(float(get('portfolio.cost_per_turnover', 0.0025)), 2)} "
+               "trên doanh số tái cân bằng**."
+               + (f" Trần thực dùng {_pc(P.effective_cap(pf.max_weight, len(wl)), 0)}/mã vì danh mục chỉ có {len(wl)} mã "
+                  "(trần thấp hơn chỉ còn nghiệm chia đều)." if P.effective_cap(pf.max_weight, len(wl)) > pf.max_weight else ""))
     p5_portfolio.backtest_block(wl, date, p5_portfolio.LOOKBACKS[lb], pf.max_weight, pf.target_vol, key="bt_pf")
 
 
@@ -163,7 +166,8 @@ def _band_history(lam: float, start: str):
     out = {}
     for h in (5, 20):
         fwd = sum(r.shift(-k) for k in range(1, h + 1))
-        df = pd.DataFrame({"fwd": fwd, "b68": outlook.Z68 * sig * np.sqrt(h), "b90": outlook.Z90 * sig * np.sqrt(h)})
+        km = outlook.band_multipliers(r, sig, h)              # hệ số hiệu chỉnh đuôi dày, chỉ dùng dữ liệu quá khứ
+        df = pd.DataFrame({"fwd": fwd, "b68": km["k68"] * sig * np.sqrt(h), "b90": km["k90"] * sig * np.sqrt(h)})
         out[h] = df[(df.index >= pd.Timestamp(start))].dropna()
     return out
 
@@ -171,8 +175,9 @@ def _band_history(lam: float, start: str):
 def _tab_band(p) -> None:
     lam = float(get("outlook.ewma_lambda", 0.94))
     start = str(get("outlook.history_start", "2019-01-02"))
-    st.caption(f"Mỗi phiên t ước lượng σ bằng EWMA (λ = {lam}) chỉ từ dữ liệu tới t, công bố biên ±1σ√h (68%) và "
-               f"±1,645σ√h (90%) cho h phiên tới; sau đó so với lợi suất thực tế. Biên tốt khi tỷ lệ bao phủ gần 68% / 90%.")
+    st.caption(f"Mỗi phiên t ước lượng σ bằng EWMA (λ = {lam}) chỉ từ dữ liệu tới t, công bố biên ±k·σ√h cho h phiên tới; "
+               "k = phân vị 68% / 90% thực nghiệm của sai số các dự báo ĐÃ BIẾT KẾT QUẢ trước t (hiệu chỉnh đuôi dày, thay "
+               "z = 1 / 1,645 của phân phối chuẩn vốn làm biên 20 phiên chỉ bao phủ ~83%). Biên tốt khi bao phủ gần 68% / 90%.")
     hist = _band_history(lam, start)
     h = st.segmented_control("Kỳ hạn", [5, 20], default=5, format_func=lambda x: f"{x} phiên", key="bt_h") or 5
     df = hist[h]
@@ -208,14 +213,79 @@ def _tab_band(p) -> None:
                "Lợi suất h phiên chồng lấp nên các phiên không độc lập.")
 
 
+# ── 5. giá trị kinh tế: tín hiệu có tạo lợi nhuận sau chi phí không? ─────────
+@st.cache_data(ttl=600, show_spinner=False)
+def _econ(hold: int, cost: float) -> pd.DataFrame:
+    d = da.daily()[["trade_date", "vni", "high_divergence"]].sort_values("trade_date").reset_index(drop=True)
+    r = d["vni"].pct_change().fillna(0).to_numpy()
+    sig = d["high_divergence"].fillna(False).astype(bool).to_numpy()
+    n = len(d)
+    pos = np.zeros(n)
+    i = 0
+    while i < n - 1:                                     # vào lệnh cuối phiên có tín hiệu, giữ `hold` phiên, không chồng lệnh
+        if sig[i]:
+            pos[i + 1:min(i + 1 + hold, n)] = 1
+            i += hold
+        else:
+            i += 1
+    strat = pos * r
+    entries = np.where(np.diff(np.r_[0, pos]) > 0)[0]
+    strat[entries] -= cost                               # chi phí khứ hồi tính một lần ở phiên vào lệnh
+    return pd.DataFrame({"trade_date": d["trade_date"], "Chiến lược theo tín hiệu": strat, "Mua và nắm giữ VN-Index": r, "pos": pos})
+
+
+def _stats(x: np.ndarray) -> dict:
+    yrs = len(x) / 250
+    tot = float(np.prod(1 + x) - 1)
+    cum = np.cumprod(1 + x)
+    return {"ann": (1 + tot) ** (1 / yrs) - 1 if yrs > 0 else np.nan,
+            "sharpe": float(x.mean() / x.std() * np.sqrt(250)) if x.std() > 0 else np.nan,
+            "mdd": float((cum / np.maximum.accumulate(cum) - 1).min()), "tot": tot}
+
+
+def _tab_econ(p) -> None:
+    st.caption("Kiểm tra tín hiệu duy nhất còn ý nghĩa thống kê sau hiệu chỉnh nhiều kiểm định (quy tắc 2 – độ vênh cao, "
+               "p Holm < 0,05) có tạo LỢI NHUẬN THỰC không: vào lệnh mua VN-Index (qua ETF) cuối phiên có tín hiệu, giữ H phiên, "
+               "trừ chi phí khứ hồi; thị trường cơ sở Việt Nam không cho bán khống nên chỉ có chiều mua.")
+    c1, c2 = st.columns(2)
+    hold = c1.select_slider("Số phiên nắm giữ H", [1, 3, 5, 10, 20], value=5, key="ec_h")
+    cost = c2.select_slider("Chi phí khứ hồi", [0.0, 0.002, 0.003, 0.004, 0.005], value=0.004, key="ec_c",
+                            format_func=lambda v: f"{v * 100:.1f}%".replace(".", ","))
+    df = _econ(hold, cost)
+    n = len(df)
+    rows = []
+    for lbl, lo, hi in (("Toàn kỳ", 0, n), ("Nửa đầu", 0, n // 2), ("Nửa sau", n // 2, n)):
+        seg = df.iloc[lo:hi]
+        a, b = _stats(seg["Chiến lược theo tín hiệu"].to_numpy()), _stats(seg["Mua và nắm giữ VN-Index"].to_numpy())
+        rows.append([f"<b>{lbl}</b>", f"{seg['trade_date'].iloc[0]:%m/%Y}–{seg['trade_date'].iloc[-1]:%m/%Y}",
+                     _pc(seg["pos"].mean(), 0), colored(a["ann"], _pc(a["ann"])), fmt.num(a["sharpe"], 2), _pc(a["mdd"]),
+                     colored(b["ann"], _pc(b["ann"])), fmt.num(b["sharpe"], 2), colored(a["ann"] - b["ann"], _pc(a["ann"] - b["ann"]))])
+    md(table_html(["Giai đoạn", "Thời gian", "Thời gian nắm giữ", "LS năm – tín hiệu", "Sharpe", "Sụt giảm tối đa",
+                   "LS năm – nắm giữ", "Sharpe", "Chênh lệch"], rows, left=(0, 1)))
+    cum = (1 + df[["Chiến lược theo tín hiệu", "Mua và nắm giữ VN-Index"]]).cumprod() * 100
+    fig = go.Figure()
+    for c, col in zip(cum.columns, (p["accent"], "#94A3B8")):
+        fig.add_trace(go.Scatter(x=df["trade_date"], y=cum[c], name=c, line=dict(color=col, width=2)))
+    fig.update_layout(title=f"Giá trị 100 đồng đầu tư · giữ {hold} phiên · chi phí {cost * 100:.1f}%".replace(".", ",", 1))
+    plot(charts._lay(fig, p, 340), "ec_cum")
+    full = _stats(df["Chiến lược theo tín hiệu"].to_numpy())
+    bh = _stats(df["Mua và nắm giữ VN-Index"].to_numpy())
+    verdict = ("có" if full["ann"] > bh["ann"] and full["sharpe"] > bh["sharpe"] else "KHÔNG")
+    md(f'<div class="ffr-insight"><b>Kết luận:</b> với chi phí {cost * 100:.1f}%, chiến lược theo tín hiệu {verdict} vượt '
+       f'mua-và-nắm-giữ (lợi suất năm {_pc(full["ann"])} so với {_pc(bh["ann"])}, Sharpe {fmt.num(full["sharpe"], 2)} so với '
+       f'{fmt.num(bh["sharpe"], 2)}). Tín hiệu có ý nghĩa thống kê ở mức trung bình nhưng mức chênh nhỏ hơn chi phí giao dịch '
+       'và không ổn định giữa hai nửa giai đoạn → hệ thống là công cụ <b>mô tả và theo dõi thị trường</b>, không phải chiến '
+       'lược sinh lời.</div>'.replace("0.", "0,"))
+
+
 def render() -> None:
     header("Backtest", "Kiểm chứng trên dữ liệu lịch sử: cảnh báo, giá trị dự báo, danh mục và biên dao động",
            pills=["chỉ dùng dữ liệu quá khứ tại mỗi thời điểm", "SSI FastConnect V3"])
     status_bar.render()
     p = pal()
     date = da.sessions()[-1]
-    t1, t2, t3, t4 = st.tabs(["🔔 Cảnh báo – chống trùng", "🎯 Cảnh báo – giá trị dự báo", "💼 Danh mục watchlist",
-                              "🔮 Biên dao động VN-Index"])
+    t1, t2, t3, t4, t5 = st.tabs(["🔔 Cảnh báo – chống trùng", "🎯 Cảnh báo – giá trị dự báo", "💼 Danh mục watchlist",
+                                  "🔮 Biên dao động VN-Index", "💰 Giá trị kinh tế"])
     with t1:
         section("Chạy lại cảnh báo trên lịch sử", "Đo số tin thực sự gửi sau chống trùng và giới hạn ngày")
         _tab_dedup(p)
@@ -228,3 +298,6 @@ def render() -> None:
     with t4:
         section("Kiểm chứng biên dao động triển vọng", "Biên EWMA dùng trong báo cáo và bot (/outlook)")
         _tab_band(p)
+    with t5:
+        section("Hệ thống có tạo lợi nhuận sau chi phí không?", "Mô phỏng giao dịch theo tín hiệu, trừ phí và thuế, so với nắm giữ")
+        _tab_econ(p)

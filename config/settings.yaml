@@ -8,7 +8,7 @@ app:
   version: "3.2"
   subtitle: "MARKET INTELLIGENCE"
   timezone: "Asia/Ho_Chi_Minh"
-  disclaimer: "Công cụ phân tích học thuật, không phải khuyến nghị đầu tư."
+  disclaimer: "Đề tài nghiên cứu học thuật, không mang tính chất khuyến nghị đầu tư."
   bot_disclaimer: "Thông tin phân tích, không phải khuyến nghị giao dịch."
 
 paths:
@@ -170,7 +170,8 @@ watchlist_max: 15
 portfolio:
   lookback: 250               # số phiên ước lượng (≈ 1 năm)
   risk_free: 0.045            # lãi suất phi rủi ro năm (tham chiếu tiền gửi 12 tháng)
-  backtest_months: 24         # kiểm chứng ngoài mẫu, tái cân bằng hằng tháng
+  backtest_months: 60         # kiểm chứng ngoài mẫu 5 năm (qua cả chu kỳ giảm 2022), tái cân bằng hằng tháng
+  cost_per_turnover: 0.0025   # chi phí giao dịch / 1 đơn vị doanh số tái cân bằng (phí môi giới ~0,15% + thuế bán 0,1%)
   profiles:                   # biến động năm mục tiêu · trần tỷ trọng một mã · beta tối đa phù hợp
     "Thận trọng": {target_vol: 0.15, max_weight: 0.25, max_beta: 0.9}
     "Cân bằng": {target_vol: 0.22, max_weight: 0.30, max_beta: 1.1}

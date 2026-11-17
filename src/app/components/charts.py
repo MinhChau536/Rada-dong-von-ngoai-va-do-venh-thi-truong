@@ -18,6 +18,12 @@ from src.finance.breadth import SESSION_TYPES
 
 def _lay(fig: go.Figure, p: Dict, height: int, **kw) -> go.Figure:
     fig.update_layout(template=register_plotly("dark" if p["dark"] else "light"), height=height, **kw)
+    if fig.layout.title.text and "legend" not in kw:
+        # mẫu chung đặt chú thích phía trên (y = 1,08) → đè tiêu đề; chuyển xuống dưới trục khi biểu đồ có tiêu đề
+        fig.update_layout(legend=dict(orientation="h", yanchor="top", y=-0.16, x=0, xanchor="left"),
+                          title=dict(x=0, xanchor="left", y=0.98, yanchor="top", font=dict(size=14)))
+        m = fig.layout.margin
+        fig.update_layout(margin=dict(t=max(m.t or 0, 44), b=max(m.b or 0, 40), l=m.l, r=m.r))
     fig.update_xaxes(automargin=True)
     fig.update_yaxes(automargin=True)
     return fig

@@ -21,7 +21,9 @@ from src.app import data_access as da  # noqa: E402
 from src.app.theme import css, register_plotly  # noqa: E402
 from src.common.config import get  # noqa: E402
 
-st.set_page_config(page_title=f"{get('app.name')}", page_icon="📡", layout="wide", initial_sidebar_state="expanded")
+from src.common.logo import png_path  # noqa: E402
+
+st.set_page_config(page_title=f"{get('app.name')}", page_icon=str(png_path()), layout="wide", initial_sidebar_state="expanded")
 from src.app.components.banners import background_css, banner_css, load_prefs, normalize  # noqa: E402
 
 _prefs = load_prefs()                                   # giao diện đã chọn lần trước (data/ui_prefs.json)
@@ -91,4 +93,37 @@ from src.app.components.banners import STARS  # noqa: E402
 starfield.inject(normalize(st.session_state["bg_choice"]) == STARS and mode == "dark", True)  # sao chỉ ở chế độ Tối
 if st.session_state.pop("sb_search_go", False) and nav.url_path != "watchlist" and "watchlist" in st.session_state["_pages"]:
     st.switch_page(st.session_state["_pages"]["watchlist"])
+from src.app.components.ui import md  # noqa: E402
+
+# ── Tự cập nhật phiên mới: khi khởi động app và kiểm tra lại mỗi 30 phút (tiến trình nền, src/data/autoupdate.py) ──
+@st.cache_resource(ttl=1800, show_spinner=False)
+def _autoupdate() -> dict:
+    from src.data import autoupdate
+    autoupdate.start_recorder_if_session()          # trong giờ giao dịch: tự ghi luồng WebSocket SSI V3
+    return autoupdate.start_if_behind()
+
+
+def _autoupdate_notice() -> None:
+    from src.data import autoupdate
+    au = _autoupdate()
+    if au.get("state") == "started":
+        code = autoupdate.finished(au)
+        if code is None:
+            md(f'<div class="ffr-acad" style="background:#ECFEFF;border-color:#67E8F9;color:#155E75">🔄 <span>'
+               f'<b>Đang tự tải phiên mới từ SSI</b> (kho tới {au.get("from")}, cần tới {au.get("to")}) – chạy nền, '
+               f'trang vẫn dùng được; bấm <b>Làm mới</b> sau 1–3 phút để xem số liệu mới.</span></div>')
+        elif not au.get("_done"):
+            au["_done"] = True
+            da.clear_cache()
+            st.toast("Đã cập nhật dữ liệu phiên mới từ SSI" if code == 0 else
+                     "Tự cập nhật chưa thành công – xem logs/job_autoupdate.log", icon="✅" if code == 0 else "⚠️")
+    elif au.get("state") == "running":
+        md('<div class="ffr-acad" style="background:#ECFEFF;border-color:#67E8F9;color:#155E75">🔄 <span>'
+           'Một tiến trình khác đang cập nhật dữ liệu (bộ lập lịch hoặc nút trên trang Kết nối dữ liệu).</span></div>')
+
+
+
+md('<div class="ffr-acad">🎓 <span><b>Đề tài nghiên cứu học thuật</b> – mọi số liệu, biểu đồ và nhận định trên trang chỉ '
+   'phục vụ học tập, nghiên cứu; <b>không mang tính chất khuyến nghị đầu tư</b>.</span></div>')   # nhắc trên MỌI trang
+_autoupdate_notice()
 nav.run()

@@ -82,7 +82,7 @@ def test_keyboard_json_limits_callback_data():
     from src.bot import messages as M
     mk = json.loads(keyboard_json(M.MENU))
     btn = [b for row in mk["inline_keyboard"] for b in row]
-    assert len(btn) == 9 and all(len(b["callback_data"].encode()) <= 64 for b in btn)
+    assert len(btn) == 10 and all(len(b["callback_data"].encode()) <= 64 for b in btn)
     assert keyboard_json(None) is None
 
 

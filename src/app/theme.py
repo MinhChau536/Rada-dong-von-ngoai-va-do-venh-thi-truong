@@ -90,20 +90,40 @@ section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {{ backgroun
 section[data-testid="stSidebar"] button {{ background:rgba(255,255,255,.06) !important; border:1px solid rgba(255,255,255,.14) !important; }}
 section[data-testid="stSidebar"] button p {{ color:#E6EDF5 !important; font-size:13px; white-space:nowrap; }}
 section[data-testid="stSidebar"] button {{ padding:4px 8px !important; }}
-.ffr-brand {{ display:flex; align-items:center; gap:10px; margin:2px 0 14px; }}
-.ffr-logo {{ width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#14B8A6,#0F766E);
-  display:flex; align-items:center; justify-content:center; color:#fff !important; font-weight:800; font-size:18px; }}
-.ffr-brand b {{ display:block; color:#F1F5F9 !important; font-size:16px; line-height:1.1; }}
-.ffr-brand small {{ color:{p['sidebar_label']} !important; font-size:9.5px; letter-spacing:1.6px; font-weight:700; }}
-.ffr-grp {{ color:{p['sidebar_label']} !important; font-size:10.5px; letter-spacing:1.4px; font-weight:700;
-  text-transform:uppercase; margin:14px 0 2px 4px; }}
-.ffr-active {{ background:rgba(20,184,166,.14); border-left:3px solid #14B8A6; border-radius:8px; padding:7px 12px;
-  color:#F1F5F9 !important; font-weight:700; font-size:14px; margin:2px 0; }}
-.ffr-srcbox {{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px;
-  padding:10px 12px; font-size:12px; line-height:1.7; margin-top:14px; }}
-.ffr-disc {{ border-left:3px solid #F59E0B; background:rgba(245,158,11,.08); border-radius:8px; padding:9px 11px;
-  font-size:11.5px; margin-top:10px; line-height:1.5; }}
-.ffr-dot {{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }}
+.ffr-brand {{ display:flex; align-items:center; gap:12px; margin:0 0 16px; padding:12px; border-radius:14px;
+  background:linear-gradient(135deg,rgba(20,184,166,.16),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); }}
+.ffr-brand svg {{ flex:0 0 auto; filter:drop-shadow(0 4px 10px rgba(20,184,166,.35)); }}
+.ffr-brand b {{ display:block; color:#F8FAFC !important; font-size:15px; font-weight:800; line-height:1.2; letter-spacing:-.2px; white-space:nowrap; }}
+.ffr-brand small {{ display:block; color:#94A3B8 !important; font-size:10.5px; font-weight:500; white-space:nowrap; line-height:1.35; }}
+.ffr-grp {{ display:flex; align-items:center; gap:8px; margin:16px 0 4px 2px; }}
+.ffr-grp span {{ color:#64748B !important; font-size:10.5px; letter-spacing:1.5px; font-weight:800; text-transform:uppercase; white-space:nowrap; }}
+.ffr-grp::after {{ content:""; flex:1; height:1px; background:rgba(255,255,255,.08); }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ border-radius:10px; padding:6px 12px !important;
+  border-left:3px solid transparent; margin:1px 0; transition:background .15s; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ color:#CBD5E1 !important; font-size:13.5px; font-weight:500; white-space:nowrap; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a span {{ color:#7F8EA3 !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{ background:rgba(255,255,255,.06) !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover p {{ color:#FFFFFF !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a {{
+  background:linear-gradient(90deg,rgba(20,184,166,.26),rgba(20,184,166,.04)) !important; border-left:3px solid #2DD4BF; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a p {{ color:#FFFFFF !important; font-weight:700; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a span {{ color:#2DD4BF !important; }}
+.ffr-sep {{ height:1px; background:rgba(255,255,255,.08); margin:14px 0 10px; }}
+section[data-testid="stSidebar"] [data-testid="stExpander"] details {{ background:rgba(255,255,255,.03) !important;
+  border:1px solid rgba(255,255,255,.08) !important; border-radius:12px !important; }}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ color:#E2E8F0 !important; font-weight:600; }}
+.ffr-srcbox {{ background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:12px;
+  padding:10px 12px; font-size:12px; margin-top:12px; }}
+.ffr-srct {{ color:#64748B !important; font-size:10.5px; letter-spacing:1.3px; font-weight:800; text-transform:uppercase; margin-bottom:6px; }}
+.ffr-srcr {{ display:flex; align-items:center; padding:3px 0; color:#CBD5E1 !important; }}
+.ffr-srcr em {{ margin-left:auto; font-style:normal; color:#F1F5F9 !important; font-weight:600; font-variant-numeric:tabular-nums; }}
+.ffr-disc {{ border:1px solid rgba(251,191,36,.35); background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(251,191,36,.04));
+  border-radius:12px; padding:10px 12px; font-size:12px; margin-top:10px; line-height:1.5; color:#FDE68A !important; }}
+.ffr-disc-t {{ font-weight:800; color:#FBBF24 !important; font-size:12.5px; margin-bottom:2px; }}
+.ffr-dot {{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:8px; box-shadow:0 0 0 3px rgba(255,255,255,.04); }}
+.ffr-acad {{ display:flex; align-items:center; gap:10px; background:{'#2A2414' if p['dark'] else '#FFFBEB'}; border:1px solid {'#A16207' if p['dark'] else '#FCD34D'}; border-radius:10px;
+  padding:7px 14px; margin:0 0 10px; font-size:12.5px; color:{'#FDE68A' if p['dark'] else '#92400E'}; }}
+.ffr-acad b {{ color:{'#FBBF24' if p['dark'] else '#B45309'}; }}
 /* ── nội dung ── */
 .ffr-head {{ display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:10px; }}
 .ffr-title {{ font-size:24px; font-weight:800; color:{p['text']}; letter-spacing:-.3px; }}
@@ -135,7 +155,7 @@ section[data-testid="stSidebar"] button {{ padding:4px 8px !important; }}
 .ffr-kpi b {{ display:block; font-size:21px; font-weight:800; font-variant-numeric:tabular-nums; }}
 table.ffr-t {{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }}
 table.ffr-t th {{ text-align:right; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:{p['muted']};
-  font-weight:700; padding:7px 8px; border-bottom:1px solid {p['border']}; white-space:nowrap; }}
+  font-weight:700; padding:7px 8px; border-bottom:1px solid {p['border']}; white-space:normal; vertical-align:bottom; }}
 table.ffr-t td {{ white-space:nowrap; text-align:right; padding:6px 8px; border-bottom:1px solid {p['track']}; color:{p['text']}; }}
 table.ffr-t th.l, table.ffr-t td.l {{ text-align:left; }}
 table.ffr-t td.l {{ white-space:normal; }}
@@ -154,4 +174,36 @@ table.ffr-t tr:hover td {{ background:{p['soft']}; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] {{ background:{p['accent']} !important; border-color:{p['accent']} !important; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:#fff !important; }}
 div[data-testid="stMetric"] {{ background:{p['card']}; border:1px solid {p['border']}; border-radius:12px; padding:10px 14px; }}
+/* ── trang Toàn cảnh thị trường: lưới thẻ tiêu đề + thanh tab (phong cách cổng thông tin chứng khoán) ── */
+div[class*="st-key-tcw"] {{ background:{p['card']}; border:1px solid {p['border']} !important; border-radius:10px !important;
+  box-shadow:0 1px 3px rgba(15,23,42,.06); padding:10px 12px 14px !important; overflow:hidden; }}
+.tc-head {{ background:linear-gradient(90deg,{'#16263D' if p['dark'] else '#E8EEFB'},{p['card']}); border-radius:12px;
+  padding:14px 20px; border:1px solid {p['border']}; }}
+.tc-h1 {{ font-size:28px; font-weight:800; color:{'#F87171' if p['dark'] else '#B42318'}; letter-spacing:-.3px; line-height:1.1; }}
+.tc-date {{ font-size:14px; color:{p['muted']}; margin-top:4px; }}
+.tc-title {{ text-align:center; font-size:18px; font-weight:700; color:{'#F87171' if p['dark'] else '#B42318'}; padding:2px 0 0; }}
+.tc-sub {{ text-align:center; font-size:11.5px; color:{p['muted']}; margin-top:-2px; }}
+div[class*="st-key-tcw"] .stTabs [role="tablist"] {{ gap:0; border-bottom:2px solid #1E3A5F; }}
+div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] {{ flex:1 1 0; min-width:0; justify-content:center; padding:6px 3px;
+  margin:0; background:{p['soft']}; border-radius:0; height:auto; }}
+div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] p {{ font-size:12.5px; font-weight:600; color:{p['text']};
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
+div[class*="st-key-tcw"] .stTabs .react-aria-SelectionIndicator {{ display:none; }}
+div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:#1E3A5F !important; }}
+div[class*="st-key-tcw"] .stTabs [aria-selected="true"] p {{ color:#FFFFFF !important; }}
+div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-highlight"], div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-border"] {{ display:none; }}
+.tc-tw {{ width:100%; overflow-x:auto; }}
+table.tc-t {{ width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums; }}
+table.tc-t th {{ font-size:11.5px; font-weight:700; color:{p['text']}; padding:6px 6px; text-align:right;
+  border-bottom:1px solid {p['border']}; white-space:normal; vertical-align:bottom; }}
+table.tc-t td {{ padding:6px 5px; text-align:right; border-bottom:1px solid {p['track']}; white-space:nowrap; color:{p['text']}; }}
+table.tc-t tbody tr:nth-child(odd) td {{ background:{p['soft']}; }}
+table.tc-t th.l, table.tc-t td.l {{ text-align:left; }}
+table.tc-t td:first-child {{ color:{p['muted']}; }}
+.tc-sym {{ color:{'#93C5FD' if p['dark'] else '#1E3A5F'}; font-weight:700; }}
+.tc-row {{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font-size:12.5px; color:{p['muted']}; margin-top:6px; }}
+.tc-row b {{ color:{p['text']}; }}
+.tc-breadth {{ display:flex; height:16px; border-radius:4px; overflow:hidden; margin-top:6px; }}
+.tc-breadth i {{ display:flex; align-items:center; justify-content:center; color:#fff; font-size:10.5px; font-style:normal; font-weight:700; }}
+.tc-note {{ font-size:11px; color:{p['muted']}; margin-top:6px; font-style:italic; }}
 </style>"""

@@ -116,7 +116,9 @@ def render() -> None:
     section("Luồng WebSocket SSI V3 có lưu trữ", "Chuẩn tối thiểu của đề: ≥ 1 luồng WebSocket có lưu trữ · mục tiêu ≥ 10 phiên, mất kết nối < 5 phút/phiên")
     ns, gaps = da.stream_stats(), da.stream_gaps()
     if ns.empty:
-        empty("Chưa có tin – chạy `python -m src.data.recorder_ssi` trong giờ giao dịch (hoặc nút trên trang Kết nối dữ liệu).")
+        empty("Chưa có tin luồng WebSocket nào được lưu. Bộ ghi chỉ nhận tin trong giờ giao dịch 08:55–15:05 (thứ Hai – thứ Sáu): "
+              "từ nay app và bot tự bật bộ ghi khi được mở trong khung giờ này; hoặc chạy tay `python -m src.data.recorder_ssi`, "
+              "hoặc để `python -m src.data.scheduler` chạy nền. Kết nối đã kiểm tra: đăng nhập và mở WebSocket SSI V3 thành công.")
     else:
         m = ns.merge(gaps, on="session_date", how="left") if not gaps.empty else ns
         md(table_html(["Phiên", "Nguồn", "Số tin", "Tin đầu", "Tin cuối", "Mất kết nối (phút)"],

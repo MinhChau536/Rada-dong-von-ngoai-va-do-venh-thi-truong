@@ -53,7 +53,7 @@ def render() -> None:
     hdr = st.columns([1.3, 1, 1, 3, 1.2])
     for c, t in zip(hdr, ["Thời điểm xuất", "Loại", "Trạng thái", "File", ""]):
         c.caption(t)
-    for r in rl.head(n).itertuples():
+    for i, r in enumerate(rl.head(n).itertuples()):
         cols = st.columns([1.3, 1, 1, 3, 1.2])
         cols[0].write(pd.Timestamp(r.created_at).strftime("%d/%m %H:%M"))
         cols[1].write(r.kind)
@@ -61,7 +61,7 @@ def render() -> None:
         cols[3].caption(r.file or (r.note or ""))
         if isinstance(r.path, str) and Path(r.path).exists():
             cols[4].download_button("Tải về", Path(r.path).read_bytes(), file_name=r.file,
-                                    mime="application/pdf", key=f"dl_{r.id}")
+                                    mime="application/pdf", key=f"dl_{i}_{r.file}")   # id có thể trùng sau khi khôi phục snapshot
     pages = st.session_state.get("_pages", {})
     if "telegram" in pages:
         st.page_link(pages["telegram"], label="Gửi báo cáo và bản tin qua Telegram → trang Bot Telegram", icon=":material/send:")

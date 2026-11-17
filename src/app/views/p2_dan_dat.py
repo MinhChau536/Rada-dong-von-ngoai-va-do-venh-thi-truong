@@ -87,11 +87,14 @@ def group_table(date) -> None:
     rows = []
     for kind, df in (("Họ", fam), ("Ngành", sec)):
         for r in df.itertuples():
-            ex = fmt.pct(r.index_ex_group_ret_pct) if kind == "Họ" and pd.notna(r.index_ex_group_ret_pct) else "—"
+            ex = (colored(r.index_ex_group_ret_pct, fmt.pct(r.index_ex_group_ret_pct))
+                  if pd.notna(r.index_ex_group_ret_pct) else "—")              # có cho cả họ cổ phiếu và ngành
             rows.append([f"<b>{esc(names.get(r.group_name, r.group_name))}</b>", kind, str(int(r.n)),
                          colored(r.C, fmt.num(r.C, 2, True)), colored(r.ret_eq, fmt.pct(r.ret_eq * 100)), ex])
     md(table_html(["Nhóm", "Loại", "Số mã", "Đóng góp (điểm)", "Lợi suất bình quân", "VN-Index nếu loại trừ"], rows, left=(0, 1)))
-    st.caption(f"VN-Index thực tế phiên này {fmt.pct(x['r_vni_pct'])}. Lợi suất bình quân = trung bình đồng trọng số các mã trong nhóm.")
+    st.caption(f"VN-Index thực tế phiên này {fmt.pct(x['r_vni_pct'])}. Lợi suất bình quân = trung bình đồng trọng số các mã trong nhóm. "
+               "VN-Index nếu loại trừ = mức thay đổi của chỉ số khi bỏ đóng góp điểm của nhóm (ΣC các mã còn lại / VN-Index phiên trước); "
+               "càng xa mức thực tế thì nhóm càng chi phối chỉ số.")
 
 
 @safe_block("thống kê độ vênh theo kỳ")

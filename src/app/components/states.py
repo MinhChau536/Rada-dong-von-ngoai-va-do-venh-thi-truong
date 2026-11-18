@@ -66,7 +66,7 @@ PAGE_FEATURES = {
     "su-kien-ftse": ["CAAR và CAFF quanh E1, E2, E3 cho nhóm FTSE và nhóm đối chứng", "Bảng kiểm định t, BMP, dấu, bootstrap",
                      "Đồ thị hệ số chênh lệch kép (DiD)"],
     "watchlist": ["Thêm/xóa mã theo dõi", "Hồ sơ phản ứng từng mã: ER, beta Dimson, đóng góp chỉ số, phân vị nf",
-                  "So sánh hiệu suất chuẩn hóa", "Phản ứng theo loại phiên", "Tin liên quan (nguồn bổ trợ)"],
+                  "So sánh hiệu suất chuẩn hóa", "Phản ứng theo loại phiên"],
     "bao-cao": ["Xuất PDF Market Snapshot và Closing Report", "Lịch sử báo cáo, tải về"],
     "telegram": ["Trạng thái bot, xem trước tin nhắn kèm nút bấm", "Gửi bản tin giữa/cuối phiên ngay",
                  "Danh sách lệnh, cấu hình và nhật ký cảnh báo"],

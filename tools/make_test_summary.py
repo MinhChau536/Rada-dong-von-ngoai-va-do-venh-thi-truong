@@ -51,7 +51,7 @@ def main() -> None:
     cov = json.loads((ROOT / "docs" / "coverage.json").read_text(encoding="utf-8"))["totals"]["percent_covered"]
     rows.append({"kiểm thử": "coverage", "mục tiêu": "Độ phủ tầng finance + analytics ≥ 80%", "dữ liệu dùng": "pytest-cov",
                  "kết quả": f"{cov:.1f}%", "đạt": "Đạt" if cov >= 80 else "Không đạt",
-                 "ghi chú": "" if cov >= 80 else "Phần chưa phủ chủ yếu là nhánh lỗi/hiển thị (news, robustness)"})
+                 "ghi chú": "" if cov >= 80 else "Phần chưa phủ chủ yếu là nhánh lỗi/hiển thị (robustness)"})
     from src.data import quality, database as db
     q = quality.run(write_notes=False)
     bt = db.query_df("SELECT COUNT(DISTINCT trade_date) n, COUNT(*) FILTER (WHERE status='simulated' AND priority<>'system') k "

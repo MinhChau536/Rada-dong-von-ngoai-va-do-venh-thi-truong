@@ -18,9 +18,12 @@ COMMON = {
 LIGHT = {**COMMON, "dark": False, "bg": "#F4F6F9", "card": "#FFFFFF", "border": "#E3E8EF", "text": "#0F172A",
          "muted": "#5B6B7F", "accent": "#0F766E", "grid": "#E3E8EF", "track": "#EEF2F6", "soft": "#F8FAFC",
          "insight_bg": "#FFFBEB", "insight_border": "#FCD34D"}
-DARK = {**COMMON, "dark": True, "sidebar": "#0A1424", "bg": "#0B1320", "card": "#111C2E", "border": "#1F2A3D",
-        "text": "#E6EDF5", "muted": "#93A4B8", "accent": "#2DD4BF", "grid": "#1F2A3D", "track": "#18243A",
-        "soft": "#14213A", "insight_bg": "#2A2414", "insight_border": "#A16207"}
+DARK = {**COMMON, "dark": True, "sidebar": "#081221", "bg": "#0A1628", "card": "#0F1E33", "border": "#1E3050",
+        "text": "#E8EEF6", "muted": "#94A6BD", "accent": "#2DD4BF", "grid": "#1C2D47", "track": "#172A44",
+        "soft": "#13243C", "insight_bg": "#2A2414", "insight_border": "#A16207"}
+GOLD = {"dark": "#F5B341", "light": "#B7791F"}             # màu nhấn cho chữ đặc biệt (tiêu đề nổi bật, mã CK, mục đang chọn)
+SERIF = "'Playfair Display', Georgia, serif"
+MONO = "'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace"
 ABSORB_COLORS = {"absorb": "#16A34A", "joint_sell": "#DC2626", "joint_buy": "#2563EB",
                  "domestic_take": "#D97706", "neutral": "#94A3B8"}
 SESSION_COLORS = {"broad_up": "#16A34A", "narrow_up": "#84CC16", "flat": "#94A3B8",
@@ -61,17 +64,27 @@ def register_plotly(mode: str = "light") -> str:
 
 def css(mode: str = "light") -> str:
     p = palette(mode)
+    G = GOLD["dark" if p["dark"] else "light"]
+    TXT, MUT = p["text"], p["muted"]
+    CARDBG = ("linear-gradient(180deg,rgba(17,33,56,.94),rgba(12,25,44,.94))" if p["dark"] else "#FFFFFF")
+    CBD = "rgba(148,163,184,.14)" if p["dark"] else "#E3E8EF"
+    SH = ".35" if p["dark"] else ".06"
+    TABBG = "rgba(255,255,255,.04)" if p["dark"] else "#F1F5F9"
+    ROW = "rgba(255,255,255,.025)" if p["dark"] else "#F8FAFC"
+    NOTEBG = "rgba(56,189,248,.08)" if p["dark"] else "#F0F9FF"
+    NOTEBD = "rgba(56,189,248,.25)" if p["dark"] else "#BAE6FD"
     return f"""<style>
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap&subset=vietnamese');
 :root {{ --ffr-bg:{p['bg']}; --ffr-card:{p['card']}; --ffr-border:{p['border']}; --ffr-text:{p['text']};
   --ffr-muted:{p['muted']}; --ffr-accent:{p['accent']}; --ffr-up:{p['up']}; --ffr-down:{p['down']}; --ffr-ref:{p['ref']}; }}
 html, body, [data-testid="stAppViewContainer"], .stApp {{ background:{p['bg']} !important; color:{p['text']};
   font-family:{FONT}; }}
 [data-testid="stHeader"] {{ background:transparent; }}
-.block-container {{ padding-top:1.4rem; max-width:1500px; }}
+.block-container {{ padding:1.1rem 2.2rem 3rem !important; max-width:100% !important; }}
 h1,h2,h3,h4,p,span,div,label {{ font-family:{FONT}; }}
 /* ── thanh bên ── */
-section[data-testid="stSidebar"] {{ background:{p['sidebar']} !important; width:270px !important; }}
+section[data-testid="stSidebar"] {{ background:linear-gradient(180deg,{p['sidebar']} 0%,#0B1A30 100%) !important;
+  width:330px !important; min-width:330px !important; border-right:1px solid rgba(245,179,65,.14); }}
 section[data-testid="stSidebar"] * {{ color:{p['sidebar_text']}; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ border-radius:8px; padding:4px 10px; border-left:3px solid transparent; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{ background:rgba(20,184,166,.10); }}
@@ -206,4 +219,58 @@ table.tc-t td:first-child {{ color:{p['muted']}; }}
 .tc-breadth {{ display:flex; height:16px; border-radius:4px; overflow:hidden; margin-top:6px; }}
 .tc-breadth i {{ display:flex; align-items:center; justify-content:center; color:#fff; font-size:10.5px; font-style:normal; font-weight:700; }}
 .tc-note {{ font-size:11px; color:{p['muted']}; margin-top:6px; font-style:italic; }}
+
+/* ══ Lớp giao diện "pro" (navy + gold, serif + mono) – chỉ trình bày, không đổi nội dung ══ */
+:root {{ --ffr-gold:{G}; --ffr-serif:{SERIF}; --ffr-mono:{MONO}; }}
+.ffr-gold, b.ffr-gold {{ color:{G} !important; }}
+/* thanh bên */
+.ffr-brand {{ background:linear-gradient(135deg,rgba(245,179,65,.14),rgba(255,255,255,.02)) !important;
+  border:1px solid rgba(245,179,65,.28) !important; }}
+.ffr-brand b {{ font-family:{SERIF}; font-size:18px !important; letter-spacing:.2px; }}
+.ffr-grp span {{ font-family:{MONO}; color:#C9A253 !important; font-size:10.5px !important; letter-spacing:1.8px !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ padding:9px 14px !important; border:1px solid transparent;
+  border-left:3px solid transparent; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ text-transform:uppercase; letter-spacing:.6px; font-size:12.8px !important;
+  font-weight:600 !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a {{
+  background:linear-gradient(90deg,rgba(245,179,65,.22),rgba(245,179,65,.05)) !important; border:1px solid rgba(245,179,65,.65) !important;
+  border-left:3px solid #F5B341 !important; box-shadow:0 0 0 3px rgba(245,179,65,.06), 0 6px 18px rgba(0,0,0,.25); }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a p,
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a span {{ color:#F5B341 !important; }}
+.ffr-srct {{ font-family:{MONO}; color:#C9A253 !important; }}
+/* tiêu đề, nhãn */
+.ffr-sec h3, .ffr-title {{ font-family:{FONT}; font-weight:700 !important; letter-spacing:-.2px; }}
+.ffr-lbl, .ffr-kpi small {{ font-family:{FONT}; letter-spacing:.6px !important; font-weight:700 !important; }}
+table.ffr-t th, table.tc-t th {{ font-family:{FONT}; letter-spacing:.3px !important; font-size:11px !important; font-weight:700 !important; }}
+.ffr-kpi {{ border-radius:14px !important; position:relative; overflow:hidden; }}
+.ffr-kpi::before {{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,{G},transparent); }}
+.ffr-kpi b {{ font-size:22px !important; }}
+.ffr-sym, .tc-sym {{ color:{G} !important; font-weight:700 !important; }}
+.ffr-card {{ border-radius:14px !important; }}
+/* thẻ widget */
+div[class*="st-key-tcw"] {{ border-radius:16px !important; border:1px solid {CBD} !important;
+  background:{CARDBG} !important; box-shadow:0 10px 30px rgba(2,8,23,{SH}); padding:14px 16px 16px !important; }}
+.tc-title {{ text-align:left !important; font-family:{FONT}; font-size:18px !important; font-weight:700 !important;
+  color:{TXT} !important; letter-spacing:.1px; padding:2px 0 0 !important; }}
+.tc-title::before {{ content:""; display:inline-block; width:8px; height:8px; border-radius:50%; background:{G};
+  margin:0 10px 3px 0; box-shadow:0 0 0 4px rgba(245,179,65,.18); }}
+.tc-sub {{ text-align:left !important; font-size:12.5px !important; color:{MUT} !important; margin:2px 0 8px 18px !important; }}
+/* tab trong thẻ: dạng nút chọn, mục đang chọn tô vàng */
+div[class*="st-key-tcw"] .stTabs [role="tablist"] {{ border-bottom:none !important; background:{TABBG}; border-radius:10px;
+  padding:3px; gap:3px !important; }}
+div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] {{ background:transparent !important; border-radius:8px !important; padding:6px 4px !important; }}
+div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] p {{ font-family:{FONT}; font-size:13px !important; font-weight:600 !important;
+  color:{MUT} !important; }}
+div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:{G} !important; }}
+div[class*="st-key-tcw"] .stTabs [aria-selected="true"] p {{ color:#1A1206 !important; font-weight:700 !important; }}
+/* bảng */
+table.tc-t tbody tr:nth-child(odd) td {{ background:{ROW} !important; }}
+table.tc-t tbody tr:hover td, table.ffr-t tr:hover td {{ background:rgba(245,179,65,.07) !important; }}
+/* hộp nhắc */
+.ffr-acad {{ border-radius:12px !important; border-left:3px solid {G} !important; }}
+.ffr-note {{ display:flex; align-items:center; gap:10px; border-radius:12px; padding:7px 14px; margin:0 0 10px; font-size:12.5px;
+  background:{NOTEBG}; border:1px solid {NOTEBD}; border-left:3px solid #38BDF8; color:{TXT}; }}
+.ffr-note b {{ color:#38BDF8; }}
+.ffr-insight {{ border-left:3px solid {G} !important; border-radius:12px !important; }}
+.ffr-pill {{ font-size:12px !important; }}
 </style>"""

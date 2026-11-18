@@ -37,7 +37,6 @@ INHERITED = [
      "src/app/components/charts.py, ui.py, pages/p1_tong_quan.py", "Giữ bố cục & thứ tự khối, đổi bảng màu"),
     ("_pal() rải rác", "src/app/theme.py", "Gom thành một nguồn màu cho CSS, Plotly, PDF"),
     ("reports/pdf_generator.py, reports/cover.py, assets/fonts/", "src/reports/*, assets/fonts/", "Giữ khung & font Be Vietnam Pro"),
-    ("core/tin_tuc.py", "src/analytics/news.py", "Rút gọn, chỉ Google News RSS, nhãn nguồn ngoài"),
     ("WatchlistService", "src/analytics/watchlist_impact.py", "Giữ quản lý danh sách, thêm hồ sơ phản ứng"),
     ("tests/fakes.py", "tests/test_operations.py", "Ý tưởng kiểm thử không cần mạng (phiên HTTP giả)"),
     ("components/background_fx.py", "—", "Tắt (B4.3) – giao diện tĩnh"),

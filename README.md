@@ -192,7 +192,7 @@ Giao diện dạng **lưới thẻ** (kiểu các cổng thông tin chứng kho�
 | | Dẫn dắt & độ vênh | Thác nước đóng góp theo mã/ngành · bảng đóng góp chi tiết top 15 · đóng góp theo họ cổ phiếu và ngành · chuỗi D có dải phân vị · thống kê độ vênh 5/20/60/250 phiên · chỉ số loại trừ một họ cổ phiếu · phân phối CR5 · loại phiên · mã xuất hiện nhiều nhất trong Top 5 |
 | **Dòng vốn** | Ra-đa khối ngoại | Chỉ số NF, z60, HHI, FPR · top mua/bán ròng · diễn biến mua – bán – ròng · nhận định theo quy tắc · bảng xếp hạng (mua ròng, bán ròng, \|z\|, room) · khối ngoại theo ngành · lũy kế theo nhóm 1/5/20/60 phiên · chuỗi mua/bán ròng · HHI và NF lũy kế · dòng vốn theo nhóm · trạng thái hấp thụ của khối nội |
 | | Sự kiện FTSE | CAAR, CAFF hai nhóm có dải tin cậy · bảng kiểm định (t, BMP, dấu, Welch, Mann–Whitney, Holm) · DiD và hệ số theo tuần · cân bằng nhóm đối chứng |
-| **Danh mục & tiện ích** | Watchlist Impact | Quản lý danh mục · hồ sơ phản ứng từng mã · tối ưu danh mục theo khẩu vị (5 phương án, biên hiệu quả, đóng góp rủi ro, tương quan) · quy đổi ra số cổ phiếu · tin liên quan |
+| **Danh mục & tiện ích** | Watchlist Impact | Quản lý danh mục · hồ sơ phản ứng từng mã · tối ưu danh mục theo khẩu vị (5 phương án, biên hiệu quả, đóng góp rủi ro, tương quan) · quy đổi ra số cổ phiếu · **tab riêng từng mã**: thông tin doanh nghiệp (vốn hóa, cổ phiếu niêm yết, tỷ trọng VN-Index, room ngoại, thanh khoản), giá 250 phiên, khối ngoại 60 phiên |
 | | Báo cáo PDF | Xuất Market Snapshot / Closing Report · danh sách báo cáo đã sinh, tải về |
 | | Bot Telegram | Trạng thái bot · xem trước tin nhắn kèm nút bấm · gửi thử · danh sách lệnh · nhật ký cảnh báo |
 | **Hệ thống** | Chất lượng dữ liệu | Độ đầy đủ · ε · đối chiếu độ rộng · luồng WebSocket đã lưu · đối chiếu luồng ↔ REST · nhật ký lỗi · xuất CSV |
@@ -309,7 +309,7 @@ Lợi suất gần bằng thị trường nhưng **sụt giảm tối đa thấp
 │   │              recorder_ssi.py · build_facts.py · quality.py · rebuild_all.py · diagnostics.py · sample_data.py
 │   ├── finance/   breadth.py · contribution.py · foreign_flow.py · domestic.py · utils.py
 │   ├── analytics/ pipeline.py · event_study.py · did.py · stats_tests.py · watchlist_impact.py · portfolio.py
-│   │              outlook.py · alerts.py · narrative.py · health.py · news.py
+│   │              outlook.py · alerts.py · narrative.py · health.py
 │   ├── app/       main.py · theme.py · data_access.py
 │   │              components/ (widgets.py – thẻ dùng chung · charts.py · sidebar.py · ui.py · banners.py …)
 │   │              views/ (các trang web)
@@ -363,7 +363,6 @@ Nguồn: kho [`web_phantichchungkhoan`](https://github.com/MinhChau536/web_phant
 | `giao_dien/thi_truong.py` | `src/app/views/p1_tong_quan.py`, `src/app/components/` | Giữ ý tưởng khối, làm lại bố cục lưới thẻ |
 | `_pal()`, `assets/styles/main_style.py` | `src/app/theme.py` | Viết lại – một nguồn màu cho CSS, Plotly, PDF |
 | `reports/pdf_generator.py`, `reports/cover.py`, `assets/fonts/` | `src/reports/`, `assets/fonts/` | Giữ font, làm lại bố cục |
-| `core/tin_tuc.py` | `src/analytics/news.py` | Rút gọn (Google News RSS), gắn nhãn nguồn ngoài |
 
 **Phần viết mới:** tầng SSI FastConnect V3 (REST + WebSocket), cập nhật tự động, lược đồ và chuỗi xử lý, các module độ vênh, dòng vốn, sự kiện FTSE, DiD, kiểm định, tối ưu danh mục, cảnh báo, nhận định, triển vọng thống kê, backtest, các trang web mới, hai mẫu PDF, bot Telegram, kiểm thử.
 

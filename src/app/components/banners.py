@@ -168,14 +168,29 @@ def _hexa(c: str, a: float) -> str:
     return f"rgba({int(c[1:3], 16)},{int(c[3:5], 16)},{int(c[5:7], 16)},{a})"
 
 
+MODULES = {"tong-quan": ("01", "Thị trường"), "dan-dat": ("02", "Thị trường"), "khoi-ngoai": ("03", "Dòng vốn"),
+           "su-kien-ftse": ("04", "Dòng vốn"), "watchlist": ("05", "Danh mục"), "bao-cao": ("06", "Tiện ích"),
+           "telegram": ("07", "Tiện ích"), "chat-luong": ("08", "Hệ thống"), "backtest": ("09", "Hệ thống"),
+           "phuong-phap": ("10", "Hệ thống"), "ket-noi": ("11", "Hệ thống")}
+HIGHLIGHT = {"Tổng quan thị trường": ("Tổng quan", "thị trường"), "Dẫn dắt & độ vênh": ("Dẫn dắt &", "độ vênh"),
+             "Ra-đa khối ngoại": ("Ra-đa", "khối ngoại"), "Sự kiện FTSE": ("Sự kiện", "FTSE"),
+             "Watchlist Impact": ("Watchlist", "Impact"), "Báo cáo PDF": ("Báo cáo", "PDF"), "Bot Telegram": ("Bot", "Telegram"),
+             "Chất lượng dữ liệu": ("Chất lượng", "dữ liệu"), "Backtest": ("", "Backtest"),
+             "Phương pháp & giới hạn": ("Phương pháp &", "giới hạn"), "Kết nối dữ liệu": ("Kết nối", "dữ liệu")}
+
+
 def banner_html(title: str, sub: str, pills_html: str = "") -> str:
+    """Banner đầu trang: dòng mô-đun (mono) · tiêu đề serif có phần tô vàng · ảnh nền mờ dần sang phải · hình minh họa."""
     slug = TITLE_TO_SLUG.get(title, "tong-quan")
-    c1, c2 = GRADIENTS.get(slug, GRADIENTS["tong-quan"])
+    c1, _ = GRADIENTS.get(slug, GRADIENTS["tong-quan"])
     ph = photo_uri(slug)
-    bg = (f"linear-gradient(110deg,{_hexa(c1, .93)} 0%,{_hexa(c1, .78)} 38%,{_hexa(c2, .38)} 100%),"
-          f"url('{ph}') center/cover no-repeat" if ph else f"linear-gradient(120deg,{c1} 0%,{c2} 100%)")
-    return (f'<div class="ffr-banner" style="background:{bg}">'
-            f'<div class="ffr-banner-txt"><div class="ffr-banner-title">{title}</div><div class="ffr-banner-sub">{sub}</div>'
+    no, grp = MODULES.get(slug, ("", ""))
+    plain, gold = HIGHLIGHT.get(title, (title, ""))
+    head = (f'{plain} <em>{gold}</em>' if gold else plain).strip().replace("&", '<span class="amp">&amp;</span>')
+    photo = f'<div class="ffr-hero-photo" style="background-image:url(\'{ph}\')"></div>' if ph else ""
+    return (f'<div class="ffr-banner" style="--ffr-tint:{_hexa(c1, .55)}">{photo}<div class="ffr-hero-glow"></div>'
+            f'<div class="ffr-banner-txt">'
+            f'<div class="ffr-banner-title">{head}</div><div class="ffr-banner-sub">{sub}</div>'
             f'<div class="ffr-banner-pills">{pills_html}</div></div>'
             f'<div class="ffr-banner-art">{art_svg(slug)}</div></div>')
 
@@ -313,19 +328,33 @@ DARK_WIDGETS = """
 
 def banner_css(dark: bool) -> str:
     return (DARK_WIDGETS if dark else "") + """
-.ffr-banner { position:relative; display:flex; align-items:stretch; justify-content:space-between; gap:16px; border-radius:18px;
-  padding:20px 26px; margin:2px 0 14px; color:#fff; overflow:hidden; box-shadow:0 10px 28px rgba(15,23,42,.18); min-height:132px; }
-.ffr-banner::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 85% -20%, rgba(255,255,255,.22), transparent 55%);
-  pointer-events:none; }
-.ffr-banner-txt { position:relative; z-index:1; display:flex; flex-direction:column; justify-content:center; max-width:62%; }
-.ffr-banner-title { font-size:28px; font-weight:800; letter-spacing:-.4px; line-height:1.15; }
-.ffr-banner-sub { font-size:14px; opacity:.88; margin-top:6px; line-height:1.45; }
-.ffr-banner-pills { margin-top:10px; }
-.ffr-banner-pills .ffr-pill { background:rgba(255,255,255,.16) !important; color:#fff !important; border-color:rgba(255,255,255,.3) !important;
+.ffr-banner { position:relative; display:flex; align-items:stretch; justify-content:space-between; gap:20px; border-radius:20px;
+  padding:26px 34px; margin:4px 0 16px; color:#fff; overflow:hidden; min-height:168px;
+  background:linear-gradient(105deg,#071120 0%,#0A1830 42%,#0E2142 100%);
+  border:1px solid rgba(245,179,65,.22); box-shadow:0 18px 40px rgba(2,8,23,.35), inset 0 1px 0 rgba(255,255,255,.04); }
+.ffr-hero-photo { position:absolute; inset:0 0 0 30%; background-size:cover; background-position:center; opacity:.55;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 45%); mask-image:linear-gradient(90deg,transparent 0%,#000 45%);
+  filter:saturate(1.1) contrast(1.05); }
+.ffr-hero-glow { position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse at 88% 30%, var(--ffr-tint), transparent 55%),
+             radial-gradient(ellipse at 10% 120%, rgba(245,179,65,.16), transparent 50%),
+             linear-gradient(90deg, rgba(7,17,32,.96) 0%, rgba(7,17,32,.75) 45%, rgba(7,17,32,.15) 100%); }
+.ffr-banner-txt { position:relative; z-index:1; display:flex; flex-direction:column; justify-content:center; max-width:64%; }
+.ffr-kicker { font-family:'JetBrains Mono',Consolas,monospace; font-size:11px; letter-spacing:2.2px; text-transform:uppercase;
+  color:#F5B341; font-weight:600; display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+.ffr-kicker span { width:7px; height:7px; border-radius:50%; background:#F5B341; box-shadow:0 0 0 4px rgba(245,179,65,.2); }
+.ffr-banner-title { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:38px; font-weight:800; letter-spacing:-.6px;
+  line-height:1.12; color:#F8FAFC; }
+.ffr-banner-title .amp { font-weight:300; color:#CBD5E1; margin:0 .08em; font-size:.92em; }
+.ffr-banner-title em { font-style:normal; color:#F5B341; background:linear-gradient(90deg,#F5B341,#FCD38A);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.ffr-banner-sub { font-size:14.5px; color:#CBD5E1; margin-top:10px; line-height:1.5; max-width:720px; }
+.ffr-banner-pills { margin-top:12px; }
+.ffr-banner-pills .ffr-pill { background:rgba(245,179,65,.10) !important; color:#FDE7B5 !important; border-color:rgba(245,179,65,.35) !important;
   margin:0 6px 0 0 !important; }
-.ffr-banner-art { position:relative; z-index:1; width:300px; min-width:220px; height:120px; }
-.ffr-banner-title, .ffr-banner-sub { text-shadow:0 2px 10px rgba(0,0,0,.35); }
-.ffr-banner-art svg { filter:drop-shadow(0 4px 10px rgba(0,0,0,.35)); }
+.ffr-banner-art { position:relative; z-index:1; width:320px; min-width:220px; height:130px; align-self:center; }
+.ffr-banner-art svg { filter:drop-shadow(0 6px 18px rgba(245,179,65,.25)); }
+""" + """
 div[data-testid="stElementContainer"]:has(iframe[height="0"]) { display:none !important; }
 .st-key-ffr_fx { position:absolute !important; width:0 !important; height:0 !important; overflow:hidden !important;
   margin:0 !important; padding:0 !important; }

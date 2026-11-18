@@ -1,9 +1,10 @@
 """Trang 5 – Watchlist Impact (bước B7.1, B7.8): quản lý danh sách; bảng hồ sơ phản ứng; so sánh hiệu suất chuẩn hóa;
-phản ứng theo loại phiên; thẻ chi tiết từng mã; tin liên quan (nguồn bổ trợ)."""
+phản ứng theo loại phiên; thẻ chi tiết từng mã."""
 from __future__ import annotations
 
 from typing import List
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -103,22 +104,82 @@ def profile_table(pf: pd.DataFrame) -> None:
                    "Hấp thụ", "Room", "βᴰ / βᴵᴰ"], rows, left=(0,)))
 
 
-def render() -> None:
-    header("Watchlist Impact", "Trạng thái thị trường và dòng vốn đã tác động thế nào đến từng mã bạn theo dõi · "
-           "tối ưu danh mục theo khẩu vị rủi ro")
-    status_bar.render()
-    wi.ensure_default()
-    wl = wi.get_watchlist()
-    manage(wl)
+@st.cache_data(ttl=600, show_spinner=False)
+def company_info(symbol: str, date) -> dict:
+    """Thông tin nguồn lực doanh nghiệp từ SSI FastConnect V3: danh mục chứng khoán (tên, ngành ICB, số CP niêm yết)
+    + lịch sử giao dịch trong kho (vốn hóa, room ngoại, thanh khoản, tỷ trọng VN-Index)."""
+    import json
+    from src.data import database as db
+    raw = db.query_df("SELECT payload FROM raw_securities WHERE symbol = ? ORDER BY as_of DESC LIMIT 1", [symbol])
+    meta = json.loads(raw["payload"].iat[0]) if not raw.empty else {}
+    h = da.stock_hist(symbol)
+    h = h[h["trade_date"] <= pd.Timestamp(date)]
+    if h.empty:
+        return {"symbol": symbol, "meta": meta}
+    last = h.iloc[-1]
+    y = h.tail(250)
+    shares = float(meta.get("listedShare") or last.get("listed_share") or np.nan)
+    tv20 = float(h["tv"].tail(20).mean())
+    first = pd.Timestamp(meta.get("firstTradingDate")) if meta.get("firstTradingDate") else pd.Timestamp(h["trade_date"].iloc[0])
+    groups = [lbl for key, lbl in (("VN30", "VN30"), ("FTSE", "Nhóm FTSE (dự kiến)"), ("CONTROL", "Nhóm đối chứng"))
+              if symbol in da.universe(key)]
+    return {"symbol": symbol, "meta": meta, "name": meta.get("symbolNameVi") or symbol, "icb": meta.get("icbName") or "—",
+            "sector": last.get("sector") or "—", "family": last.get("family") if isinstance(last.get("family"), str) else None,
+            "first": first, "first_is_data": not meta.get("firstTradingDate"), "close": float(last["close"]),
+            "shares": shares, "mcap": float(last["close"]) * shares if shares == shares else np.nan,
+            "w": float(last.get("w") or np.nan), "room": float(last.get("room") or np.nan),
+            "remain": float(last.get("remain") or np.nan), "U": float(last.get("U") or np.nan),
+            "tv20": tv20,
+            "ret1y": float(y["close"].iloc[-1] / y["close"].iloc[0] - 1) * 100 if len(y) > 1 else np.nan,
+            "vol1y": float(y["ret"].std() * np.sqrt(250) * 100), "groups": groups, "n_sessions": len(h)}
+
+
+def company_card(ci: dict) -> None:
+    """Khối đầu tab mã: tên, ngành, niêm yết, vốn hóa, cổ phiếu niêm yết, room ngoại, thanh khoản."""
     p = pal()
-    sess = da.sessions()
-    date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"Phiên {d:%d/%m/%Y}", key="p5_date")
-    sel = st.session_state.get("selected_symbol")
-    syms = list(dict.fromkeys(wl + ([sel] if sel and sel not in wl else [])))
-    if not syms:
-        empty("Danh mục trống – thêm mã ở mục Quản lý.")
+    if "close" not in ci:
+        empty(no_data_reason(None, ci["symbol"]))
         return
-    data = profiles(tuple(syms), date)
+    tags = "".join(f'<span class="ffr-chip" style="background:rgba(245,179,65,.14);color:#F5B341;margin-right:6px">{esc(g)}</span>'
+                   for g in ci["groups"] + ([f"Họ {ci['family']}"] if ci.get("family") else []))
+    years = (pd.Timestamp.today() - ci["first"]).days / 365.25
+    since = (f"từ {ci['first']:%d/%m/%Y}" + (" (đầu kho dữ liệu)" if ci["first_is_data"] else "")
+             + (f" · {years:.0f} năm" if not ci["first_is_data"] else ""))
+    tiles = [("Vốn hóa", fmt.bn(ci["mcap"], 0, False), f"giá {fmt.price(ci['close'])} × số CP niêm yết"),
+             ("Cổ phiếu niêm yết", fmt.num(ci["shares"] / 1e6, 1, False, " tr"), "SSI danh mục chứng khoán"),
+             ("Tỷ trọng VN-Index", fmt.num(ci["w"] * 100, 2, False, "%"), "vốn hóa / tổng rổ VN-Index"),
+             ("Room ngoại đã dùng", fmt.frac_pct(ci["U"], 1), f"còn {fmt.num(ci['remain'] / 1e6, 1, False, ' tr')} / "
+                                                             f"{fmt.num(ci['room'] / 1e6, 1, False, ' tr')} CP"),
+             ("GTGD TB 20 phiên", fmt.bn(ci["tv20"], 1, False), "thanh khoản khớp lệnh"),
+             ("Lợi suất 1 năm", fmt.pct(ci["ret1y"], 1), f"biến động năm {fmt.num(ci['vol1y'], 1, False, '%')}")]
+    tile_html = "".join(f'<div class="wl-tile"><small>{l}</small><b>{v}</b><span>{sub}</span></div>' for l, v, sub in tiles)
+    md(f'<div class="wl-co"><div class="wl-co-head"><div><div class="wl-co-sym">{esc(ci["symbol"])}</div>'
+       f'<div class="wl-co-name">{esc(ci["name"])}</div>'
+       f'<div class="wl-co-meta">HOSE · {esc(ci["sector"])} · ICB: {esc(ci["icb"])} · niêm yết/giao dịch {since}</div>'
+       f'<div style="margin-top:8px">{tags}</div></div>'
+       f'</div><div class="wl-tiles">{tile_html}</div>'
+       f'<div class="wl-co-note">Nguồn: SSI FastConnect V3 (danh mục chứng khoán + giao dịch ngày). Vốn hóa tính theo số cổ phiếu niêm yết, '
+       f'chưa trừ cổ phiếu quỹ; {ci["n_sessions"]} phiên có trong kho.</div></div>')
+
+
+WL_CSS = """<style>
+.wl-co { border:1px solid rgba(245,179,65,.28); border-radius:16px; padding:18px 20px; margin:6px 0 14px;
+  background:linear-gradient(120deg,rgba(245,179,65,.10),rgba(15,30,51,.0) 55%); }
+.wl-co-head { display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+.wl-co-sym { font-size:30px; font-weight:800; color:#F5B341; letter-spacing:.5px; line-height:1; }
+.wl-co-name { font-size:16px; font-weight:700; margin-top:6px; }
+.wl-co-meta, .wl-co-note { font-size:12.5px; opacity:.75; margin-top:4px; }
+.wl-co-note { margin-top:10px; font-style:italic; }
+.wl-tile small { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; opacity:.7; }
+.wl-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-top:14px; }
+.wl-tile { border:1px solid rgba(148,163,184,.18); border-radius:12px; padding:10px 12px; background:rgba(255,255,255,.03); }
+.wl-tile b { display:block; font-size:19px; font-weight:800; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
+.wl-tile span { font-size:11.5px; opacity:.7; }
+</style>"""
+
+
+def overview_tab(syms, wl, data, date) -> None:
+    p = pal()
     pf = data["profile"]
     section("Hồ sơ phản ứng hôm nay", "ERᴵ = r − r_VNI · ERᴹ = r − trung vị thị trường · β Dimson 120 phiên · β nội ngày 5 phút vs VN30")
     profile_table(pf)
@@ -154,12 +215,19 @@ def render() -> None:
                 f"{r.group}: p = {fmt.num(r.p_value, 4)}" for r in k.itertuples()))
     from src.app.views import p5_portfolio
     p5_portfolio.render(wl, date)
-    section("Chi tiết từng mã")
-    pick = st.selectbox("Mã", syms, index=syms.index(sel) if sel in syms else 0, key="p5_pick")
-    r = pf[pf["symbol"] == pick].iloc[0]
-    if not r["has_data"]:
+
+
+def symbol_tab(pick: str, data, date) -> None:
+    """Tab riêng một mã: thông tin doanh nghiệp → chỉ số phiên → giá & dòng vốn ngoại → phản ứng theo loại phiên."""
+    p = pal()
+    company_card(company_info(pick, date))
+    pf = data["profile"]
+    rr = pf[pf["symbol"] == pick]
+    if rr.empty or not rr.iloc[0]["has_data"]:
         empty(no_data_reason(date, pick))
         return
+    r = rr.iloc[0]
+    section(f"Phiên {pd.Timestamp(date):%d/%m/%Y}", f"{pick} so với thị trường, đóng góp chỉ số và khối ngoại")
     cols = st.columns(6)
     items = [kpi("Lợi suất", fmt.pct(r["ret"] * 100), color_for(r["ret"], p), f"vs trung vị {fmt.num(r['ER_M'] * 100, 2, True)} đ.%"),
              kpi("Đóng góp VN-Index", fmt.num(r["C"], 2, True, " đ"), color_for(r["C"], p),
@@ -172,15 +240,72 @@ def render() -> None:
     for c, h in zip(cols, items):
         with c:
             md(h)
+    md(f'<div class="ffr-insight" style="margin:10px 0">{esc(r["sentence"])}</div>')
     h = da.stock_hist(pick)
-    h = h[h["trade_date"] <= date].tail(120)
-    plot(charts.line(h.assign(nf_ma=h["nf"].rolling(5).mean()), "trade_date", {"nf": "nf", "nf_ma": "nf trung bình 5 phiên"}, p,
-                     260, f"Dòng vốn ngoại chuẩn hóa nf của {pick} – 120 phiên"), "p5_nf")
-    with st.expander("📰 Tin liên quan (nguồn ngoài SSI – Google News RSS)"):
-        from src.analytics.news import latest
-        items = latest(pick)
-        if not items:
-            st.caption("Không lấy được tin (mạng bị chặn hoặc chưa có tin).")
-        for it in items:
-            st.markdown(f"- [{it['title']}]({it['link']}) · _{it['source']}_ · {it['date']}")
-        st.caption("Nhãn: Nguồn ngoài SSI – chỉ để tham khảo bối cảnh.")
+    h = h[h["trade_date"] <= date].tail(250).copy()
+    c1, c2 = st.columns([1.4, 1], gap="medium")
+    with c1:
+        section("Giá đóng cửa 250 phiên", "MA20 · MA50 · khối lượng")
+        full = da.stock_hist(pick)
+        full = full[full["trade_date"] <= date]
+        h["ma20"] = full["close"].rolling(20).mean().tail(250).values
+        h["ma50"] = full["close"].rolling(50).mean().tail(250).values
+        fig = go.Figure()
+        fig.add_bar(x=h["trade_date"], y=h["vol"] / 1e6, name="KL (triệu CP)", yaxis="y2", marker_color="rgba(148,163,184,.35)")
+        fig.add_scatter(x=h["trade_date"], y=h["close"], name="Giá", line=dict(color=p["accent"], width=2))
+        fig.add_scatter(x=h["trade_date"], y=h["ma20"], name="MA20", line=dict(color=p["ma20"], width=1.2))
+        fig.add_scatter(x=h["trade_date"], y=h["ma50"], name="MA50", line=dict(color=p["ma50"], width=1.2))
+        plot(charts._lay(fig, p, 340, hovermode="x unified", legend=dict(orientation="h", y=-0.15, x=0),
+                         yaxis2=dict(overlaying="y", side="right", showgrid=False, range=[0, float(h["vol"].max() / 1e6 * 4 or 1)]),
+                         margin=dict(l=8, r=8, t=10, b=8)), f"p5_px_{pick}")
+    with c2:
+        section("Khối ngoại 60 phiên", "Ròng (tỷ đồng) · lũy kế")
+        f = h.tail(60)
+        fig = go.Figure()
+        fig.add_bar(x=f["trade_date"], y=f["net_flow"] / 1e9, name="Ròng", marker_color=[color_for(v, p) for v in f["net_flow"].fillna(0)])
+        fig.add_scatter(x=f["trade_date"], y=(f["net_flow"].fillna(0) / 1e9).cumsum(), name="Lũy kế", yaxis="y2",
+                        line=dict(color="#F5B341", width=2))
+        plot(charts._lay(fig, p, 340, legend=dict(orientation="h", y=-0.15, x=0),
+                         yaxis2=dict(overlaying="y", side="right", showgrid=False), margin=dict(l=8, r=8, t=10, b=8)), f"p5_ff_{pick}")
+    c1, c2 = st.columns([1.4, 1], gap="medium")
+    with c1:
+        hh = h.tail(120)
+        plot(charts.line(hh.assign(nf_ma=hh["nf"].rolling(5).mean()), "trade_date", {"nf": "nf", "nf_ma": "nf trung bình 5 phiên"}, p,
+                         280, f"Dòng vốn ngoại chuẩn hóa nf của {pick} – 120 phiên"), f"p5_nf_{pick}")
+    with c2:
+        rx = data["reaction"]
+        rx = rx[rx["symbol"] == pick]
+        lbl = [SESSION_TYPES.get(c, c).replace(" ", "<br>", 1) for c in rx["session_type"]]   # nhãn 2 dòng, không xoay/cắt chữ
+        fig = go.Figure(go.Bar(x=lbl, y=rx["mean_ret_pct"],
+                               marker_color=[SESSION_COLORS.get(c, p["muted"]) for c in rx["session_type"]],
+                               text=[fmt.pct(v, 2) for v in rx["mean_ret_pct"]], textposition="outside", cliponaxis=False,
+                               customdata=rx["n"], hovertemplate="%{x}: %{y:.2f}% (%{customdata} phiên)<extra></extra>"))
+        fig.update_layout(title=f"Phản ứng của {pick} theo loại phiên (lợi suất TB, %)")
+        charts._lay(fig, p, 300, showlegend=False)
+        fig.update_xaxes(tickangle=0, tickfont=dict(size=11))
+        plot(fig, f"p5_rx_{pick}")
+
+
+def render() -> None:
+    header("Watchlist Impact", "Trạng thái thị trường và dòng vốn đã tác động thế nào đến từng mã bạn theo dõi · "
+           "tối ưu danh mục theo khẩu vị rủi ro")
+    status_bar.render()
+    st.markdown(WL_CSS, unsafe_allow_html=True)
+    wi.ensure_default()
+    wl = wi.get_watchlist()
+    manage(wl)
+    sess = da.sessions()
+    date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"Phiên {d:%d/%m/%Y}", key="p5_date")
+    sel = st.session_state.get("selected_symbol")
+    # mã đang xem tạm (mở từ ô tra cứu) đứng ngay sau tab tổng quan
+    syms = list(dict.fromkeys(([sel] if sel and sel not in wl else []) + wl))
+    if not syms:
+        empty("Danh mục trống – thêm mã ở mục Quản lý.")
+        return
+    data = profiles(tuple(syms), date)
+    tabs = st.tabs(["📊 Toàn danh mục"] + [f"🔎 {s}" + (" (xem tạm)" if s not in wl else "") for s in syms])
+    with tabs[0]:
+        overview_tab(syms, wl, data, date)
+    for t, s in zip(tabs[1:], syms):
+        with t:
+            symbol_tab(s, data, date)

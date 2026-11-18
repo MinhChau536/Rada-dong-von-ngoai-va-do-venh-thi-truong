@@ -109,7 +109,7 @@ def _autoupdate_notice() -> None:
     if au.get("state") == "started":
         code = autoupdate.finished(au)
         if code is None:
-            md(f'<div class="ffr-acad" style="background:#ECFEFF;border-color:#67E8F9;color:#155E75">🔄 <span>'
+            md(f'<div class="ffr-note">🔄 <span>'
                f'<b>Đang tự tải phiên mới từ SSI</b> (kho tới {au.get("from")}, cần tới {au.get("to")}) – chạy nền, '
                f'trang vẫn dùng được; bấm <b>Làm mới</b> sau 1–3 phút để xem số liệu mới.</span></div>')
         elif not au.get("_done"):
@@ -118,12 +118,12 @@ def _autoupdate_notice() -> None:
             st.toast("Đã cập nhật dữ liệu phiên mới từ SSI" if code == 0 else
                      "Tự cập nhật chưa thành công – xem logs/job_autoupdate.log", icon="✅" if code == 0 else "⚠️")
     elif au.get("state") == "running":
-        md('<div class="ffr-acad" style="background:#ECFEFF;border-color:#67E8F9;color:#155E75">🔄 <span>'
+        md('<div class="ffr-note">🔄 <span>'
            'Một tiến trình khác đang cập nhật dữ liệu (bộ lập lịch hoặc nút trên trang Kết nối dữ liệu).</span></div>')
 
 
 
-md('<div class="ffr-acad">🎓 <span><b>Đề tài nghiên cứu học thuật</b> – mọi số liệu, biểu đồ và nhận định trên trang chỉ '
-   'phục vụ học tập, nghiên cứu; <b>không mang tính chất khuyến nghị đầu tư</b>.</span></div>')   # nhắc trên MỌI trang
+md('<div class="ffr-acad">🎓 <span><b class="ffr-gold">Đề tài nghiên cứu học thuật</b> – mọi số liệu, biểu đồ và nhận định trên trang chỉ '
+   'phục vụ học tập, nghiên cứu; <b class="ffr-gold">không mang tính chất khuyến nghị đầu tư</b>.</span></div>')   # nhắc trên MỌI trang
 _autoupdate_notice()
 nav.run()

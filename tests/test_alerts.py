@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from src.common.config import get
 from src.analytics.alerts import dispatch, evaluate
 
 
@@ -62,8 +63,8 @@ def test_daily_limit_and_system_unlimited():
     al += evaluate(_day(), LEAD, FLOW, None, {"status": "degraded", "since": "10:00"})
     out = dispatch(al, datetime(2026, 10, 1, 11, 0), mode="backtest", history=_hist())
     kept = out[out["status"] == "simulated"]
-    assert (kept["priority"] != "system").sum() == 5
-    assert (out["status"] == "suppressed_limit").sum() == 3
+    assert (kept["priority"] != "system").sum() == int(get("alerts.max_market_per_day"))
+    assert (out["status"] == "suppressed_limit").sum() == 8 - int(get("alerts.max_market_per_day"))
     assert (kept["priority"] == "system").sum() == 1
 
 

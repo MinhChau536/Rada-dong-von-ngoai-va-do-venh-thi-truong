@@ -5,7 +5,7 @@ Biểu đồ vẽ bằng hình học fpdf (thanh ngang) từ cùng bảng chỉ 
 """
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from fpdf import FPDF
 
@@ -40,7 +40,7 @@ class FFRPdf(FPDF):
     # Be Vietnam Pro không có chữ Hy Lạp → thay ký hiệu bằng chữ Latin tương đương trong PDF
     GREEK = {"ε": "eps", "β": "beta", "Ω": "Omega", "⁺": "+", "⁻": "-", "Δ": "Δ".replace("Δ", "d"), "Σ": "Tổng ", "τ": "tau",
              "ρ": "rho", "δ": "delta", "μ": "mu", "λ": "lambda", "α": "alpha", "≥": ">=", "≤": "<=",
-             "σ": "sigma", "√": "căn ", "→": "->", "▲": "trên ", "▼": "dưới "}
+             "σ": "sigma", "√": "căn ", "→": "->", "▲": "trên ", "▼": "dưới ", "ᴹ": "M", "ᴵ": "I", "Β": "BETA"}
 
     def normalize_text(self, text):
         for k, v in self.GREEK.items():
@@ -69,14 +69,7 @@ class FFRPdf(FPDF):
         self.set_font("BVP", "B", 7.5)
         self.set_text_color(253, 230, 138)
         self.cell(76, 6, self.banner, align="R")
-        # Dải khuyến cáo học thuật – có trên MỌI trang nội dung
-        self.set_fill_color(254, 243, 199)
-        self.rect(0, 18, 210, 4.6, "F")
-        self.set_xy(14, 18.3)
-        self.set_font("BVP", "B", 6.8)
-        self.set_text_color(146, 64, 14)
-        self.cell(182, 4, ACADEMIC, align="C")
-        self.set_y(26)
+        self.set_y(23)
         if self.demo:
             self.set_fill_color(254, 243, 199)
             self.set_text_color(146, 64, 14)
@@ -254,10 +247,11 @@ class FFRPdf(FPDF):
         self.set_line_width(0.2)
         self.set_xy(self.l_margin, y0 + h + 5)
 
-    def table(self, headers: List[str], rows: List[List[str]], widths: List[float], size: float = 7.5,
+    def table(self, headers: List[str], rows: List[List[str]], widths: List[float], size: float = 8.2,
               aligns: Optional[List[str]] = None):
         aligns = aligns or ["L"] + ["R"] * (len(headers) - 1)
-        row_h = 5.2
+        size = max(size, 8.0)                                 # chữ trong bảng tối thiểu 8pt
+        row_h = 5.4
         total = 6 + row_h * len(rows)
         if total <= self.room(full=True) and total > self.room():
             self.add_page()                     # cả bảng vừa một trang → không tách lẻ vài dòng sang trang sau
@@ -298,7 +292,7 @@ class FFRPdf(FPDF):
     # ── bố cục: không để khoảng trống lớn ────────────────────────────────────
     def room(self, full: bool = False) -> float:
         """Chiều cao còn lại (mm) trên trang hiện tại; full=True: chiều cao vùng nội dung của một trang mới."""
-        return self.page_break_trigger - (26 if full else self.get_y())
+        return self.page_break_trigger - (23 if full else self.get_y())
 
     def ensure(self, h: float) -> None:
         if self.room() < h:
@@ -375,7 +369,7 @@ class FFRPdf(FPDF):
         self.set_y(y + h + 3)
 
     # ── chương có đánh số + mục lục ──────────────────────────────────────────
-    def h1(self, title: str, lead: str = "", keep: float = 95) -> None:
+    def h1(self, title: str, lead: str = "", keep: float = 95, concl: str = "") -> None:
         """Tiêu đề chương: tự đánh số, ghi vào mục lục (fpdf2 start_section). keep: chỗ trống tối thiểu để tiêu đề
         không nằm lẻ cuối trang tách khỏi nội dung đầu chương."""
         self.ensure(keep)
@@ -397,14 +391,23 @@ class FFRPdf(FPDF):
         self.set_line_width(0.3)
         self.line(self.l_margin, self.get_y() + 1.5, 210 - self.r_margin, self.get_y() + 1.5)
         self.ln(3.5)
+        if concl:                                              # mỗi chương mở đầu bằng một câu kết luận in đậm
+            y0 = self.get_y()
+            self.set_x(self.l_margin + 3)
+            self.set_font("BVP", "B", 9.6)
+            self.color("text")
+            self.multi_cell(0, 5, concl, new_x="LMARGIN", new_y="NEXT")
+            self.set_fill_color(245, 179, 65)
+            self.rect(self.l_margin, y0 + 0.5, 1.2, self.get_y() - y0 - 0.5, "F")
+            self.ln(1.5)
         if lead:
-            self.set_font("BVP", "I", 8.6)
+            self.set_font("BVP", "I", 8.4)
             self.color("muted")
-            self.multi_cell(0, 4.4, lead, new_x="LMARGIN", new_y="NEXT")
+            self.multi_cell(0, 4.3, lead, new_x="LMARGIN", new_y="NEXT")
             self.ln(1.5)
 
     def cover(self, kind: str, date_text: str, stamp: str, cards: Sequence[Tuple[str, str, str, Optional[str]]],
-              contents: Sequence[str], note: str) -> None:
+              contents: Sequence[str], note: str, headline: str = "") -> None:
         """Trang bìa: nền xanh đậm, tên báo cáo, phiên, 4 chỉ số chính, danh sách nội dung."""
         self.on_cover = True
         self.add_page()
@@ -464,8 +467,13 @@ class FFRPdf(FPDF):
             rgb = {"up": (74, 222, 128), "down": (248, 113, 113)}.get(col or "", (251, 191, 36))
             self.set_text_color(*rgb)
             self.cell(w - 6, 5, sub)
+        if headline:                                          # kết luận phiên ngay dưới 4 thẻ chỉ số
+            self.set_xy(20, 169)
+            self.set_font("BVP", "B", 8.6)
+            self.set_text_color(253, 230, 138)
+            self.multi_cell(170, 4.4, "Kết luận phiên: " + headline)
         # nội dung chính
-        self.set_xy(20, 180)
+        self.set_xy(20, 184)
         self.set_font("BVP", "B", 9)
         self.set_text_color(45, 212, 191)
         self.cell(0, 6, "NỘI DUNG CHÍNH", new_x="LMARGIN", new_y="NEXT")
@@ -496,7 +504,7 @@ class FFRPdf(FPDF):
         self.multi_cell(170, 3.6, note)
         self.on_cover = False
 
-    def toc_page(self, info_rows: Sequence[Tuple[str, str]]) -> None:
+    def toc_page(self, info_rows: Sequence[Tuple[str, str]], answers: Sequence[Dict] = ()) -> None:
         """Trang mục lục (số trang điền sau khi dựng xong toàn bộ) + khối 'Thông tin báo cáo'."""
         self.add_page()
 
@@ -535,27 +543,34 @@ class FFRPdf(FPDF):
                 pdf.color("accent")
                 pdf.cell(12, 6.5, str(sec.page_number), align="R", link=link)
                 pdf.set_y(y + 10)
-            pdf.ln(6)
-            pdf.set_font("BVP", "B", 10)
-            pdf.color("text")
-            pdf.cell(0, 7, "THÔNG TIN BÁO CÁO", new_x="LMARGIN", new_y="NEXT")
-            pdf.color("accent", "draw")
-            pdf.set_line_width(0.5)
-            pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 18, pdf.get_y())
-            pdf.ln(2.5)
-            for k, v in info_rows:
-                y = pdf.get_y()
-                pdf.set_font("BVP", "B", 8)
-                pdf.color("muted")
-                pdf.set_xy(pdf.l_margin, y)
-                pdf.multi_cell(42, 4.4, k)
-                pdf.set_font("BVP", "", 8)
+            pdf.ln(3)
+            if answers:
+                pdf.set_font("BVP", "B", 12)
                 pdf.color("text")
-                pdf.set_xy(pdf.l_margin + 44, y)
-                pdf.multi_cell(0, 4.4, v, new_x="LMARGIN", new_y="NEXT")
-                pdf.color("border", "draw")
-                pdf.set_line_width(0.15)
-                pdf.line(pdf.l_margin, pdf.get_y() + 1, 210 - pdf.r_margin, pdf.get_y() + 1)
-                pdf.ln(2.2)
+                pdf.cell(0, 7, "TÓM TẮT ĐIỀU HÀNH – BA CÂU TRẢ LỜI CỦA PHIÊN", new_x="LMARGIN", new_y="NEXT")
+                pdf.color("accent", "draw")
+                pdf.set_line_width(0.5)
+                pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 18, pdf.get_y())
+                pdf.ln(2.5)
+                for i, a in enumerate(answers, 1):
+                    pdf.set_font("BVP", "B", 9)
+                    pdf.color("accent")
+                    pdf.multi_cell(0, 4.8, f"{i}. {a['q']}", new_x="LMARGIN", new_y="NEXT")
+                    pdf.set_font("BVP", "", 8.6)
+                    pdf.color("text")
+                    pdf.multi_cell(0, 4.4, a["a"], new_x="LMARGIN", new_y="NEXT")
+                    pdf.ln(1.8)
+            pdf.ln(1)
+            pdf.set_font("BVP", "", 7.6)
+            pdf.color("muted")
+            pdf.multi_cell(0, 3.8, " · ".join(f"{k}: {v}" for k, v in info_rows[:3]), new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(2)
+            y = pdf.get_y()
+            pdf.set_fill_color(254, 243, 199)
+            pdf.rect(pdf.l_margin, y, 210 - pdf.l_margin - pdf.r_margin, 12, "F")
+            pdf.set_xy(pdf.l_margin + 4, y + 2)
+            pdf.set_font("BVP", "B", 8.4)
+            pdf.set_text_color(146, 64, 14)
+            pdf.multi_cell(210 - pdf.l_margin - pdf.r_margin - 8, 4, ACADEMIC + ".", new_x="LMARGIN", new_y="NEXT")
 
         self.insert_toc_placeholder(render, pages=1)

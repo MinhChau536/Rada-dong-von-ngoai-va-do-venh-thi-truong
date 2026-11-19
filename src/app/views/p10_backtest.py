@@ -16,13 +16,11 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.analytics import outlook
-from src.analytics import portfolio as P
 from src.analytics import watchlist_impact as wi
 from src.app import data_access as da
 from src.app.components import charts, status_bar
 from src.app.components.states import empty
 from src.app.components.ui import colored, esc, header, kpi, kpi_row, md, pal, plot, section, table_html
-from src.app.views import p5_portfolio
 from src.common import fmt
 from src.common.config import ROOT, get
 
@@ -134,26 +132,6 @@ def _tab_predictive(p) -> None:
                    "p Welch", "p Mann–Whitney"], rows, left=(0, 1)))
     st.caption("p < 0,05 tô đậm. Lũy kế 5 phiên chồng lấp nên p chỉ mang tính tham khảo. Với 'ΔD phiên t+1', "
                "'Cùng hướng' = tỷ lệ độ vênh thu hẹp phiên sau. Đây là đánh giá mô tả, không phải chiến lược giao dịch.")
-
-
-# ── 3. danh mục ───────────────────────────────────────────────────────────────
-def _tab_portfolio(p, date) -> None:
-    wl = wi.get_watchlist()
-    if len(wl) < 2:
-        empty("Cần ít nhất 2 mã trong Watchlist để kiểm chứng danh mục.")
-        return
-    profs = P.profiles()
-    c1, c2, c3 = st.columns([2, 1.2, 2.5])
-    choice = c1.segmented_control("Khẩu vị rủi ro", list(profs), default="Cân bằng", key="bt_prof") or "Cân bằng"
-    lb = c2.selectbox("Dữ liệu ước lượng", list(p5_portfolio.LOOKBACKS), index=1, key="bt_lb")
-    pf = profs[choice]
-    c3.caption(f"Danh mục: **{', '.join(wl)}** · biến động mục tiêu ≤ {_pc(pf.target_vol, 0)}/năm · trần {_pc(pf.max_weight, 0)}/mã · "
-               f"{get('portfolio.backtest_months', 24)} tháng gần nhất. Đầu mỗi tháng tối ưu lại chỉ bằng dữ liệu trước đó, "
-               f"giữ số cổ phiếu tới tháng sau; **đã trừ chi phí {_pc(float(get('portfolio.cost_per_turnover', 0.0025)), 2)} "
-               "trên doanh số tái cân bằng**."
-               + (f" Trần thực dùng {_pc(P.effective_cap(pf.max_weight, len(wl)), 0)}/mã vì danh mục chỉ có {len(wl)} mã "
-                  "(trần thấp hơn chỉ còn nghiệm chia đều)." if P.effective_cap(pf.max_weight, len(wl)) > pf.max_weight else ""))
-    p5_portfolio.backtest_block(wl, date, p5_portfolio.LOOKBACKS[lb], pf.max_weight, pf.target_vol, key="bt_pf")
 
 
 # ── 4. biên dao động ──────────────────────────────────────────────────────────
@@ -278,23 +256,21 @@ def _tab_econ(p) -> None:
        'lược sinh lời.</div>'.replace("0.", "0,"))
 
 
-def render() -> None:
-    header("Backtest", "Kiểm chứng trên dữ liệu lịch sử: cảnh báo, giá trị dự báo, danh mục và biên dao động",
-           pills=["chỉ dùng dữ liệu quá khứ tại mỗi thời điểm", "SSI FastConnect V3"])
-    status_bar.render()
+def render(embedded: bool = False) -> None:
+    if not embedded:
+        header("Backtest", "Kiểm chứng trên dữ liệu lịch sử: cảnh báo, giá trị dự báo và biên dao động",
+               pills=["chỉ dùng dữ liệu quá khứ tại mỗi thời điểm", "SSI FastConnect V3"])
+        status_bar.render()
     p = pal()
     date = da.sessions()[-1]
-    t1, t2, t3, t4, t5 = st.tabs(["🔔 Cảnh báo – chống trùng", "🎯 Cảnh báo – giá trị dự báo", "💼 Danh mục watchlist",
-                                  "🔮 Biên dao động VN-Index", "💰 Giá trị kinh tế"])
+    t1, t2, t4, t5 = st.tabs(["🔔 Cảnh báo – chống trùng", "🎯 Cảnh báo – giá trị dự báo",
+                              "📏 Biên dao động VN-Index", "💰 Giá trị kinh tế"])
     with t1:
         section("Chạy lại cảnh báo trên lịch sử", "Đo số tin thực sự gửi sau chống trùng và giới hạn ngày")
         _tab_dedup(p)
     with t2:
         section("Tín hiệu cảnh báo có giá trị dự báo không?", "VN-Index phiên t+1 và 5 phiên sau tín hiệu, so với phiên thường")
         _tab_predictive(p)
-    with t3:
-        section("Kiểm chứng ngoài mẫu danh mục (walk-forward)", "Tối ưu theo khẩu vị · so với chia đều, rủi ro thấp nhất và VN-Index")
-        _tab_portfolio(p, date)
     with t4:
         section("Kiểm chứng biên dao động triển vọng", "Biên EWMA dùng trong báo cáo và bot (/outlook)")
         _tab_band(p)

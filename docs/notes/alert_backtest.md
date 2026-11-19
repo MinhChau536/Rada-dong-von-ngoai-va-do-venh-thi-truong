@@ -1,18 +1,17 @@
 # Chạy lại cảnh báo trên dữ liệu lịch sử (bước B8.4)
 
-- Số phiên: **50**; mỗi phiên đánh giá 4 lần (10:00, 10:15, 11:00, 14:45).
-- Số lượt kích hoạt thô: 372; số cảnh báo duy nhất/ngày trước lọc: 1.86.
-- Bị chặn do trùng/cooldown: 279; bị chặn do giới hạn ngày: 0.
-- Cảnh báo thị trường được giữ: trung bình **1.86/ngày**, tối đa 4/ngày (ngưỡng ≤ 5).
+- Số phiên: **57**; mỗi phiên đánh giá 4 lần (10:00, 10:15, 11:00, 14:45).
+- Số lượt kích hoạt thô: 680; số cảnh báo duy nhất/ngày trước lọc: 2.98.
+- Bị chặn do trùng/cooldown: 171; bị chặn do giới hạn ngày: 452.
+- Cảnh báo thị trường được giữ: trung bình **1.00/ngày**, tối đa 1/ngày (ngưỡng ≤ 1).
 
 | Loại | Số lượng |
 |---|---|
-| wl_leader | 52 |
-| wl_foreign | 18 |
+| wl_foreign | 22 |
 | index_concentrated | 16 |
-| wl_deviation | 3 |
-| foreign_market | 3 |
-| high_divergence | 1 |
+| wl_leader | 16 |
+| wl_deviation | 2 |
+| foreign_market | 1 |
 
 _Tạo tự động bởi `src/analytics/alerts.py::backtest` – chạy lại khi đổi ngưỡng trong settings.yaml._
 

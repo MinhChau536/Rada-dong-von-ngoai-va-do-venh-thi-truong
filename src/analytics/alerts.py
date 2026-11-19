@@ -87,6 +87,18 @@ def evaluate(day: pd.Series, leaders: pd.DataFrame, top_flow: pd.DataFrame, wl: 
     return out
 
 
+WHY = {   # một câu giải thích đi kèm mỗi cảnh báo (vì sao người dùng nên quan tâm)
+    1: "chỉ số đang bị vài mã kéo, nên biến động VN-Index không phản ánh danh mục thông thường.",
+    2: "chỉ số lệch xa cổ phiếu điển hình – so danh mục với trung vị thị trường thay vì với VN-Index.",
+    3: "dòng vốn ngoại toàn sàn bất thường so với 60 phiên trước, thường đi kèm biến động ở các mã vốn hóa lớn.",
+    4: "khối ngoại giao dịch mã này ở mức hiếm gặp so với chính lịch sử 60 phiên của mã.",
+    5: "mã lệch mạnh khỏi thị trường hơn 2 lần mức dao động thường ngày.",
+    6: "mã nằm trong nhóm quyết định hướng đi của chỉ số hôm nay.",
+    7: "room ngoại gần cạn – khối ngoại khó mua thêm, có thể ảnh hưởng thanh khoản.",
+    8: "dữ liệu có thể chưa cập nhật – số liệu hiển thị cần đọc thận trọng.",
+}
+
+
 def dispatch(alerts: List[Dict], now: datetime, mode: str = "live", sender: Optional[Callable[[str], bool]] = None,
              path: Optional[Path] = None, history: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """Lọc cooldown + giới hạn ngày, gửi (nếu có sender), ghi alert_log. Trả về các dòng đã ghi."""
@@ -107,7 +119,8 @@ def dispatch(alerts: List[Dict], now: datetime, mode: str = "live", sender: Opti
         if status in ("sent", "simulated") and a["priority"] != "system" and n_market_today >= int(A["max_market_per_day"]):
             status = "suppressed_limit"
         if status == "sent" and sender is not None:
-            ok = sender(f"⚠️ {a['message']}\n— {get('app.bot_disclaimer')}")
+            why = WHY.get(int(a.get("rule_no") or 0), "")
+            ok = sender(f"⚠️ {a['message']}" + (f"\n💡 Vì sao đáng chú ý: {why}" if why else "") + f"\n— {get('app.bot_disclaimer')}")
             status = "sent" if ok else "send_failed"
         row = {**a, "ts": now, "status": status, "channel": "telegram" if sender else "log", "mode": mode}
         rows.append(row)

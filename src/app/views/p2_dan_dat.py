@@ -2,6 +2,7 @@
 chỉ số loại trừ họ cổ phiếu, phân phối CR5, lịch loại phiên. Bộ lọc khoảng phiên."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -101,16 +102,22 @@ def group_table(date) -> None:
 def div_stats(date) -> None:
     d = da.daily()
     h = d[d["trade_date"] <= date]
+    from src.app.views.p_chan_doan import _extras
+    ex = _extras(date).set_index("trade_date")
     rows = []
     for n in (5, 20, 60, 250):
         x = h.tail(n)
+        hw = ex["hhi_w"].reindex(pd.to_datetime(x["trade_date"])).mean()
         narrow = x["session_type"].isin(["narrow_up", "narrow_down"]).mean() * 100
         rows.append([f"<b>{n} phiên</b>", fmt.num(x["D"].mean(), 3, True), fmt.num(x["D"].median(), 3, True),
                      fmt.num((x["D"] > 0).mean() * 100, 0, False, "%"), str(int(x["high_divergence"].sum())),
                      fmt.num(x["CR5"].mean() * 100, 0, False, "%"), fmt.num(x["pct_up"].mean(), 0, False, "%"),
-                     fmt.num(narrow, 0, False, "%"), fmt.num(x["eps"].abs().median(), 3)])
+                     fmt.num(narrow, 0, False, "%"), f"{fmt.num(hw, 3)} (~{fmt.num(1 / hw if hw else np.nan, 0)} mã)",
+                     fmt.num(x["eps"].abs().median(), 3)])
     md(table_html(["Kỳ", "D trung bình (đ.%)", "D trung vị", "% phiên D > 0", "Phiên độ vênh cao", "CR5 TB",
-                   "% mã tăng TB", "% phiên thiếu lan tỏa", "Trung vị |ε|"], rows, left=(0,)))
+                   "% mã tăng TB", "% phiên thiếu lan tỏa", "HHI tỷ trọng chỉ số", "Trung vị |ε|"], rows, left=(0,)))
+    st.caption("HHI tỷ trọng = Σw² của rổ VN-Index (~N mã = số mã hiệu dụng 1/HHI). CR5 tăng cùng lúc HHI tỷ trọng tăng "
+               "nghĩa là sự tập trung đến từ việc vài mã phình tỷ trọng, không nhất thiết do hành vi thị trường thay đổi.")
     st.caption("D > 0: VN-Index tăng nhiều hơn (hoặc giảm ít hơn) cổ phiếu trung vị – chỉ số được kéo bởi nhóm vốn hóa lớn.")
 
 
@@ -160,6 +167,8 @@ def render() -> None:
                 md(h)
     with c2, W.card("p2_br"):
         W.w_breadth(D)
+    from src.app.views.p_chan_doan import link_series
+    link_series(date)                                        # nối sang khối ngoại và nhóm FTSE
     with W.card("p2_dstat"):
         W.title("Thống kê độ vênh và lan tỏa theo kỳ", f"Tính đến phiên {date:%d/%m/%Y}")
         div_stats(date)

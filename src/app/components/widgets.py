@@ -131,7 +131,7 @@ def w_indices(D: Dict) -> None:
 @safe_block("top 10 cổ phiếu")
 def w_top(D: Dict) -> None:
     v = D["stock"][D["stock"]["is_valid"]].copy()
-    min_tv = 1e9                                                      # lọc thanh khoản ≥ 1 tỷ cho bảng top
+    min_tv = float(get("outlook.movers_min_tv_bn", 10)) * 1e9          # cùng bộ lọc với PDF: GTGD ≥ 10 tỷ
     liq = v[v["tv"] >= min_tv]
     title("Top 10 cổ phiếu HOSE")
     tabs = st.tabs(["Tăng giá", "Giảm giá", "GTGD", "KL đột biến"])
@@ -145,7 +145,7 @@ def w_top(D: Dict) -> None:
                 rows.append([str(i), _sym(r.symbol), _chg(r.ret, fmt.price(r.close)),
                              _chg(r.ret, fmt.num(r.close - r.ref, 0, True)), _chg(r.ret, fmt.pct(r.ret * 100)), ex])
             table(["#", "Mã", "Giá", "+/-", "%", extra], rows or [["", "Không có mã thỏa điều kiện", "", "", "", ""]])
-    md(f'<div class="tc-note">Bảng tăng/giảm/đột biến chỉ xét mã có GTGD ≥ {fmt.num(min_tv / 1e9, 0)} tỷ đồng.</div>')
+    md(f'<div class="tc-note">Chỉ xét mã có GTGD ≥ {fmt.num(min_tv / 1e9, 0)} tỷ đồng (loại mã gần như không thanh khoản).</div>')
 
 
 # ── 3. Nhóm dẫn dắt ──────────────────────────────────────────────────────────

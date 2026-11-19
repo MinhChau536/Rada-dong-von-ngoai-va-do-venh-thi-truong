@@ -33,9 +33,8 @@ def closing_brief() -> Dict:
     from html import escape
     pdf, reason = closing.build()
     ctx = context.build()
-    txt, kb = M.market(ctx, with_buttons=True)
+    txt, kb = M.diagnosis(ctx, with_buttons=True)
     ok = send_message("🔔 <b>BẢN TIN CUỐI PHIÊN</b>\n\n" + txt, html=True, keyboard=kb)
-    send_message(M.foreign(ctx) + "\n\n" + M.outlook(ctx), html=True, keyboard=M.MENU)
     if pdf is None:
         send_message(f"⚠️ Chưa xuất Closing Report: {escape(reason)}", html=True)
     else:

@@ -63,16 +63,15 @@ def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path],
     ts = now_vn().replace(tzinfo=None)
     pdf = FFRPdf("Closing Report", f"Báo cáo cuối phiên {ctx['date']:%d/%m/%Y} · xuất {ts:%H:%M %d/%m/%Y}",
                  "SỐ LIỆU CUỐI PHIÊN – ĐÃ QUA KIỂM TRA CHẤT LƯỢNG", ctx["is_demo"])
-    from src.reports import sections as S
+    from src.reports import chapters as C
     chapters = [
-        ("Tóm tắt thị trường", lambda: S.ch_summary(pdf, ctx)),
-        ("Tổng quan thị trường", lambda: S.ch_overview(pdf, ctx)),
-        ("Dẫn dắt & độ vênh", lambda: S.ch_lead_div(pdf, ctx)),
-        ("Ra-đa khối ngoại", lambda: S.ch_foreign(pdf, ctx)),
-        ("Sự kiện nâng hạng FTSE", lambda: S.ch_ftse(pdf, ctx, True, db_path)),
-        ("Watchlist Impact", lambda: S.ch_watch(pdf, ctx, full=True)),
-        ("Kết luận & khuyến nghị tổng quát", lambda: S.ch_conclusion(pdf, ctx)),
-        ("Phương pháp & cơ sở khuyến nghị", lambda: S.ch_method(pdf)),
+        ("Chẩn đoán phiên", lambda: C.ch_diagnosis(pdf, ctx)),
+        ("Dòng vốn ngoại", lambda: C.ch_flow(pdf, ctx)),
+        ("Bối cảnh nâng hạng FTSE", lambda: C.ch_ftse_context(pdf, ctx, db_path)),
+        ("Tác động lên watchlist", lambda: C.ch_watch_impact(pdf, ctx)),
+        ("Kết luận và hàm ý", lambda: C.ch_conclusion(pdf, ctx, db_path)),
+        ("Thị trường chung", lambda: C.ch_market(pdf, ctx)),
+        ("Phụ lục", lambda: C.ch_appendix(pdf, ctx, db_path)),
     ]
     front_matter(pdf, ctx, "Closing Report", f"Xuất lúc {ts:%H:%M} ngày {ts:%d/%m/%Y} (giờ Việt Nam)",
                  [c[0] for c in chapters], "Báo cáo cuối phiên – số liệu đã khớp lệnh xong và qua kiểm tra chất lượng "

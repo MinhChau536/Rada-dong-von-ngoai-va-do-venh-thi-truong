@@ -53,8 +53,9 @@ def front_matter(pdf: FFRPdf, ctx: Dict, kind: str, stamp: str, contents: List[s
     """Trang bìa + trang mục lục (dùng chung cho hai mẫu báo cáo)."""
     from src.reports.sections import index_cards
     d = ctx["date"]
+    from src.reports.chapters import session_conclusion
     pdf.cover(kind, f"Phiên {WEEKDAYS[d.weekday()]}, {d:%d/%m/%Y}", stamp, index_cards(ctx), contents,
-              f"Nguồn dữ liệu: SSI FastConnect V3 (REST + WebSocket). {get('app.disclaimer')}")
+              f"Nguồn dữ liệu: SSI FastConnect V3 (REST + WebSocket). {get('app.disclaimer')}", headline=session_conclusion(ctx))
     x = ctx["day"]
     pdf.toc_page([
         ("Phạm vi", scope),
@@ -63,11 +64,11 @@ def front_matter(pdf: FFRPdf, ctx: Dict, kind: str, stamp: str, contents: List[s
         ("Cách đọc", "Các nhận xét là phép so sánh số liệu (với phiên trước, trung bình 5/20 phiên, phân vị 250 phiên, nhóm "
                      "đối chứng). Màu xanh/đỏ chỉ dấu tăng/giảm, không phải tín hiệu mua/bán."),
         ("Lưu ý", get("app.disclaimer")),
-    ])
+    ], answers=ctx.get("answers", []))
 
 
 def build(date=None, db_path=None) -> Optional[Path]:
-    from src.reports import sections as S
+    from src.reports import chapters as C
     ctx = context.build(date, db_path)
     if ctx is None:
         log_report("snapshot", date, None, "failed", "Không có dữ liệu", db_path)
@@ -76,14 +77,13 @@ def build(date=None, db_path=None) -> Optional[Path]:
     pdf = FFRPdf("Market Snapshot", f"Chụp lúc {ts:%H:%M %d/%m/%Y} (giờ VN) · phiên {ctx['date']:%d/%m/%Y}",
                  "SỐ LIỆU TRONG PHIÊN, CHƯA HOÀN TẤT", ctx["is_demo"])
     chapters: List[Tuple[str, callable]] = [
-        ("Tóm tắt thị trường", lambda: S.ch_summary(pdf, ctx)),
-        ("Tổng quan thị trường", lambda: S.ch_overview(pdf, ctx)),
-        ("Dẫn dắt & độ vênh", lambda: S.ch_lead_div(pdf, ctx)),
-        ("Ra-đa khối ngoại", lambda: S.ch_foreign(pdf, ctx)),
-        ("Sự kiện nâng hạng FTSE", lambda: S.ch_ftse(pdf, ctx)),
-        ("Watchlist Impact", lambda: S.ch_watch(pdf, ctx)),
-        ("Kết luận & khuyến nghị tổng quát", lambda: S.ch_conclusion(pdf, ctx)),
-        ("Phương pháp & cơ sở khuyến nghị", lambda: S.ch_method(pdf)),
+        ("Chẩn đoán phiên", lambda: C.ch_diagnosis(pdf, ctx)),
+        ("Dòng vốn ngoại", lambda: C.ch_flow(pdf, ctx)),
+        ("Bối cảnh nâng hạng FTSE", lambda: C.ch_ftse_context(pdf, ctx, db_path)),
+        ("Tác động lên watchlist", lambda: C.ch_watch_impact(pdf, ctx)),
+        ("Kết luận và hàm ý", lambda: C.ch_conclusion(pdf, ctx, db_path)),
+        ("Thị trường chung", lambda: C.ch_market(pdf, ctx)),
+        ("Phụ lục", lambda: C.ch_appendix(pdf, ctx, db_path)),
     ]
     front_matter(pdf, ctx, "Market Snapshot", f"Chụp lúc {ts:%H:%M} ngày {ts:%d/%m/%Y} (giờ Việt Nam)",
                  [c[0] for c in chapters], "Ảnh chụp thị trường trong phiên – số liệu có thể thay đổi đến khi đóng cửa.")

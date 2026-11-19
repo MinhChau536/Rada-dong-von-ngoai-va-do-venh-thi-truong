@@ -120,7 +120,7 @@ def compute(path: Optional[Path] = None, write: bool = True) -> Dict[str, object
 
     # ── nhóm đối chứng (B6.1) – cần vốn hóa & thanh khoản ──
     from src.analytics.event_study import match_control
-    ctrl = match_control(s)
+    ctrl = match_control(s, write=write and path is None)   # chỉ kho chính được ghi config/control_group.csv (kho tạm của kiểm thử thì không)
     uni = db.query_df("SELECT universe, symbol FROM dim_universe", path=path)
     uni = uni[uni["universe"] != "CONTROL"]
     if ctrl is not None and not ctrl.empty:

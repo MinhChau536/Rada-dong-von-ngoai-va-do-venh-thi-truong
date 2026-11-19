@@ -54,6 +54,10 @@ def safe_block(title: str = "khối") -> Callable:
 
 # Nội dung từng trang theo thuyết minh mục 11.3 – hiển thị khi kho chỉ báo còn trống (không vẽ số liệu giả)
 PAGE_FEATURES = {
+    "chan-doan": ["Chẩn đoán phiên 5 bước: lan tỏa, mã dẫn dắt, khối ngoại có đứng sau không, phản ứng của thị trường, watchlist",
+                  "Kết luận nghiên cứu giai đoạn FTSE với mức bằng chứng và hồi quy gộp cho độ vênh D", "Hàm ý cho nhà đầu tư"],
+    "kiem-chung": ["Backtest cảnh báo, giá trị dự báo, biên dao động, giá trị kinh tế", "Chất lượng dữ liệu, đối chiếu SSI",
+                   "Kết nối SSI FastConnect V3 và các tác vụ tải dữ liệu"],
     "tong-quan": ["4 thẻ VN-Index, VN30, HNX, UPCoM kèm sparkline 40 phiên", "Chất lượng xu hướng: trung vị lợi suất, "
                   "độ vênh D, CR5, khối ngoại ròng, loại phiên", "Dải danh mục theo dõi kèm trạng thái hấp thụ",
                   "Biểu đồ nến có mốc FTSE + đồng hồ sức khỏe thị trường", "Mã dẫn dắt VN-Index, đóng góp theo họ & ngành",

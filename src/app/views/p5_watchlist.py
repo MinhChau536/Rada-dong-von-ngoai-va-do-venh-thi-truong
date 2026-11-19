@@ -199,22 +199,45 @@ def overview_tab(syms, wl, data, date) -> None:
             series[s] = h[(h.index >= d0) & (h.index <= date)]
         plot(charts.line_comparison(series, p), "p5_perf")
     with c2:
-        section("Phản ứng theo loại phiên", "Lợi suất trung bình (%) của mã trong từng loại phiên – RQ4")
+        section("Phản ứng theo loại phiên", "Lợi suất VƯỢT TRỘI so với trung vị thị trường (ERᴹ, điểm %) – RQ4")
         rx = data["reaction"]
         fig = go.Figure()
         for code, lbl in SESSION_TYPES.items():
             r = rx[rx["session_type"] == code]
-            fig.add_trace(go.Bar(x=r["symbol"], y=r["mean_ret_pct"], name=lbl, marker_color=SESSION_COLORS[code],
+            fig.add_trace(go.Bar(x=r["symbol"], y=r["mean_er_pct"], name=lbl, marker_color=SESSION_COLORS[code],
                                  customdata=r["n"], hovertemplate="%{x}: %{y:.2f}% (%{customdata} phiên)<extra>" + lbl + "</extra>"))
         fig.update_layout(barmode="group")
         plot(charts._lay(fig, p, 330), "p5_react")
         kw = data["stats"]
         if not kw.empty:
             k = kw[kw["test"] == "Kruskal–Wallis"]
-            st.caption("Kruskal–Wallis (chỉ khi mỗi loại ≥ 15 phiên): " + " · ".join(
+            st.caption("Kruskal–Wallis trên ERᴹ (chỉ khi mỗi loại ≥ 15 phiên; p < 0,05: mã phản ứng KHÁC thị trường theo loại phiên): " + " · ".join(
                 f"{r.group}: p = {fmt.num(r.p_value, 4)}" for r in k.itertuples()))
-    from src.app.views import p5_portfolio
-    p5_portfolio.render(wl, date)
+    exposure_block(wl, data, date)
+
+
+@safe_block("mức phơi nhiễm")
+def exposure_block(wl, data, date) -> None:
+    """Mức phơi nhiễm của watchlist với nhóm dẫn dắt – trả lời câu "tác động lên danh mục theo dõi" của đề tài."""
+    from src.analytics import diagnosis as dg
+    p = pal()
+    if not wl:
+        return
+    hist = pd.concat([da.stock_hist(s) for s in wl], ignore_index=True)
+    e = dg.watch_exposure(wl, date, hist, da.daily(), data["profile"])
+    section("Mức phơi nhiễm của watchlist", "Watchlist chịu tác động của nhóm dẫn dắt và độ vênh chỉ số đến đâu")
+    cols = st.columns(4)
+    items = [kpi("Mã trong nhóm dẫn dắt", f"{len(e['lead'])}/{e['n']}", None, ", ".join(e["lead"]) or "không mã nào trong top 10 |C|"),
+             kpi("Mã thuộc họ Vingroup", f"{len(e['vin'])}/{e['n']}", None, ", ".join(e["vin"]) or "—"),
+             kpi("β Dimson bình quân", fmt.num(e["beta"], 2), None, ">1: biến động mạnh hơn thị trường"),
+             kpi("Thua trung vị khi D cao", fmt.frac_pct(e["lose_hiD"], 0),
+                 p["down"] if (e["lose_hiD"] or 0) > 0.5 else p["up"],
+                 f"{e['n_hiD']} phiên D ≥ phân vị 80 · ERᴹ TB {fmt.num(e['er_hiD'], 2, True)} đ.%")]
+    for c, h in zip(cols, items):
+        with c:
+            md(h)
+    st.caption("Phiên D cao = độ vênh ở phân vị ≥ 80 của 250 phiên trước (chỉ số bị kéo bởi nhóm vốn hóa lớn). "
+               "Tỷ lệ thua cao nghĩa là khi chỉ số 'đẹp' nhờ vài mã lớn, danh mục này thường không đi theo.")
 
 
 def symbol_tab(pick: str, data, date) -> None:
@@ -276,11 +299,11 @@ def symbol_tab(pick: str, data, date) -> None:
         rx = data["reaction"]
         rx = rx[rx["symbol"] == pick]
         lbl = [SESSION_TYPES.get(c, c).replace(" ", "<br>", 1) for c in rx["session_type"]]   # nhãn 2 dòng, không xoay/cắt chữ
-        fig = go.Figure(go.Bar(x=lbl, y=rx["mean_ret_pct"],
+        fig = go.Figure(go.Bar(x=lbl, y=rx["mean_er_pct"],
                                marker_color=[SESSION_COLORS.get(c, p["muted"]) for c in rx["session_type"]],
-                               text=[fmt.pct(v, 2) for v in rx["mean_ret_pct"]], textposition="outside", cliponaxis=False,
+                               text=[fmt.num(v, 2, True) for v in rx["mean_er_pct"]], textposition="outside", cliponaxis=False,
                                customdata=rx["n"], hovertemplate="%{x}: %{y:.2f}% (%{customdata} phiên)<extra></extra>"))
-        fig.update_layout(title=f"Phản ứng của {pick} theo loại phiên (lợi suất TB, %)")
+        fig.update_layout(title=f"{pick} hơn/kém trung vị thị trường theo loại phiên (ERᴹ TB, điểm %)")
         charts._lay(fig, p, 300, showlegend=False)
         fig.update_xaxes(tickangle=0, tickfont=dict(size=11))
         plot(fig, f"p5_rx_{pick}")

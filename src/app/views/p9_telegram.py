@@ -22,7 +22,7 @@ ALERT_TYPES = {"index_concentrated": "1 · Chỉ số do ít mã dẫn dắt", "
                "wl_deviation": "5 · Mã watchlist lệch mạnh khỏi thị trường", "wl_leader": "6 · Mã watchlist trong nhóm dẫn dắt",
                "wl_room": "7 · Room sắp cạn", "system_failover": "8 · Sự cố nguồn SSI (hệ thống)"}
 PREVIEWS = ["🏠 Menu chính", "📊 Thị trường", "🏁 Dẫn dắt", "🌏 Khối ngoại", "🔮 Triển vọng", "👁 Watchlist",
-            "📈 Thẻ phân tích mã", "💼 Tối ưu danh mục", "🛰 Tình trạng dữ liệu", "📖 Ký hiệu", "❓ Hướng dẫn"]
+            "📈 Thẻ phân tích mã", "🧭 Chẩn đoán phiên", "🛰 Tình trạng dữ liệu", "📖 Ký hiệu", "❓ Hướng dẫn"]
 
 
 @st.cache_resource(ttl=300, show_spinner="Đang dựng nội dung tin nhắn…")
@@ -51,7 +51,7 @@ def _message(kind: str, date, symbol: str, profile: str):
     if kind == "📈 Thẻ phân tích mã":
         return M.stock_card(symbol, ctx)
     if kind == "💼 Tối ưu danh mục":
-        return M.portfolio(profile)
+        return M.diagnosis(ctx)
     fn = {"📊 Thị trường": M.market, "🏁 Dẫn dắt": M.leaders, "🌏 Khối ngoại": M.foreign, "🔮 Triển vọng": M.outlook}[kind]
     return fn(ctx, with_buttons=True)
 

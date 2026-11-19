@@ -79,8 +79,13 @@ def stock_line(p: Dict) -> str:
     s += "."
     if p.get("net_flow") is not None:
         s += f" Khối ngoại {'mua' if p['net_flow'] >= 0 else 'bán'} ròng {fmt.bn(abs(p['net_flow']), 1, False)}"
-        if p.get("pct60_nf") is not None and not pd.isna(p["pct60_nf"]):
-            s += f", cao hơn {fmt.num(p['pct60_nf'], 0)}% số phiên 60 ngày của mã"
+        pc = p.get("pct60_nf")
+        if pc is not None and not pd.isna(pc):
+            # pct60_nf là phân vị của nf CÓ DẤU: bán ròng mạnh ↔ phân vị thấp → đổi sang "mạnh hơn x% số phiên"
+            strength = float(pc) if p["net_flow"] >= 0 else 100 - float(pc)
+            verb = "mua" if p["net_flow"] >= 0 else "bán"
+            s += (f", mức {verb} ròng mạnh nhất trong 60 phiên của mã" if strength >= 99.5
+                  else f", mạnh hơn {fmt.num(strength, 0)}% số phiên trong 60 ngày của mã")
         s += f"; trạng thái: {ABSORB_LABELS.get(p.get('absorb_state', 'neutral'), 'Trung tính').lower()}."
     if p.get("beta_dimson") is not None and not pd.isna(p["beta_dimson"]):
         s += f" β Dimson = {fmt.num(p['beta_dimson'], 2)}."

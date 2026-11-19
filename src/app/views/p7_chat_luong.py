@@ -61,9 +61,10 @@ def stream_vs_rest() -> pd.DataFrame:
     return m
 
 
-def render() -> None:
-    header("Chất lượng dữ liệu", "Minh bạch nguồn SSI FastConnect V3, độ đầy đủ, sai số tái lập và đối chiếu luồng ↔ REST")
-    status_bar.render()
+def render(embedded: bool = False) -> None:
+    if not embedded:
+        header("Chất lượng dữ liệu", "Minh bạch nguồn SSI FastConnect V3, độ đầy đủ, sai số tái lập và đối chiếu luồng ↔ REST")
+        status_bar.render()
     p = pal()
     q = da.table("data_quality_log")
     d = da.daily()
@@ -109,7 +110,14 @@ def render() -> None:
     section("Đối chiếu độ rộng với SSI", "Tự đếm − totalAdvanceStock/totalDeclineStock/totalNoChangeStock của indexSummary")
     if not br.empty:
         bad = br[br["status"] != "ok"].sort_values("trade_date", ascending=False)
-        st.caption(f"{len(br) - len(bad)}/{len(br)} phiên lệch ≤ {get('cleaning.breadth_tolerance')} mã.")
+        diff_basket = bad["detail"].fillna("").str.contains("khác rổ")
+        comparable = br[~br.index.isin(bad[diff_basket].index)]
+        ok_cmp = (comparable["status"] == "ok").mean() if len(comparable) else float("nan")
+        st.caption(f"{len(br) - len(bad)}/{len(br)} phiên lệch ≤ {get('cleaning.breadth_tolerance')} mã "
+                   f"({fmt.frac_pct((len(br) - len(bad)) / len(br), 1)}). Nguyên nhân chính của phần lệch: SSI đếm cả chứng chỉ quỹ, ETF và mã "
+                   f"mới niêm yết, còn dự án chỉ đếm cổ phiếu thường có khớp lệnh – {int(diff_basket.sum())} phiên lệch do SSI đếm khác rổ "
+                   f"(tổng số mã SSI khác tổng tự đếm). Chỉ xét {len(comparable)} phiên cùng rổ, tỷ lệ khớp là "
+                   f"**{fmt.frac_pct(ok_cmp, 1)}**.")
         md(table_html(["Phiên", "Lệch lớn nhất", "Chi tiết"],
                       [[f"{pd.Timestamp(r.trade_date):%d/%m/%Y}", str(int(r.value)), r.detail] for r in br.sort_values("value", ascending=False).head(8).itertuples()],
                       left=(0, 2)))

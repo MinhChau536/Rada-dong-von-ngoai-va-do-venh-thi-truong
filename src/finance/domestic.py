@@ -19,10 +19,11 @@ import pandas as pd
 from src.common.config import get
 
 ABSORB_LABELS = {
-    "absorb": "Khối nội hấp thụ",
-    "joint_sell": "Đồng thuận bán",
-    "joint_buy": "Đồng thuận mua",
-    "domestic_take": "Khối nội chốt hàng",
+    # Ròng khối nội luôn = −NF nên nhãn chỉ mô tả CHIỀU GIÁ so với CHIỀU KHỐI NGOẠI, không đo hành vi riêng của khối nội
+    "absorb": "Giá tăng dù ngoại bán",
+    "joint_sell": "Ngoại bán, giá giảm",
+    "joint_buy": "Ngoại mua, giá tăng",
+    "domestic_take": "Giá giảm dù ngoại mua",
     "neutral": "Trung tính",
 }
 

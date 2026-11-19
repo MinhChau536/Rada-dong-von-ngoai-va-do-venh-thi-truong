@@ -129,8 +129,7 @@ def render_watchlist_strip(data: Dict) -> None:
 @safe_block("diễn biến chỉ số")
 def render_index_chart(data: Dict) -> None:
     p = pal()
-    c_chart, c_health = st.columns([3, 1], gap="medium")
-    with c_chart:
+    if True:                                                 # bỏ đồng hồ "sức khỏe" – một thang duy nhất ở trang Chẩn đoán
         o1, o2, o3 = st.columns([2.6, 2.5, 1.4])
         code = o1.segmented_control("Chỉ số", [c for c, _ in INDEX_ORDER], default="VNINDEX", key="p1_idx",
                                     format_func=lambda c: {"VNINDEX": "VNI", "VN30": "VN30", "HNXINDEX": "HNX",
@@ -148,8 +147,6 @@ def render_index_chart(data: Dict) -> None:
             fig = charts.index_chart(view, dict(INDEX_ORDER)[code], kind, p, events() if show_ev else None)
             fig.update_xaxes(range=[cutoff, h["trade_date"].max() + pd.Timedelta(days=2)])
             plot(fig, "p1_idx_chart")
-    with c_health:
-        render_health(data)
 
 
 def render_health(data: Dict) -> None:
@@ -230,6 +227,7 @@ def _movers(df: pd.DataFrame, sparks: Dict, extra: str) -> str:
 @safe_block("cổ phiếu nổi bật")
 def render_movers(data: Dict) -> None:
     s = data["stock"][data["stock"]["is_valid"]].copy()
+    s = s[s["tv"] >= float(get("outlook.movers_min_tv_bn", 10)) * 1e9]     # cùng bộ lọc GTGD với PDF
     n = 10
     tabs = st.tabs(["Tăng mạnh nhất", "Giảm mạnh nhất", "GTGD lớn", "Đột biến khối lượng", "Đóng góp điểm lớn"])
     with tabs[0]:
@@ -279,6 +277,25 @@ def render_performance(data: Dict) -> None:
         st.caption("T = tuần · Th = tháng · N = năm · YTD = từ đầu năm. Lợi suất kỳ = P_t / P_{t−k} − 1.")
 
 
+def render_conclusion(data: Dict) -> None:
+    """Một câu kết luận của phiên (cùng logic trang Chẩn đoán) + lối sang trang Chẩn đoán."""
+    from src.finance.breadth import session_type_label
+    x, lead = data["day"], data["leaders"]
+    v = data["stock"][data["stock"]["is_valid"]]
+    main = lead[lead["side"] == ("neg" if x["dI"] < 0 else "pos")].head(2)
+    nf = v["net_flow"].fillna(0)
+    same = ((np.sign(nf) == np.sign(v["C"])) & (nf != 0)).astype(float)
+    cod = float((v["C"].abs() * same).sum() / max(v["C"].abs().sum(), 1e-9))
+    top = v[v["symbol"].isin(main["symbol"])]
+    fx = ("Khối ngoại " + ("bán" if top["net_flow"].sum() < 0 else "mua") + " ròng ở chính các mã này"
+          if len(top) and np.sign(top["net_flow"].sum()) == np.sign(top["C"].sum()) else "Khối ngoại không giao dịch cùng chiều ở các mã này")
+    md(f'<div class="ffr-insight" style="margin-top:10px"><b>Kết luận phiên:</b> Phiên {session_type_label(x["session_type"]).lower()}. '
+       f'Năm mã tạo {fmt.frac_pct(x["CR5"], 0)} biến động, dẫn đầu {", ".join(main["symbol"])}. {fx}; '
+       f'{fmt.frac_pct(cod, 0)} biến động điểm đến từ các mã khối ngoại giao dịch cùng chiều giá.</div>')
+    if "chan-doan" in st.session_state.get("_pages", {}):
+        st.page_link(st.session_state["_pages"]["chan-doan"], label="Xem chẩn đoán đầy đủ 5 bước →", icon=":material/insights:")
+
+
 def render_footer() -> None:
     md(f'<div class="ffr-foot"><span>Nguồn: SSI FastConnect V3 (REST + WebSocket) · giờ Việt Nam'
        f' · phương pháp tại trang "Phương pháp & giới hạn"</span>'
@@ -296,12 +313,21 @@ def render() -> None:
         status_bar.render(date, show_session=False)        # ô chọn phiên bên trái đã hiện phiên
     about.render_intro()
     data, D = load_overview(date), W.load(date)
-    # (a) bốn chỉ số: HOSE (VN-Index), VN30, HNX, UPCoM
+    # 1. Bốn chỉ số + chất lượng xu hướng + kết luận phiên
     render_index_cards(data)
     with W.card("p1_trend"):
         W.title("Chất lượng xu hướng hôm nay", "Chỉ số có phản ánh số đông cổ phiếu không")
         render_trend_quality(data)
-    # top 10 · nhóm dẫn dắt
+        render_conclusion(data)
+    # 2. Diễn biến chỉ số
+    with W.card("p1_chart"):
+        W.title("Diễn biến chỉ số", "Nến ngày · MA20 · MA50 · khối lượng · mốc FTSE")
+        render_index_chart(data)
+    # 3. Thanh khoản · độ rộng · ngành
+    for i, (col, fn) in enumerate(zip(st.columns(3, gap="small"), (W.w_liquidity, W.w_breadth, W.w_sectors))):
+        with col, W.card(f"p1_r3{i}"):
+            fn(D)
+    # 4. Top 10 cổ phiếu · nhóm dẫn dắt
     c1, c2 = st.columns([1.15, 1], gap="small")
     with c1, W.card("p1_top"):
         W.w_top(D)
@@ -309,13 +335,7 @@ def render() -> None:
         W.w_leaders(D)
         if st.button("Xem chi tiết dẫn dắt & độ vênh →", key="p1_to_p2"):
             st.switch_page(st.session_state["_pages"]["dan-dat"])
-    with W.card("p1_wl"):
-        W.title("Danh mục theo dõi hôm nay", "Kết nối trang Watchlist Impact · bấm để xem hồ sơ")
-        render_watchlist_strip(data)
-    with W.card("p1_chart"):
-        W.title("Diễn biến chỉ số", "Nến ngày · MA20 · MA50 · khối lượng · mốc FTSE · điểm sức khỏe theo quy tắc")
-        render_index_chart(data)
-    # khối ngoại
+    # 5. Khối ngoại
     c1, c2 = st.columns([1, 2], gap="small")
     with c1, W.card("p1_ft"):
         W.w_foreign_top(D)
@@ -325,19 +345,21 @@ def render() -> None:
         md(f'<div class="ffr-insight" style="margin-top:8px">{esc(narrative.foreign_summary(data["day"], s.nlargest(5, "net_flow"), s.nsmallest(5, "net_flow")))}</div>')
         if st.button("Xem Ra-đa khối ngoại →", key="p1_to_p3"):
             st.switch_page(st.session_state["_pages"]["khoi-ngoai"])
-    # thanh khoản · độ rộng · ngành
-    for i, (col, fn) in enumerate(zip(st.columns(3, gap="small"), (W.w_liquidity, W.w_breadth, W.w_sectors))):
-        with col, W.card(f"p1_r3{i}"):
-            fn(D)
+    # 6. Bản đồ thị trường + độ rộng theo rổ
+    with W.card("p1_map"):
+        W.w_map(D)
     with W.card("p1_basket"):
         W.title("Độ rộng theo rổ cổ phiếu", "HOSE toàn sàn · VN30 · nhóm FTSE · đối chứng · watchlist")
         render_breadth(data)
-    with W.card("p1_map"):
-        W.w_map(D)
+    # 7. Cổ phiếu nổi bật + so sánh hiệu suất
     with W.card("p1_movers"):
-        W.title("Cổ phiếu nổi bật – bảng chi tiết", "Toàn sàn HOSE · khối lượng, khối ngoại, hiệu suất 20 phiên, diễn biến 30 phiên")
+        W.title("Cổ phiếu nổi bật – bảng chi tiết", "HOSE · GTGD ≥ 10 tỷ · khối lượng, khối ngoại, hiệu suất 20 phiên")
         render_movers(data)
     with W.card("p1_perf"):
         W.title("So sánh hiệu suất", "Chuẩn hóa = 100 · chỉ số và mã đang chọn")
         render_performance(data)
+    # 8. Danh mục theo dõi – cuối trang
+    with W.card("p1_wl"):
+        W.title("Danh mục theo dõi hôm nay", "Kết nối trang Watchlist Impact · bấm để xem hồ sơ")
+        render_watchlist_strip(data)
     render_footer()

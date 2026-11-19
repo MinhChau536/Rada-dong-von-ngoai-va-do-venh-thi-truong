@@ -136,12 +136,12 @@ def _rewind() -> str:
               f'<path d="M250 92 A 26 26 0 0 1 262 78" fill="none" stroke="#FDE68A" stroke-width="3" marker-end="url(#arr)"/>')
 
 
-ART = {"tong-quan": _candles, "dan-dat": _waterfall, "khoi-ngoai": _radar, "su-kien-ftse": _calendar,
+ART = {"chan-doan": _shield, "kiem-chung": _rewind, "tong-quan": _candles, "dan-dat": _waterfall, "khoi-ngoai": _radar, "su-kien-ftse": _calendar,
        "watchlist": _eye_pie, "bao-cao": _report, "chat-luong": _shield, "phuong-phap": _book, "ket-noi": _plug, "telegram": _plane, "backtest": _rewind}
 TITLE_TO_SLUG = {"Tổng quan thị trường": "tong-quan", "Dẫn dắt & độ vênh": "dan-dat", "Ra-đa khối ngoại": "khoi-ngoai",
                  "Sự kiện FTSE": "su-kien-ftse", "Watchlist Impact": "watchlist", "Báo cáo PDF": "bao-cao", "Bot Telegram": "telegram", "Backtest": "backtest",
-                 "Chất lượng dữ liệu": "chat-luong", "Phương pháp & giới hạn": "phuong-phap", "Kết nối dữ liệu": "ket-noi"}
-GRADIENTS = {"tong-quan": ("#0F766E", "#1E3A8A"), "dan-dat": ("#7C3AED", "#1E40AF"), "khoi-ngoai": ("#0E7490", "#134E4A"),
+                 "Chất lượng dữ liệu": "chat-luong", "Chẩn đoán thị trường": "chan-doan", "Kiểm chứng & dữ liệu": "kiem-chung", "Phương pháp & giới hạn": "phuong-phap", "Kết nối dữ liệu": "ket-noi"}
+GRADIENTS = {"chan-doan": ("#B45309", "#1E3A8A"), "kiem-chung": ("#15803D", "#0F172A"), "tong-quan": ("#0F766E", "#1E3A8A"), "dan-dat": ("#7C3AED", "#1E40AF"), "khoi-ngoai": ("#0E7490", "#134E4A"),
              "su-kien-ftse": ("#B45309", "#7C2D12"), "watchlist": ("#BE185D", "#5B21B6"), "bao-cao": ("#1D4ED8", "#0F766E"),
              "chat-luong": ("#15803D", "#0F172A"), "phuong-phap": ("#334155", "#0F766E"), "ket-noi": ("#0369A1", "#312E81"),
              "telegram": ("#0284C7", "#1E40AF"), "backtest": ("#9333EA", "#0F766E")}
@@ -172,18 +172,22 @@ MODULES = {"tong-quan": ("01", "Thị trường"), "dan-dat": ("02", "Thị trư
            "su-kien-ftse": ("04", "Dòng vốn"), "watchlist": ("05", "Danh mục"), "bao-cao": ("06", "Tiện ích"),
            "telegram": ("07", "Tiện ích"), "chat-luong": ("08", "Hệ thống"), "backtest": ("09", "Hệ thống"),
            "phuong-phap": ("10", "Hệ thống"), "ket-noi": ("11", "Hệ thống")}
-HIGHLIGHT = {"Tổng quan thị trường": ("Tổng quan", "thị trường"), "Dẫn dắt & độ vênh": ("Dẫn dắt &", "độ vênh"),
+HIGHLIGHT = {"Chẩn đoán thị trường": ("Chẩn đoán", "thị trường"), "Kiểm chứng & dữ liệu": ("Kiểm chứng &", "dữ liệu"),
+             "Tổng quan thị trường": ("Tổng quan", "thị trường"), "Dẫn dắt & độ vênh": ("Dẫn dắt &", "độ vênh"),
              "Ra-đa khối ngoại": ("Ra-đa", "khối ngoại"), "Sự kiện FTSE": ("Sự kiện", "FTSE"),
              "Watchlist Impact": ("Watchlist", "Impact"), "Báo cáo PDF": ("Báo cáo", "PDF"), "Bot Telegram": ("Bot", "Telegram"),
              "Chất lượng dữ liệu": ("Chất lượng", "dữ liệu"), "Backtest": ("", "Backtest"),
              "Phương pháp & giới hạn": ("Phương pháp &", "giới hạn"), "Kết nối dữ liệu": ("Kết nối", "dữ liệu")}
 
 
+NO_PHOTO = {"tong-quan"}                                  # ảnh gốc là biểu đồ BTCUSD – không liên quan đề tài
+
+
 def banner_html(title: str, sub: str, pills_html: str = "") -> str:
     """Banner đầu trang: dòng mô-đun (mono) · tiêu đề serif có phần tô vàng · ảnh nền mờ dần sang phải · hình minh họa."""
     slug = TITLE_TO_SLUG.get(title, "tong-quan")
     c1, _ = GRADIENTS.get(slug, GRADIENTS["tong-quan"])
-    ph = photo_uri(slug)
+    ph = photo_uri(slug) if slug not in NO_PHOTO else None
     no, grp = MODULES.get(slug, ("", ""))
     plain, gold = HIGHLIGHT.get(title, (title, ""))
     head = (f'{plain} <em>{gold}</em>' if gold else plain).strip().replace("&", '<span class="amp">&amp;</span>')
@@ -204,7 +208,7 @@ ALIASES = {"Mặc định": STARS, "Đêm sao": STARS}         # tên cũ đã l
 
 def normalize(choice: Optional[str]) -> str:
     c = ALIASES.get(choice or "", choice)
-    return c if c in BACKGROUNDS else STARS
+    return c if c in BACKGROUNDS else "Trơn"
 PREFS = abs_path("data/ui_prefs.json")
 CUSTOM_DIR = abs_path("data")
 

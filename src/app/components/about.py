@@ -10,8 +10,7 @@ USERS = "nhà đầu tư cá nhân, chuyên viên phân tích, sinh viên tài c
 
 
 def render_intro() -> None:
-    md(f'<div class="ffr-intro"><span><b>{get("app.name")}</b> · {GOAL} · dành cho {USERS}.</span>'
-       f'<span>⚖️ {get("app.disclaimer")}</span></div>')
+    md(f'<div class="ffr-intro"><span><b>{get("app.name")}</b> · {GOAL} · dành cho {USERS}.</span></div>')
 
 
 def render_full() -> None:

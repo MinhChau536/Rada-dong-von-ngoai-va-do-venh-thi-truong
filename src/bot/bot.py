@@ -6,7 +6,7 @@ Bot Telegram (bước B10.1–B10.2) – python-telegram-bot, giao diện nút b
 • Thanh Menu (nút "Menu" cạnh ô chat) liệt kê lệnh; menu chính dạng nút bấm; mỗi tin có nút điều hướng.
 • Gõ thẳng mã (vd. FPT) → thẻ phân tích + nút Biểu đồ / Theo dõi.
 • Lệnh: /menu /market /leaders /foreign /outlook /stock <mã> /chart <mã> /watch /add <mã> /remove <mã>
-  /portfolio [thận trọng|cân bằng|tăng trưởng] /report /status /help.
+  /diag /report /status /help.
 • Chỉ phản hồi chat_id trong TELEGRAM_CHAT_IDS. Mọi tin kết thúc bằng câu miễn trừ. Không có chức năng đặt lệnh.
 """
 from __future__ import annotations
@@ -31,10 +31,8 @@ COMMANDS = [("menu", "🏠 Menu chính"), ("market", "📊 Tổng quan thị tr�
             ("stock", "📈 Phân tích một mã: /stock FPT"), ("intra", "⏱ Giá từng phút trong phiên: /intra FPT"),
             ("sector", "🏭 Ngành của mã: /sector FPT"), ("chart", "🖼 Biểu đồ ngày: /chart FPT"),
             ("alerts", "🔔 Cảnh báo tự động: bật/tắt, chọn loại, độ nhạy"), ("watch", "👁 Danh mục theo dõi"), ("add", "➕ Thêm mã: /add FPT"), ("remove", "➖ Bỏ mã: /remove FPT"),
-            ("portfolio", "💼 Tối ưu danh mục theo khẩu vị"), ("report", "📄 PDF báo cáo gần nhất"),
+            ("diag", "🧭 Chẩn đoán phiên"), ("report", "📄 PDF báo cáo gần nhất"),
             ("status", "🛰 Tình trạng dữ liệu"), ("legend", "📖 Giải thích ký hiệu, thuật ngữ"), ("help", "❓ Hướng dẫn")]
-PROFILE_ALIASES = {"than": "Thận trọng", "thận": "Thận trọng", "can": "Cân bằng", "cân": "Cân bằng",
-                   "tang": "Tăng trưởng", "tăng": "Tăng trưởng"}
 
 _CTX: Dict = {"t": 0.0, "d": None, "ctx": None}
 
@@ -88,7 +86,7 @@ def main() -> None:
     def guard(fn):
         async def wrap(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             cid = str(update.effective_chat.id)
-            if allowed and cid not in allowed:
+            if cid not in allowed:                      # danh sách trống → từ chối TẤT CẢ (không mở bot cho người lạ)
                 log.warning("Từ chối chat_id không đăng ký")
                 return
             if update.callback_query is not None:
@@ -109,6 +107,9 @@ def main() -> None:
             await send(update, M.menu_text(), M.MENU, edit)
         elif name == "help":
             await send(update, M.HELP, M.MENU, edit)
+        elif name == "diag":
+            text, rows = M.diagnosis(ctx_cached())
+            await send(update, text, rows, edit)
         elif name == "legend":
             await send(update, M.LEGEND, M.BACK, edit)
         elif name in ("market", "leaders", "foreign", "outlook"):
@@ -157,8 +158,8 @@ def main() -> None:
                     [("📊 Biểu đồ ngày", f"chart:{sym}"), ("🏠 Menu", "menu")]]
             await update.effective_chat.send_photo(img, caption=M.intraday_caption(sym, sm, d)[:1024],
                                                    parse_mode=ParseMode.HTML, reply_markup=kb(back))
-        elif name == "pf":
-            text, rows = M.portfolio(arg or "Cân bằng")
+        elif name == "pf":                                  # nút cũ (tối ưu danh mục đã bỏ) → chẩn đoán phiên
+            text, rows = M.diagnosis(ctx_cached())
             await send(update, text, rows, edit)
         elif name == "status":
             await send(update, M.status(), M.BACK, edit)
@@ -202,10 +203,7 @@ def main() -> None:
             if need_arg and not arg:
                 await send(update, f"Cú pháp: /{name} &lt;mã&gt;, ví dụ <code>/{name} FPT</code>", M.BACK)
                 return
-            if name == "portfolio":
-                key = arg.lower().split()[0][:4] if arg else ""
-                await page(update, "pf", next((v for k, v in PROFILE_ALIASES.items() if key.startswith(k)), "Cân bằng"))
-            elif name == "remove":
+            if name == "remove":
                 await page(update, "rm", arg.split()[0])
             elif name in ("stock", "chart", "add", "intra"):
                 await page(update, name, arg.split()[0] if arg else "")
@@ -218,9 +216,15 @@ def main() -> None:
                 await page(update, name)
         return h
 
+    last_press: Dict[tuple, float] = {}
+
     @guard
     async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         data = update.callback_query.data or "menu"
+        key, now_s = (update.effective_chat.id, data), time.monotonic()
+        if now_s - last_press.get(key, 0) < (20 if data == "report" else 3):     # bấm trùng → bỏ qua
+            return
+        last_press[key] = now_s
         name, _, arg = data.partition(":")
         await page(update, name, arg, edit=False)   # bấm nút = gửi tin MỚI, giữ tin cũ (giống gõ lệnh)
 
@@ -270,6 +274,9 @@ def main() -> None:
         app.add_handler(CommandHandler(name, cmd(name, need_arg=name in ("stock", "add", "remove", "intra", "sector"))))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+    if not allowed:
+        log.warning("TELEGRAM_CHAT_IDS trống – bot sẽ từ chối mọi tin nhắn cho tới khi khai báo chat_id")
+        print("⚠️  TELEGRAM_CHAT_IDS trống: bot từ chối mọi người. Thêm chat_id của bạn vào .env.")
     log.info("Bot Telegram đang chạy (%d chat_id được phép)", len(allowed))
     print("🤖 FTSE Flow Radar bot đang chạy – Ctrl+C để dừng")
     from src.bot import runtime

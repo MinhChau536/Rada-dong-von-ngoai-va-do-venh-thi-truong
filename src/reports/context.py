@@ -49,7 +49,21 @@ def build(date=None, path: Optional[Path] = None) -> Optional[Dict]:
         "is_demo": False, "source": src,
     }
     ctx.update(overview(ctx, path))
+    ctx.update(diagnosis_ctx(ctx, path))
     return ctx
+
+
+def diagnosis_ctx(ctx: Dict, path: Optional[Path] = None) -> Dict:
+    """Chỉ báo nối (đóng góp có khối ngoại cùng chiều, nhóm FTSE, HHI tỷ trọng…) + 3 câu trả lời của phiên + hàm ý."""
+    from src.analytics import diagnosis as dg
+    st = db.query_df("SELECT trade_date, symbol, is_valid, w, C, net_flow, tv FROM indicator_stock_daily "
+                     "WHERE trade_date <= ? AND trade_date >= ?", [ctx["date"], ctx["date"] - pd.Timedelta(days=400)], path=path)
+    ex = dg.daily_extras(st, ctx["hist"])
+    today = ex[ex["trade_date"] == ctx["date"]]
+    ex_today = today.iloc[0] if not today.empty else pd.Series(dtype=float)
+    return {"extras": ex, "ex_today": ex_today,
+            "answers": dg.session_answers(ctx["day"], ex_today, ctx["leaders"], ctx["stock"], ctx.get("watch")),
+            "implications": dg.implications(ctx["day"])}
 
 
 INDEX_NAMES = [("VNINDEX", "VN-Index"), ("VN30", "VN30"), ("HNXINDEX", "HNX-Index"), ("UPCOMINDEX", "UPCoM-Index")]

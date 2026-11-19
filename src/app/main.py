@@ -32,12 +32,13 @@ st.session_state.setdefault("bg_choice", normalize(_prefs.get("background")))   
 st.session_state.setdefault("bg_overlay", float(_prefs.get("overlay", 0.82)))
 st.session_state.setdefault("bg_fx", False)  # B4.3: tắt hiệu ứng nền động, không còn tùy chọn bật
 
-from src.app.views import (p0_ket_noi, p1_tong_quan, p2_dan_dat, p3_khoi_ngoai, p4_su_kien, p5_watchlist,  # noqa: E402
+from src.app.views import (p_chan_doan, p_kiem_chung, p0_ket_noi, p1_tong_quan, p2_dan_dat, p3_khoi_ngoai, p4_su_kien, p5_watchlist,  # noqa: E402
                            p6_bao_cao, p7_chat_luong, p8_phuong_phap, p9_telegram, p10_backtest)
 
 PAGES = {
     "Thị trường": [
         st.Page(p1_tong_quan.render, title="Tổng quan thị trường", icon=":material/dashboard:", url_path="tong-quan", default=True),
+        st.Page(p_chan_doan.render, title="Chẩn đoán thị trường", icon=":material/insights:", url_path="chan-doan"),
         st.Page(p2_dan_dat.render, title="Dẫn dắt & độ vênh", icon=":material/stacked_bar_chart:", url_path="dan-dat"),
     ],
     "Dòng vốn": [
@@ -50,10 +51,8 @@ PAGES = {
         st.Page(p9_telegram.render, title="Bot Telegram", icon=":material/send:", url_path="telegram"),
     ],
     "Hệ thống": [
-        st.Page(p7_chat_luong.render, title="Chất lượng dữ liệu", icon=":material/fact_check:", url_path="chat-luong"),
-        st.Page(p10_backtest.render, title="Backtest", icon=":material/history:", url_path="backtest"),
+        st.Page(p_kiem_chung.render, title="Kiểm chứng & dữ liệu", icon=":material/fact_check:", url_path="kiem-chung"),
         st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
-        st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:", url_path="ket-noi"),
     ],
 }
 if not da.ready():
@@ -70,7 +69,7 @@ if not da.ready():
         return st.Page(_render, title=pg.title, icon=pg.icon, url_path=path)
 
     keep = {"phuong-phap"}
-    PAGES = {g: [pg if pg.url_path in keep else _waiting(pg) for pg in grp if pg.url_path != "ket-noi"]
+    PAGES = {g: [pg if pg.url_path in keep else _waiting(pg) for pg in grp]
              for g, grp in PAGES.items()}
     PAGES["Hệ thống"].insert(0, st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:",
                                         url_path="ket-noi", default=True))

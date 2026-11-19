@@ -180,7 +180,7 @@ def stock_rules(sym: str, df: pd.DataFrame, base: Dict, lv: Dict, now: datetime)
     if v20 and vol >= lv["volx"] * v20 and (now.hour, now.minute) < (14, 30):
         out.append((f"{sym}:vol", f"🔊 Khối lượng đột biến: {fmt.num(vol / 1e6, 2)} tr cp, đã gấp {vol / v20:.1f} lần TB 20 phiên trước giờ ATC"))
     if base.get("hi20") and last > base["hi20"]:
-        out.append((f"{sym}:hi20", f"🚀 Vượt <b>đỉnh 20 phiên</b> ({fmt.price(base['hi20'])})"))
+        out.append((f"{sym}:hi20", f"↗ Vượt <b>đỉnh 20 phiên</b> ({fmt.price(base['hi20'])})"))
     if base.get("lo20") and last < base["lo20"]:
         out.append((f"{sym}:lo20", f"⚠️ Thủng <b>đáy 20 phiên</b> ({fmt.price(base['lo20'])})"))
     return out
@@ -320,7 +320,6 @@ def scan_eod(allowed: List[str]) -> List[Tuple[List[str], str, Keyboard]]:
             if a[k] != b[k]:
                 arrow = "🟢" if b[k] > a[k] else "🔴"
                 lines.append(f"{arrow} {name}: {lab[k].get(int(a[k]), '?')} → <b>{lab[k].get(int(b[k]), '?')}</b>")
-    an = outlook.analog_probabilities(c, nf)
     wl_lines = []
     wl = wi.get_watchlist()
     if wl:
@@ -332,7 +331,7 @@ def scan_eod(allowed: List[str]) -> List[Tuple[List[str], str, Keyboard]]:
         for r in s.itertuples():
             sig = []
             if r.new_high20:
-                sig.append("đỉnh 20 phiên mới 🚀")
+                sig.append("đỉnh 20 phiên mới")
             if r.new_low20:
                 sig.append("đáy 20 phiên mới ⚠️")
             if pd.notna(r.z_nf) and abs(r.z_nf) >= 2:
@@ -347,16 +346,10 @@ def scan_eod(allowed: List[str]) -> List[Tuple[List[str], str, Keyboard]]:
     txt = [f"🔮 <b>TÍN HIỆU XU HƯỚNG CUỐI PHIÊN</b> · {d:%d/%m/%Y}\n━━━━━━━━━━━━━━━━━━"]
     if lines:
         txt += ["<b>VN-Index đổi trạng thái:</b>"] + lines
-    if an.get("available"):
-        h5, h20 = an["horizons"].get(5, {}), an["horizons"].get(20, {})
-        txt.append(f"\n📐 Trạng thái hiện tại: <i>{escape(an['state'])}</i>")
-        if h5:
-            txt.append(f"• Lịch sử các phiên tương tự: tăng sau 5 phiên <b>{h5['p_up']:.0%}</b> · sau 20 phiên "
-                       f"<b>{h20.get('p_up', float('nan')):.0%}</b> (n = {h5['n']})".replace(".", ","))
     if wl_lines:
         txt += ["\n👁 <b>Mã bạn đang theo dõi:</b>"] + wl_lines
-    txt.append("\n<i>Xác suất dựa trên tần suất lịch sử, không phải dự báo chắc chắn.</i>")
-    return [(tg, "\n".join(txt), [[("🔮 Triển vọng", "outlook"), ("👁 Watchlist", "watch")], [("🔔 Cài đặt cảnh báo", "alerts")]])]
+    txt.append("\n<i>Mô tả thay đổi trạng thái, không phải tín hiệu mua/bán.</i>")
+    return [(tg, "\n".join(txt), [[("🧭 Chẩn đoán phiên", "diag"), ("👁 Watchlist", "watch")], [("🔔 Cài đặt cảnh báo", "alerts")]])]
 
 
 def scan(allowed: List[str], now: Optional[datetime] = None) -> List[Tuple[List[str], str, Keyboard]]:

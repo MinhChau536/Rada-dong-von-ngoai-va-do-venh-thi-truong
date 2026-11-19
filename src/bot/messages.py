@@ -35,7 +35,7 @@ HELP = ("🤖 <b>FTSE FLOW RADAR BOT</b>\n" + LINE + "\n"
         "🔔 /alerts – cảnh báo tự động (bot tự nhắn khi thị trường/mã theo dõi biến động)\n"
         "👁 /watch – danh mục đang theo dõi\n"
         "➕ /add &lt;mã&gt; · ➖ /remove &lt;mã&gt; – sửa danh mục\n"
-        "💼 /portfolio – tối ưu danh mục theo khẩu vị rủi ro\n"
+        "🧭 /diag – chẩn đoán phiên: 3 câu trả lời chính\n"
         "📄 /report – PDF báo cáo gần nhất\n"
         "🛰 /status – tình trạng dữ liệu\n"
         "📖 /legend – giải thích ký hiệu và thuật ngữ\n"
@@ -67,10 +67,8 @@ LEGEND = ("📖 <b>GIẢI THÍCH KÝ HIỆU</b>\n" + LINE + "\n"
           "• <b>MA20/MA50</b>: giá trung bình 20/50 phiên · <b>RSI14</b>: &gt;70 quá mua, &lt;30 quá bán\n"
           "• <b>VWAP</b>: giá bình quân theo khối lượng trong phiên\n\n"
           "🤝 <b>TRẠNG THÁI KHỐI NGOẠI – KHỐI NỘI</b>\n"
-          "• Khối nội hấp thụ: ngoại bán ròng nhưng giá vẫn tăng\n"
-          "• Đồng thuận bán: ngoại bán ròng và giá giảm\n"
-          "• Đồng thuận mua: ngoại mua ròng và giá tăng\n"
-          "• Khối nội chốt hàng: ngoại mua ròng nhưng giá giảm\n"
+          "• Giá tăng dù ngoại bán · Ngoại bán, giá giảm · Ngoại mua, giá tăng · Giá giảm dù ngoại mua\n"
+          "  (chỉ gán khi |nf| ≥ 5% và |giá| ≥ 0,5%; ròng khối nội luôn = − ròng khối ngoại nên nhãn chỉ mô tả chiều giá)\n"
           "• Trung tính: dòng vốn hoặc biến động giá quá nhỏ để kết luận\n\n"
           "🧭 <b>LOẠI PHIÊN</b>\n"
           "• Tăng lan rộng / Giảm đồng thuận: đa số mã cùng chiều chỉ số\n"
@@ -78,7 +76,7 @@ LEGEND = ("📖 <b>GIẢI THÍCH KÝ HIỆU</b>\n" + LINE + "\n"
 
 MENU: Keyboard = [[("📊 Thị trường", "market"), ("🏁 Dẫn dắt", "leaders")],
                   [("🌏 Khối ngoại", "foreign"), ("🔮 Triển vọng", "outlook")],
-                  [("👁 Watchlist", "watch"), ("💼 Danh mục", "pf:Cân bằng")],
+                  [("🧭 Chẩn đoán phiên", "diag"), ("👁 Watchlist", "watch")],
                   [("📄 Báo cáo PDF", "report"), ("🛰 Trạng thái", "status")],
                   [("🔔 Cảnh báo tự động", "alerts"), ("📖 Ký hiệu", "legend")]]
 BACK: Keyboard = [[("🏠 Menu chính", "menu")]]
@@ -115,11 +113,6 @@ def market(ctx: Optional[Dict] = None, with_buttons: bool = False):
             r = idx.loc[code]
             lines.append(f"{ic} {name}: <b>{fmt.num(r['value'])}</b>  {dot(r['change'])} {fmt.num(r['change'], 2, True)} "
                          f"({fmt.pct(r['ratio_change'])})")
-    h = ctx.get("health") or {}
-    if h.get("available"):
-        lines.append(f"\n🌡 <b>SỨC KHỎE THỊ TRƯỜNG</b>: <b>{fmt.num(h['score'], 0)}/100</b> – {h['label']}")
-        for v in h["components"].values():
-            lines.append(f"• {v['label']}: {escape(v['detail'])}")
     lines.append("\n🧭 <b>CHẤT LƯỢNG XU HƯỚNG</b>")
     lines.append(f"• Loại phiên: <b>{session_type_label(x['session_type'])}</b>")
     lines.append(f"• Tăng / Đứng / Giảm: 🟢 {int(x['n_up'])} · 🟡 {int(x['n_unch'])} · 🔴 {int(x['n_down'])} "
@@ -205,22 +198,15 @@ def outlook(ctx: Optional[Dict] = None, with_buttons: bool = False):
     ctx = _ctx(ctx)
     if not ctx:
         return ("Chưa có dữ liệu phiên.", BACK) if with_buttons else "Chưa có dữ liệu phiên."
-    vr, an = ctx["vol_range"], ctx["analog"]
+    vr = ctx["vol_range"]
     last = float(ctx["idx_hist"]["VN-Index"].iloc[-1])
-    lines = [_head("🔮", "Triển vọng thống kê VN-Index", ctx["date"]), f"VN-Index hiện tại: <b>{fmt.num(last)}</b>\n"]
+    lines = [_head("📏", "Biên dao động VN-Index", ctx["date"]), f"VN-Index hiện tại: <b>{fmt.num(last)}</b>\n"]
     for h in (5, 20):
         r = vr.get(h)
         if r:
             lines.append(f"📏 <b>{h} phiên tới</b> – biên dao động")
             lines.append(f"   • 68%: {fmt.num(r['lo68'], 0)} – {fmt.num(r['hi68'], 0)}")
             lines.append(f"   • 90%: {fmt.num(r['lo90'], 0)} – {fmt.num(r['hi90'], 0)}")
-        a = an.get("horizons", {}).get(h) if an.get("available") else None
-        if a and a["n"]:
-            lines.append(f"   • Xác suất cao hơn hiện tại: <b>{fmt.frac_pct(a['p_up'], 0)}</b> {dot(a['p_up'] - a['base_p_up'])} "
-                         f"(bình thường {fmt.frac_pct(a['base_p_up'], 0)} · dựa trên {a['n']} phiên tương tự)")
-            lines.append(f"   • Trung vị {fmt.pct(a['median'], 1)} · 10–90%: {fmt.pct(a['p10'], 1)} → {fmt.pct(a['p90'], 1)}\n")
-    if an.get("available"):
-        lines.append(f"🧩 Trạng thái hiện tại: {escape(an['state'])}")
     sig = ctx.get("signals") or []
     lines.append("🚨 Tín hiệu hôm nay: " + (", ".join(escape(s["rule"]) for s in sig) if sig else "không có"))
     if 5 in vr:
@@ -228,8 +214,7 @@ def outlook(ctx: Optional[Dict] = None, with_buttons: bool = False):
                      f"<i>(độ lệch chuẩn lợi suất ngày, phiên gần đây được tính trọng số cao hơn)</i>\n"
                      f"✅ Kiểm chứng từ 2019: VN-Index thực tế nằm trong biên 90% ở "
                      f"<b>{fmt.frac_pct(vr[5]['coverage90'], 0)}</b> số lần")
-        lines.append("<i>🟢/🔴 cạnh xác suất: cao hơn/thấp hơn mức bình thường (tỷ lệ tăng của mọi phiên trong lịch sử).</i>")
-    lines.append("<i>Ước lượng thống kê từ dữ liệu quá khứ, không phải dự báo chắc chắn.</i>")
+    lines.append("<i>Biên mô tả mức dao động bình thường (EWMA, hiệu chỉnh đuôi dày), không phải dự báo hướng đi.</i>")
     kb = [[("📊 Thị trường", "market"), ("📈 Biểu đồ VN-Index", "chart:VNINDEX")], [("🏠 Menu", "menu")]]
     text = "\n".join(lines)
     return (text, kb) if with_buttons else text
@@ -441,34 +426,25 @@ def watch(symbol: Optional[str] = None, ctx: Optional[Dict] = None, with_buttons
         lines.append("\n🧠 <b>NHẬN ĐỊNH</b>")
         lines += [f"• {escape(x)}" for x in pf["sentence"].tolist() if x]
     kb = [[(f"📈 {s}", f"stock:{s}") for s in wl[i:i + 3]] for i in range(0, min(len(wl), 9), 3)]
-    kb += [[("💼 Tối ưu danh mục", "pf:Cân bằng"), ("🏠 Menu", "menu")]]
+    kb += [[("🧭 Chẩn đoán phiên", "diag"), ("🏠 Menu", "menu")]]
     text = "\n".join(lines)
     return (text, kb) if with_buttons else text
 
 
-def portfolio(profile: str = "Cân bằng"):
-    from src.analytics import portfolio as P
-    wl = wi.get_watchlist()
-    profs = P.profiles()
-    profile = profile if profile in profs else "Cân bằng"
-    a = P.analyze(wl, profile)
-    kb = [[(("✅ " if k == profile else "") + k, f"pf:{k}") for k in profs], [("👁 Watchlist", "watch"), ("🏠 Menu", "menu")]]
-    if not a["ok"]:
-        return f"💼 <b>TỐI ƯU DANH MỤC</b>\n{LINE}\n{escape(a['reason'])}", kb
-    prof, t = a["profile"], a["results"]["target"]
-    w = t["w"].sort_values(ascending=False)
-    lines = [f"💼 <b>TỐI ƯU DANH MỤC · {prof.name.upper()}</b>", f"{a['d0']:%d/%m/%Y} – {a['d1']:%d/%m/%Y} · {a['lookback']} phiên\n{LINE}",
-             f"🎚 Biến động mục tiêu ≤ {prof.target_vol:.0%}/năm · tối đa {a['max_w']:.0%}/mã\n", "📊 <b>TỶ TRỌNG GỢI Ý</b>"]
-    lines += [f"<code>{s:<4}</code> {bar(v, w.max(), 10)} {v:.0%}" for s, v in w.items() if v >= 0.005]
-    lines += ["\n📐 <b>CHỈ SỐ RỦI RO – LỢI SUẤT</b>",
-              f"• Lợi suất kỳ vọng: {dot(t['ret'])} {t['ret']:+.1%}/năm".replace(".", ","),
-              f"• Biến động: {t['vol']:.1%}/năm · Sharpe {t['sharpe']:.2f}".replace(".", ","),
-              f"• Beta: {t['beta']:.2f} · sụt giảm tối đa {t['mdd']:.0%}".replace(".", ","),
-              f"• VaR 95% 1 ngày: {t['var95']:.2%}".replace(".", ","),
-              "\n💡 <b>GỢI Ý</b>"]
-    lines += [escape(x) for x in a["suggest"][:5]]
-    lines.append("\n<i>Tối ưu trên dữ liệu quá khứ (Ledoit–Wolf, long-only) – tham khảo, không phải khuyến nghị.</i>")
-    return "\n".join(lines), kb
+def diagnosis(ctx: Optional[Dict] = None, with_buttons: bool = True):
+    """Tin chính của phiên: 3 câu trả lời bằng lời thường (cùng nguồn với trang Chẩn đoán thị trường và PDF)."""
+    ctx = _ctx(ctx)
+    if not ctx or not ctx.get("answers"):
+        return ("Chưa có dữ liệu phiên.", BACK) if with_buttons else "Chưa có dữ liệu phiên."
+    lines = [_head("🧭", "Chẩn đoán phiên", ctx["date"])]
+    for i, a in enumerate(ctx["answers"], 1):
+        lines.append(f"\n<b>{i}. {escape(a['q'])}</b>\n{escape(a['a'])}")
+    lines.append("\n💡 <b>CÁCH ĐỌC</b>")
+    lines += [f"• {escape(t)}" for t in ctx.get("implications", [])[:2]]
+    kb = [[("📊 Thị trường", "market"), ("🏁 Dẫn dắt", "leaders")], [("🌏 Khối ngoại", "foreign"), ("👁 Watchlist", "watch")],
+          [("🏠 Menu", "menu")]]
+    text = "\n".join(lines)
+    return (text, kb) if with_buttons else text
 
 
 def status() -> str:

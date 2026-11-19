@@ -263,6 +263,11 @@ def run_all(stock: pd.DataFrame, day: pd.DataFrame, variant: str = "base", est_w
     params, results, aar, srows = [], [], [], []
     for e in ev.itertuples():
         grp_res = {"FTSE": es.run_group(ftse, e.event_date), "CONTROL": es.run_group(ctrl, e.event_date)}
+        # Tách nhóm vào FTSE All-World (vốn hóa lớn & vừa – có dòng tiền quỹ thụ động thật) khỏi nhóm chỉ vào All-Cap (vốn hóa nhỏ)
+        if "all_world" in fu:
+            aw = set(fu.loc[fu["all_world"].astype(str).isin(["1", "True", "true"]), "symbol"])
+            grp_res["FTSE_AW"] = [r for r in grp_res["FTSE"] if r["symbol"] in aw]
+            grp_res["FTSE_SC"] = [r for r in grp_res["FTSE"] if r["symbol"] not in aw]
         cars_by = {}
         for gname, lst in grp_res.items():
             for r in lst:

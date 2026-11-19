@@ -4,7 +4,8 @@ Module D – Watchlist Impact (bước B7.1–B7.6).
   (12) ER^I = r_i − r_VNI ;  ER^M = r_i − median_j(r_j)
   (13) r_i,t = a + Σ_{k=−1..1} b_k r_VNI,t+k + u ;  β^D = Σ b̂_k   (Dimson 1979, 120 phiên)
   β^ID: lợi suất 5 phút so với VN30 trong 20 phiên, bỏ nến ATO (09:15) và ATC (14:45).
-  Phản ứng theo loại phiên: trung bình/trung vị lợi suất; Kruskal–Wallis + Dunn (Holm) khi mỗi loại ≥ 15 phiên.
+  Phản ứng theo loại phiên: lợi suất vượt trội ERᴹ (r − trung vị thị trường); Kruskal–Wallis + Dunn (Holm) trên ERᴹ
+  khi mỗi loại ≥ 15 phiên (lợi suất thô hiển nhiên khác nhau theo loại phiên nên không dùng để kiểm định).
 """
 from __future__ import annotations
 
@@ -157,19 +158,23 @@ def compute(stock: pd.DataFrame, day: pd.DataFrame, intra: Optional[pd.DataFrame
             rk = int(x["rk_pos"]) if x["C"] > 0 else int(x["rk_neg"])
         m_al = rm.reindex(r.index)
         t_r = d["session_type"].reindex(r.index)
-        by_type = {}
+        by_type, raw_type = {}, {}
         for code in SESSION_TYPES:
             v = r[t_r == code].dropna()
-            by_type[code] = v.to_numpy()
-            react.append({"symbol": sym, "session_type": code, "label": SESSION_TYPES[code], "n": len(v),
+            # Kiểm định trên lợi suất VƯỢT TRỘI so với trung vị thị trường (ERᴹ): loại phiên được định nghĩa theo chiều
+            # thị trường nên lợi suất thô hiển nhiên khác nhau giữa các loại (p ≈ 0 với mọi mã, không chứng minh gì).
+            e = er_m_hist[t_r == code].dropna()
+            by_type[code], raw_type[code] = e.to_numpy(), v.to_numpy()
+            react.append({"symbol": sym, "session_type": code, "label": SESSION_TYPES[code], "n": len(e),
                           "mean_ret_pct": float(v.mean() * 100) if len(v) else np.nan,
-                          "median_ret_pct": float(v.median() * 100) if len(v) else np.nan})
+                          "mean_er_pct": float(e.mean() * 100) if len(e) else np.nan,
+                          "median_er_pct": float(e.median() * 100) if len(e) else np.nan})
         enough = {k: v for k, v in by_type.items() if len(v) >= min_type}
         kw_p = np.nan
         if len(enough) >= 2:
             kw = stats.kruskal(*enough.values())
             kw_p = float(kw.pvalue)
-            srows.append({"hypothesis": "RQ4", "metric": "Lợi suất theo loại phiên", "event_id": "", "group": sym,
+            srows.append({"hypothesis": "RQ4", "metric": "Lợi suất vượt trội ERᴹ theo loại phiên", "event_id": "", "group": sym,
                           "window": "toàn mẫu", "model": "", "variant": "base", "test": "Kruskal–Wallis",
                           "statistic": float(kw.statistic), "p_value": kw_p, "n": int(sum(len(v) for v in enough.values())),
                           "estimate": np.nan, "ci_lo": np.nan, "ci_hi": np.nan,
@@ -179,7 +184,7 @@ def compute(stock: pd.DataFrame, day: pd.DataFrame, intra: Optional[pd.DataFrame
                               "event_id": "", "group": sym, "window": "toàn mẫu", "model": "", "variant": "base",
                               "test": "Dunn (Holm)", "statistic": pr["z"], "p_value": pr["p"], "n": np.nan,
                               "estimate": np.nan, "ci_lo": np.nan, "ci_hi": np.nan, "note": f"p_holm={pr['p_holm']:.3g}"})
-        tt = by_type.get(today_type, np.array([])) if today_type else np.array([])
+        tt = raw_type.get(today_type, np.array([])) if today_type else np.array([])
         prof.append({
             "symbol": sym, "trade_date": last, "has_data": bool(has_today), "sector": row.get("sector"),
             "close": row["close"], "ret": float(row["ret"]) if has_today else None,

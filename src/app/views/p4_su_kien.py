@@ -1,16 +1,28 @@
-"""Trang 4 – Sự kiện FTSE (bước B6.14): CAAR và CAFF theo ngày sự kiện cho hai nhóm có dải tin cậy;
-bảng kiểm định; đồ thị hệ số DiD; cân bằng nhóm đối chứng; ghi chú giới hạn."""
+"""Trang 4 – Sự kiện FTSE (bước B6.14), trình bày cho người đọc không chuyên:
+câu hỏi bằng lời thường → dòng thời gian các mốc → 27 mã chính thức → hiệu suất cộng dồn từ E1 → biểu đồ lợi suất &
+dòng vốn ngoại "vượt bình thường" quanh mốc (có dải tin cậy, tách 6 mã All-World và 21 mã All-Cap) → bảng kết quả gọn có
+kết luận bằng chữ → chênh lệch kép (DiD) → nhóm đối chứng → bảng kiểm định đầy đủ. Mọi phần hiện sẵn, không cần mở."""
 from __future__ import annotations
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 from src.app import data_access as da
 from src.app.components import charts, status_bar
+from src.app.components import widgets as W
 from src.app.components.states import empty
-from src.app.components.ui import header, md, pal, plot, section, table_html
+from src.app.components.ui import esc, header, md, pal, plot, table_html
 from src.common import fmt
 from src.common.config import control_group, events, ftse_universe
+
+GROUP_LBL = {"FTSE": "Nhóm FTSE (27 mã)", "CONTROL": "Nhóm đối chứng", "FTSE−CONTROL": "FTSE − đối chứng",
+             "FTSE_AW": "6 mã All-World", "FTSE_SC": "21 mã All-Cap"}
+EV_EXPLAIN = {"E1": "FTSE Russell công bố nâng hạng Việt Nam lên thị trường mới nổi thứ cấp.",
+              "E2": "Kỳ rà soát giữa kỳ xác nhận giữ nguyên lộ trình nâng hạng.",
+              "L1": "Công bố danh sách 27 mã vào rổ – lần đầu thị trường biết CỤ THỂ mã nào được chọn.",
+              "L2": "Hạn chót điều chỉnh danh sách (xác nhận chính thức từ 07/09/2026).",
+              "E3": "Phiên cuối trước hiệu lực – các quỹ thụ động mua vào để mô phỏng rổ mới."}
 
 
 def _stats_table(df: pd.DataFrame) -> None:
@@ -19,74 +31,165 @@ def _stats_table(df: pd.DataFrame) -> None:
         star = "✅" if pd.notna(r.p_value) and r.p_value < 0.05 else ""
         est = (f"{fmt.frac_pct(r.estimate, 1)} CAR > 0" if r.test == "Dấu tổng quát"
                else fmt.num(r.estimate * (100 if r.metric == "CAR" else 1), 3, True) + ("%" if r.metric == "CAR" else ""))
-        rows.append([r.group, r.window, r.test, est, fmt.num(r.statistic, 2, True), fmt.num(r.p_value, 4),
-                     fmt.num(r.p_holm, 4), str(int(r.n)) if pd.notna(r.n) else "—", star])
-    md(table_html(["Nhóm", "Cửa sổ", "Kiểm định", "Ước lượng", "Thống kê", "p", "p Holm", "N", "p<5%"], rows, left=(0, 1, 2)))
+        rows.append([GROUP_LBL.get(r.group, r.group), r.metric, r.window, r.test, est, fmt.num(r.statistic, 2, True),
+                     fmt.num(r.p_value, 4), fmt.num(r.p_holm, 4), str(int(r.n)) if pd.notna(r.n) else "—", star])
+    md(table_html(["Nhóm", "Chỉ tiêu", "Cửa sổ", "Kiểm định", "Ước lượng", "Thống kê", "p", "p Holm", "N", "p<5%"], rows,
+                  left=(0, 1, 2, 3)))
+
+
+def _summary(s: pd.DataFrame, hyp: str, metric: str, scale: float, unit: str) -> None:
+    """Mỗi cửa sổ một dòng – FTSE, đối chứng, chênh lệch, 2 nhóm con, p Holm, kết luận bằng chữ."""
+    rows = []
+    for w in sorted(s["window"].dropna().unique(), key=lambda x: (len(x), x)):
+        x = s[(s["hypothesis"] == hyp) & (s["metric"] == metric) & (s["window"] == w)]
+        get_ = lambda g: x[(x["group"] == g) & (x["test"] == "t cắt ngang")]  # noqa: E731
+        f, c, aw, sc = get_("FTSE"), get_("CONTROL"), get_("FTSE_AW"), get_("FTSE_SC")
+        d = x[(x["group"] == "FTSE−CONTROL") & x["test"].astype(str).str.startswith("Welch")]
+        if f.empty or c.empty:
+            continue
+        ph = d["p_holm"].iloc[0] if not d.empty and pd.notna(d["p_holm"].iloc[0]) else (d["p_value"].iloc[0] if not d.empty else float("nan"))
+        verdict = ("Có khác biệt có ý nghĩa" if pd.notna(ph) and ph < 0.05 else
+                   "Khác biệt yếu (p < 0,10)" if pd.notna(ph) and ph < 0.10 else "Không có bằng chứng bất thường")
+        g = lambda df: fmt.num(df["estimate"].iloc[0] * scale, 2, True) + unit if not df.empty else "—"  # noqa: E731
+        rows.append([f"{w} phiên", g(f), g(c), g(d), g(aw), g(sc), fmt.num(ph, 3), verdict])
+    if rows:
+        md(table_html(["Cửa sổ quanh mốc", "Nhóm FTSE", "Đối chứng", "Chênh lệch", "6 mã All-World", "21 mã All-Cap",
+                       "p Holm", "Kết luận"], rows, left=(0, 7)))
+    else:
+        empty("Chưa có kết quả cho mốc này.")
+
+
+def _timeline(ev: pd.DataFrame) -> None:
+    items = "".join(
+        f'<div class="ft-ev"><b>{r.event_id}</b><span>{r.event_date:%d/%m/%Y}</span><em>{esc(r.label)}</em>'
+        f'<small>{esc(EV_EXPLAIN.get(r.event_id, ""))}</small></div>' for r in ev.sort_values("event_date").itertuples())
+    md('<style>.ft-tl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:4px 0 6px}'
+       '.ft-ev{border:1px solid rgba(148,163,184,.2);border-left:3px solid #F5B341;border-radius:12px;padding:9px 12px;'
+       'background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:2px}.ft-ev b{color:#F5B341;font-size:15px}'
+       '.ft-ev span{font-weight:700;font-size:13.5px}.ft-ev em{font-style:normal;font-size:13px}.ft-ev small{opacity:.75;font-size:12px;'
+       'line-height:1.4}</style>' + f'<div class="ft-tl">{items}</div>')
+
+
+def _universe() -> None:
+    fu = ftse_universe()
+    if fu.empty or "size_class" not in fu:
+        return
+    rows = []
+    for cls, lbl in (("Large", "Vốn hóa lớn – vào cả All-World"), ("Mid", "Vốn hóa vừa – vào cả All-World"),
+                     ("Small", "Vốn hóa nhỏ – chỉ vào All-Cap")):
+        sy = fu[fu["size_class"] == cls]["symbol"].tolist()
+        if sy:
+            rows.append([f"<b>{lbl}</b>", str(len(sy)), " · ".join(f'<span class="ffr-sym">{s}</span>' for s in sy)])
+    md(table_html(["Nhóm", "Số mã", "Mã cổ phiếu"], rows, left=(0, 2)))
+    st.caption("Nguồn: FTSE Russell công bố ngày 21/08/2026; đối chiếu Dragon Capital và Vietstock. Nhóm All-World có dòng tiền "
+               "quỹ thụ động lớn hơn nhiều, nên được tách riêng khi phân tích.")
+
+
+def _cum_groups(p) -> None:
+    g = da.groups(None, "universe")
+    if g.empty:
+        return
+    e1 = events().set_index("event_id").loc["E1", "event_date"]
+    g = g[pd.to_datetime(g["trade_date"]) >= e1].copy()
+    fig = go.Figure()
+    for k, lbl, col, w in (("FTSE", "Nhóm FTSE (27 mã)", p["accent"], 2.4), ("CONTROL", "Nhóm đối chứng", "#94A3B8", 1.6),
+                           ("VN30", "VN30", "#818CF8", 1.2)):
+        x = g[g["group_name"] == k].sort_values("trade_date")
+        if x.empty:
+            continue
+        cum = ((1 + x["ret_eq"].fillna(0)).cumprod() - 1) * 100
+        fig.add_scatter(x=x["trade_date"], y=cum, name=f"{lbl} ({fmt.pct(cum.iloc[-1], 1)})", line=dict(color=col, width=w))
+    for r in events().itertuples():
+        if r.event_date >= e1:
+            fig.add_vline(x=r.event_date, line=dict(color="#F5B341", width=1, dash="dot"))
+            fig.add_annotation(x=r.event_date, y=1, yref="paper", text=r.event_id, showarrow=False, font=dict(color="#F5B341", size=11),
+                               yanchor="bottom")
+    fig.add_hline(y=0, line=dict(color=p["muted"], width=1))
+    plot(charts._lay(fig, p, 360, hovermode="x unified", legend=dict(orientation="h", y=-0.15, x=0),
+                     margin=dict(l=8, r=8, t=24, b=8), yaxis_title="Lợi suất cộng dồn (%)"), "p4_cum")
 
 
 def render() -> None:
-    header("Sự kiện FTSE", "Nhóm cổ phiếu vào rổ có lợi suất và dòng vốn ngoại bất thường so với nhóm đối chứng không?")
+    header("Sự kiện FTSE", "Các mã được chọn vào rổ FTSE có tăng giá hoặc được khối ngoại mua nhiều hơn bình thường không?")
     status_bar.render()
     p = pal()
-    ev = events()
-    fu = ftse_universe()
-    if not fu.empty and not fu["verified"].astype(str).str.lower().eq("true").all():
-        st.warning("Danh sách FTSE trong config/ftse_universe.csv đang là DỰ KIẾN (verified = false) – cần đối chiếu thông báo "
-                   "chính thức của FTSE Russell trước khi diễn giải kết quả.")
-    eid = st.segmented_control("Mốc sự kiện", ev["event_id"].tolist(), default="E3", key="p4_ev",
-                               format_func=lambda e: f"{e} · {ev.set_index('event_id').loc[e, 'label']} "
-                                                     f"({ev.set_index('event_id').loc[e, 'event_date']:%d/%m/%Y})") or "E3"
-    e = ev.set_index("event_id").loc[eid]
-    st.caption(e["description"])
+    ev = events().sort_values("event_date")
+    md('<div class="ffr-insight"><b>Câu hỏi:</b> khi FTSE Russell công bố và điều chỉnh rổ, 27 mã được chọn có tăng giá hay được khối '
+       'ngoại mua <b>nhiều hơn mức bình thường</b> so với các mã có quy mô tương tự nhưng không được chọn (nhóm đối chứng) không?<br>'
+       '<b>Cách đọc:</b> "lợi suất vượt dự kiến" = lợi suất thực tế − mức dự kiến theo diễn biến VN-Index (ước lượng từ các phiên '
+       'trước mốc). Đường đi lên sau ngày 0 nghĩa là mã tăng nhiều hơn dự kiến; hai nhóm chồng lên nhau nghĩa là không khác biệt.</div>')
+    with W.card("p4_tl"):
+        W.title("Dòng thời gian nâng hạng", "5 mốc dùng trong phân tích")
+        _timeline(ev)
+    with W.card("p4_uni"):
+        W.title("27 mã vào rổ FTSE (danh sách chính thức)", "FTSE All-Cap; 6 mã đồng thời vào FTSE All-World")
+        _universe()
+    with W.card("p4_cumc"):
+        W.title("Hiệu suất cộng dồn từ khi công bố nâng hạng (E1)", "Lợi suất bình quân đồng trọng số · nhóm FTSE so với đối chứng và VN30")
+        _cum_groups(p)
     aar = da.table("event_aar")
     if aar.empty:
         empty("Chưa có kết quả nghiên cứu sự kiện – chạy `python -m src.data.rebuild_all`.")
         return
-    aar = aar[(aar["event_id"] == eid) & (aar["variant"] == "base")]
-    c1, c2 = st.columns(2, gap="medium")
-    with c1:
-        section("CAAR (%)", "Mô hình thị trường, ước lượng [−130; −11] · dải 95%")
-        plot(charts.caar_chart(aar, p, "CAAR"), "p4_caar")
-    with c2:
-        section("CAFF – dòng vốn ngoại bất thường lũy kế", "AFF = nf − trung bình nf cửa sổ ước lượng")
-        plot(charts.caar_chart(aar, p, "CAFF"), "p4_caff")
+    have = [e for e in ev["event_id"] if e in set(aar["event_id"])]
+    default = "L1" if "L1" in have else (have[-1] if have else None)
+    eid = st.segmented_control("Chọn mốc sự kiện", have, default=default, key="p4_ev",
+                               format_func=lambda e: f"{e} · {ev.set_index('event_id').loc[e, 'label']} "
+                                                     f"({ev.set_index('event_id').loc[e, 'event_date']:%d/%m/%Y})") or default
+    a = aar[(aar["event_id"] == eid) & (aar["variant"] == "base")]
+    st.caption(f"{eid}: {EV_EXPLAIN.get(eid, ev.set_index('event_id').loc[eid, 'description'])}")
+    c1, c2 = st.columns(2, gap="small")
+    with c1, W.card("p4_caar"):
+        W.title("Lợi suất vượt dự kiến, cộng dồn quanh mốc (%)",
+                "Trục ngang: số phiên trước (−) / sau (+) mốc · dải mờ = khoảng tin cậy 95% · nét chấm = 2 nhóm con")
+        plot(charts.caar_chart(a, p, "CAAR"), "p4_caar_fig")
+    with c2, W.card("p4_caff"):
+        W.title("Khối ngoại mua ròng vượt bình thường, cộng dồn",
+                "nf (ròng / GTGD) so với mức bình quân trước mốc · dương = khối ngoại mua nhiều hơn thường lệ")
+        plot(charts.caar_chart(a, p, "CAFF"), "p4_caff_fig")
     stats = da.table("stats_results")
     s = stats[(stats["event_id"] == eid) & (stats["variant"] == "base")]
-    t1, t2, t3 = st.tabs(["H3a · Lợi suất bất thường (CAR)", "H3b · Dòng vốn & thanh khoản bất thường", "H3c · Chênh lệch kép (E3)"])
-    with t1:
-        _stats_table(s[(s["hypothesis"] == "H3a")].sort_values(["window", "group", "test"]))
-    with t2:
-        metric = st.radio("Chỉ tiêu", ["CAFF", "CAVol"], horizontal=True, key="p4_m",
-                          format_func=lambda m: {"CAFF": "Dòng vốn ngoại (CAFF)", "CAVol": "Thanh khoản (ln TV)"}[m])
-        _stats_table(s[(s["hypothesis"] == "H3b") & (s["metric"] == metric)].sort_values(["window", "group", "test"]))
-    with t3:
+    with W.card("p4_s1"):
+        W.title("Kết quả: lợi suất vượt dự kiến (CAR)", "Trung bình nhóm trong từng cửa sổ · p hiệu chỉnh Holm cho chênh lệch FTSE − đối chứng")
+        _summary(s, "H3a", "CAR", 100, "%")
+    with W.card("p4_s2"):
+        W.title("Kết quả: khối ngoại mua ròng vượt bình thường (CAFF)", "Cùng cách đọc · đơn vị: nf cộng dồn")
+        _summary(s, "H3b", "CAFF", 1, "")
+    with W.card("p4_did"):
+        W.title("Chênh lệch kép (DiD) quanh phiên điều chỉnh rổ E3",
+                "So thay đổi trước/sau E3 của nhóm FTSE với thay đổi của nhóm đối chứng · hệ số trước E3 ≈ 0 → giả định xu hướng song song hợp lý")
         did = stats[(stats["hypothesis"] == "H3c") & (stats["variant"] == "base")]
         if did.empty:
-            empty("Chưa đủ dữ liệu cửa sổ [−60; +60] quanh E3.")
+            empty("Chưa đủ dữ liệu cửa sổ quanh E3.")
         else:
             rows = [[r.metric, r.model, r.test, fmt.num(r.estimate, 4, True), fmt.num(r.statistic, 2, True), fmt.num(r.p_value, 4),
                      f"[{fmt.num(r.ci_lo, 4)}; {fmt.num(r.ci_hi, 4)}]", str(int(r.n)) if pd.notna(r.n) else "—", r.note or ""]
                     for r in did.itertuples()]
-            md(table_html(["y", "Mô hình", "Kiểm định", "δ", "t", "p", "KTC 95%", "N", "Ghi chú"], rows, left=(0, 1, 2, 8)))
+            md(table_html(["Biến kết quả", "Mô hình", "Kiểm định", "δ (tác động)", "t", "p", "KTC 95%", "N", "Ghi chú"], rows,
+                          left=(0, 1, 2, 8)))
             coefs = da.table("did_coefs")
             if not coefs.empty:
                 outcome = st.radio("Biến kết quả", coefs["outcome"].unique().tolist(), horizontal=True, key="p4_did")
                 plot(charts.did_coef_chart(coefs, p, outcome), "p4_didc")
-            st.caption("Sau E3 hiện có ít phiên hơn cửa sổ +60 dự kiến; hệ số trước sự kiện ≈ 0 ủng hộ giả định xu hướng song song.")
-    section("Nhóm đối chứng", "Ghép 1–1 theo phân vị vốn hóa và thanh khoản 120 phiên trước E1, láng giềng gần nhất không hoàn lại")
-    bal = da.table("control_balance")
-    cg = control_group()
-    c1, c2 = st.columns([1.4, 1])
-    with c1:
+            st.caption("Chỉ có 27 cặp mã nên sai số cụm kém tin cậy; diễn giải kết quả DiD thận trọng.")
+    c1, c2 = st.columns([1.3, 1], gap="small")
+    with c1, W.card("p4_cg"):
+        W.title("Nhóm đối chứng", "Mỗi mã FTSE ghép 1 mã không vào rổ có vốn hóa và thanh khoản gần nhất (120 phiên trước E1)")
+        cg = control_group()
         if not cg.empty:
-            md(table_html(["Mã FTSE", "Đối chứng", "Khoảng cách", "Đối chứng PA2 (thanh khoản)"],
-                          [[r.ftse_symbol, r.control_symbol, fmt.num(float(r.distance), 3), r.control_symbol_liq] for r in cg.head(30).itertuples()],
-                          left=(0, 1, 3)))
-    with c2:
+            md(table_html(["Mã FTSE", "Đối chứng", "Khoảng cách", "Đối chứng phương án 2 (thanh khoản)"],
+                          [[f'<span class="ffr-sym">{r.ftse_symbol}</span>', r.control_symbol, fmt.num(float(r.distance), 3),
+                            r.control_symbol_liq] for r in cg.itertuples()], left=(0, 1, 3)))
+    with c2, W.card("p4_bal"):
+        W.title("Hai nhóm có cân bằng không?", "Trung vị vốn hóa/thanh khoản trước E1 · p > 0,05 = không khác biệt (ghép tốt)")
+        bal = da.table("control_balance")
         if not bal.empty:
             md(table_html(["Biến", "Trung vị FTSE", "Trung vị đối chứng", "Mann–Whitney p"],
-                          [[r.variable, fmt.num(r.median_ftse, 3), fmt.num(r.median_control, 3), fmt.num(r.mw_p, 3)] for r in bal.itertuples()],
-                          left=(0,)))
-        md('<div class="ffr-insight" style="margin-top:10px"><b>Giới hạn</b><br>Mẫu xử lý nhỏ (~27 mã) nên độ mạnh thống kê hạn chế; '
-           'các mốc trùng biến động vĩ mô (lãi suất, tỷ giá); kết quả là mô tả, không khẳng định quan hệ nhân quả. '
+                          [[r.variable, fmt.num(r.median_ftse, 3), fmt.num(r.median_control, 3), fmt.num(r.mw_p, 3)]
+                           for r in bal.itertuples()], left=(0,)))
+        md('<div class="ffr-insight" style="margin-top:10px"><b>Giới hạn</b><br>Mẫu nhỏ (27 mã) nên độ mạnh thống kê hạn chế; '
+           'các mốc trùng biến động vĩ mô (lãi suất, tỷ giá); kết quả mô tả, không khẳng định nhân quả. '
            'Mã có tỷ trọng ≥ 3% dùng VN-Index loại trừ chính mã làm lợi suất thị trường.</div>')
+    with W.card("p4_full"):
+        W.title("Bảng kiểm định đầy đủ", f"Mốc {eid} · t, BMP, BMP hiệu chỉnh Kolari–Pynnönen, dấu, Welch, Mann–Whitney · p Holm")
+        _stats_table(s[s["hypothesis"].isin(["H3a", "H3b"])].sort_values(["hypothesis", "metric", "window", "group", "test"]))

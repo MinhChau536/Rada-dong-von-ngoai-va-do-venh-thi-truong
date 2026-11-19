@@ -55,10 +55,11 @@ def _badge(ok: bool) -> str:
     return f'<span class="ffr-chip" style="background:{c};color:#fff">{t}</span>'
 
 
-def render() -> None:
+def render(embedded: bool = False) -> None:
     p = pal()
-    header("Kết nối dữ liệu", "Kiểm tra trực tiếp SSI FastConnect V3 (REST + WebSocket) · tải và dựng dữ liệu thật",
-           pills=["Nguồn duy nhất: SSI FastConnect V3", "Không dùng dữ liệu giả lập"])
+    if not embedded:
+        header("Kết nối dữ liệu", "Kiểm tra trực tiếp SSI FastConnect V3 (REST + WebSocket) · tải và dựng dữ liệu thật",
+               pills=["Nguồn duy nhất: SSI FastConnect V3", "Không dùng dữ liệu giả lập"])
     if not da.ready():
         md(f'<div class="ffr-insight"><b>Kho chỉ báo đang trống.</b> FTSE Flow Radar chỉ hiển thị số liệu thật tải từ '
            f'SSI FastConnect V3. Hãy làm theo 3 bước bên dưới; các trang phân tích sẽ tự mở khi bảng '

@@ -8,7 +8,7 @@ import yaml
 
 from src.app import data_access as da
 from src.app.components import about, status_bar
-from src.app.components.ui import header, md, section, table_html
+from src.app.components.ui import esc, header, md, section, table_html
 from src.common import fmt
 from src.common.config import CONFIG_DIR, ROOT, load_settings
 
@@ -56,8 +56,27 @@ def render() -> None:
     st.caption("Ω_t: cổ phiếu thường HOSE, P_ref > 0, có khớp lệnh (loại mã tạm ngừng, CCQ, chứng quyền). Trung vị dùng thay "
                "trung bình vì lợi suất bị chặn biên độ ±7% và có đuôi dày. Biến liên tục cắt 1%/99% theo phiên cho hồi quy; "
                "thống kê mô tả dùng số chưa cắt.")
-    section("Tham số (đọc trực tiếp config/settings.yaml)", "Đổi tham số trong tệp → trang tự cập nhật sau khi Làm mới")
-    st.code(yaml.safe_dump(load_settings(), allow_unicode=True, sort_keys=False), language="yaml")
+    section("Tham số chính (đọc trực tiếp config/settings.yaml)", "Đổi tham số trong tệp → trang tự cập nhật sau khi Làm mới")
+    from src.common.config import get
+    params = [
+        ("Dữ liệu", "Tỷ lệ đầy đủ mục tiêu", get("cleaning.completeness_target"), "Phiên dưới mức này không xuất Closing Report"),
+        ("Dữ liệu", "Lệch độ rộng tối đa so với SSI (mã)", get("cleaning.breadth_tolerance"), "Đối chiếu số mã tăng/giảm/đứng"),
+        ("Đóng góp điểm", "Trung vị |ε| mục tiêu (điểm)", get("contribution.eps_median_target"), "Sai số tái lập VN-Index"),
+        ("Khối ngoại", "Ngưỡng |nf| / |giá| gán trạng thái", f"{get('foreign.absorb_nf_min')} / {get('foreign.absorb_ret_min')}",
+         "Dưới ngưỡng → trung tính"),
+        ("Cảnh báo", "Quy tắc 1: |ΔI| (điểm) và CR5", f"{get('alerts.dI_min')} và {get('alerts.cr5_min')}", "Chỉ số do ít mã dẫn dắt"),
+        ("Cảnh báo", "Quy tắc 2: D ≥ phân vị", get("alerts.div_pct"), "Độ vênh cao so với 250 phiên"),
+        ("Cảnh báo", "Quy tắc 3: |z| tổng NF ≥", get("alerts.z_total_nf"), "Khối ngoại bất thường"),
+        ("Cảnh báo", "Tối đa cảnh báo thị trường/ngày · chống trùng (phút)",
+         f"{get('alerts.max_market_per_day')} · {get('alerts.cooldown_min')}", "Ưu tiên mức cao trước"),
+        ("Sự kiện FTSE", "Cửa sổ CAR", str(get("events.car_windows")), "Ngày sự kiện τ"),
+        ("Sự kiện FTSE", "Số lần bootstrap · trễ Newey–West", f"{get('events.bootstrap_reps')} · {get('events.nw_lags')}", ""),
+        ("Giai đoạn", "Ngày công bố E1 · ngày hiệu lực", f"{get('periods.announce')} · {get('periods.effective')}", "H4 so với 250 phiên trước E1"),
+        ("Biên dao động", "λ EWMA", get("outlook.ewma_lambda"), "RiskMetrics; hệ số biên hiệu chỉnh đuôi dày"),
+    ]
+    md(table_html(["Nhóm", "Tham số", "Giá trị", "Ý nghĩa"], [[a, b, esc(str(c)), d] for a, b, c, d in params], left=(0, 1, 2, 3)))
+    with st.expander("Xem toàn bộ tệp settings.yaml"):
+        st.code(yaml.safe_dump(load_settings(), allow_unicode=True, sort_keys=False), language="yaml")
     section("Kết quả kiểm định giả thuyết", "p gốc và p hiệu chỉnh Holm theo họ kiểm định cùng giả thuyết")
     stats = da.table("stats_results")
     if not stats.empty:

@@ -124,7 +124,7 @@ alerts:
   room_used_min: 0.95         # quy tắc 7
   stale_minutes: 5            # quy tắc 8
   cooldown_min: 30
-  max_market_per_day: 5
+  max_market_per_day: 1      # ~1 cảnh báo thị trường mỗi ngày (ưu tiên mức cao) – tránh gây nhiễu cho người dùng bận rộn
   priority: {high: 1, medium: 2, low: 3, system: 0}
   backtest_sessions: 60
 

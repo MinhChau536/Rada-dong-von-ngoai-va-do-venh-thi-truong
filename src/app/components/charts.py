@@ -206,11 +206,17 @@ def session_calendar(day: pd.DataFrame, p: Dict, height: int = 260) -> go.Figure
 
 def caar_chart(aar: pd.DataFrame, p: Dict, col: str = "CAAR", title: str = "", height: int = 340) -> go.Figure:
     fig = go.Figure()
-    for g, c in (("FTSE", p["accent"]), ("CONTROL", "#94A3B8")):
+    names = {"FTSE": "Nhóm FTSE (27 mã)", "CONTROL": "Nhóm đối chứng", "FTSE_AW": "Vào All-World (6 mã lớn/vừa)",
+             "FTSE_SC": "Chỉ vào All-Cap (21 mã nhỏ)"}
+    for g, c in (("FTSE", p["accent"]), ("CONTROL", "#94A3B8"), ("FTSE_AW", "#F5B341"), ("FTSE_SC", "#A78BFA")):
         d = aar[aar["group"] == g].sort_values("tau")
         if d.empty:
             continue
-        name = "Nhóm FTSE" if g == "FTSE" else "Nhóm đối chứng"
+        name = names[g]
+        if g in ("FTSE_AW", "FTSE_SC"):                       # nhóm con: chỉ đường, không vẽ dải để biểu đồ dễ đọc
+            fig.add_trace(go.Scatter(x=d["tau"], y=d[col] * 100 if col == "CAAR" else d[col], name=name,
+                                     line=dict(color=c, width=1.4, dash="dot")))
+            continue
         fig.add_trace(go.Scatter(x=d["tau"], y=d[f"{col}_hi"] * 100 if col == "CAAR" else d[f"{col}_hi"],
                                  line=dict(width=0), showlegend=False, hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=d["tau"], y=d[f"{col}_lo"] * 100 if col == "CAAR" else d[f"{col}_lo"], fill="tonexty",
@@ -220,7 +226,10 @@ def caar_chart(aar: pd.DataFrame, p: Dict, col: str = "CAAR", title: str = "", h
                                  line=dict(color=c, width=2.2)))
     fig.add_vline(x=0, line=dict(color=p["teal"], dash="dash"))
     fig.add_hline(y=0, line=dict(color=p["muted"], width=1))
-    _lay(fig, p, height, title=dict(text=title, font=dict(size=13)), hovermode="x unified")
+    _lay(fig, p, height, title=dict(text=title, font=dict(size=13)), hovermode="closest",
+         hoverlabel=dict(bgcolor="rgba(15,30,51,.75)", font_size=11), legend=dict(orientation="h", y=-0.22, x=0),
+         margin=dict(l=8, r=8, t=10, b=8))
+    fig.update_traces(hovertemplate="τ = %{x}: %{y:.2f}<extra>%{fullData.name}</extra>", selector=dict(showlegend=True))
     fig.update_xaxes(title="Ngày sự kiện τ (phiên)")
     return fig
 

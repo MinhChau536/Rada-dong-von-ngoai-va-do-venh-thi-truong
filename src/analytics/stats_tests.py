@@ -274,6 +274,53 @@ def holm(df: pd.DataFrame) -> pd.DataFrame:
     return d
 
 
+def h4_controlled(day: pd.DataFrame, extras: pd.DataFrame) -> List[Dict]:
+    """H4 có kiểm soát độ tập trung TỶ TRỌNG chỉ số: y_t = a + b1·mid + b2·post + c·HHI_w_t + e_t (HAC).
+    CR5 có thể tăng chỉ vì vài mã phình tỷ trọng (VIC 2025) → nếu b1, b2 vẫn có ý nghĩa sau khi thêm HHI_w,
+    kết luận "thị trường tập trung hơn sau FTSE" mới đứng vững."""
+    lags = int(get("events.nw_lags", 5))
+    d = h4_frame(day)
+    ex = extras[["trade_date", "hhi_w"]].copy()
+    ex["trade_date"] = pd.to_datetime(ex["trade_date"])
+    d = d.merge(ex, on="trade_date", how="left")
+    win = {1: "E1 → hiệu lực", 2: "Sau hiệu lực"}
+    out = []
+    for col in ("CR5", "D", "narrow"):
+        label = H4_METRICS[col][0] + " · kiểm soát HHI tỷ trọng"
+        x = d[["period", col, "hhi_w"]].dropna()
+        if x["period"].nunique() < 2 or (x["period"] == 0).sum() < 30:
+            continue
+        X = pd.DataFrame({"mid": (x["period"] == 1).astype(float), "post": (x["period"] == 2).astype(float),
+                          "hhi_w": x["hhi_w"]}, index=x.index)
+        X = X.loc[:, X.abs().sum() > 0]
+        res = sm.OLS(x[col], sm.add_constant(X)).fit(cov_type="HAC", cov_kwds={"maxlags": lags})
+        for k, name in ((1, "mid"), (2, "post")):
+            if name in res.params:
+                ci = res.conf_int().loc[name]
+                out.append(_row("H4", "OLS giả biến giai đoạn + HHI tỷ trọng (HAC 5 trễ)", float(res.tvalues[name]),
+                                float(res.pvalues[name]), int(res.nobs), float(res.params[name]), float(ci[0]), float(ci[1]),
+                                metric=label, window=win[k],
+                                note=f"hệ số HHI_w = {res.params.get('hhi_w', np.nan):.3g} (p = {res.pvalues.get('hhi_w', np.nan):.3g})",
+                                variant="control_hhi_w"))
+    return out
+
+
+def h5_pooled(day: pd.DataFrame, extras: pd.DataFrame) -> List[Dict]:
+    """H5 – hồi quy gộp: D_t = a + b1·HHI_w + b2·lợi suất 10 mã lớn + b3·nf 10 mã lớn + b4·|r_VNI| (HAC, biến chuẩn hóa z)."""
+    from src.analytics.diagnosis import d_regression
+    r = d_regression(day, extras)
+    if not r.get("ok"):
+        return [_row("H5", "OLS gộp D (HAC)", np.nan, np.nan, 0, note="Chưa đủ quan sát")]
+    return [_row("H5", "OLS gộp D ~ HHI_w + r_10 lớn + nf_10 lớn + |r_VNI| (HAC 5 trễ, biến z)", x["t"], x["p"], r["n"],
+                 x["coef"], metric=x["label"], note=f"R² = {r['r2']:.3f}") for x in r["rows"]]
+
+
 def run_all(day: pd.DataFrame, stock: pd.DataFrame) -> pd.DataFrame:
     rows = h1a(day) + h1b(day) + h2(stock) + h2c(day) + h4(day)
+    try:
+        from src.analytics.diagnosis import daily_extras
+        extras = daily_extras(stock, day)
+        rows += h4_controlled(day, extras) + h5_pooled(day, extras)
+    except Exception as exc:  # noqa: BLE001 – không chặn các kiểm định chính
+        rows.append(_row("H5", "OLS gộp D (HAC)", np.nan, np.nan, 0, note=f"Lỗi: {exc}"))
     return pd.DataFrame(rows)

@@ -2,6 +2,7 @@
 dòng vốn theo nhóm FTSE/VN30/đối chứng/ngành; tỷ lệ hấp thụ; bộ lọc nhóm và khoảng phiên."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -17,10 +18,25 @@ from src.common import fmt
 from src.finance.domestic import ABSORB_LABELS
 
 
+def extra_insight(date, s_) -> str:
+    """Hai ý nối: khối ngoại có đứng sau các mã dẫn dắt không; nhóm FTSE khác đối chứng thế nào."""
+    lead = da.leaders(date)
+    top = s_[s_["symbol"].isin(lead["symbol"].head(10))]
+    same = top[(np.sign(top["net_flow"].fillna(0)) == np.sign(top["C"])) & (top["net_flow"].fillna(0) != 0)]
+    g = da.groups(date, "universe").set_index("group_name")
+    out = (f"Ở 10 mã dẫn dắt, khối ngoại giao dịch cùng chiều giá tại {len(same)}/{len(top)} mã"
+           + (f" ({', '.join(same['symbol'].head(4))})." if len(same) else "."))
+    if {"FTSE", "CONTROL"} <= set(g.index):
+        a, b = g.loc["FTSE", "net_flow"], g.loc["CONTROL", "net_flow"]
+        out += f" Nhóm FTSE ròng {fmt.bn(a)} so với nhóm đối chứng {fmt.bn(b)}."
+    return esc(out)
+
+
 @safe_block("bảng xếp hạng")
 def ranking(date, group: str) -> None:
     s = da.stock_day(date)
     s = s[s["is_valid"]]
+    top5 = set(s.reindex(s["C"].abs().sort_values(ascending=False).index).head(5)["symbol"])   # nối với trang Dẫn dắt
     if group != "Toàn sàn":
         key = {"Nhóm FTSE": "FTSE", "Nhóm đối chứng": "CONTROL", "VN30": "VN30"}.get(group)
         s = s[s["symbol"].isin(da.universe(key))] if key else s[s["sector"] == group]
@@ -29,13 +45,16 @@ def ranking(date, group: str) -> None:
     s = {"Mua ròng": s.sort_values("net_flow", ascending=False), "Bán ròng": s.sort_values("net_flow"),
          "|z| lớn nhất": s.reindex(s["z_nf"].abs().sort_values(ascending=False).index),
          "Room gần cạn": s.sort_values("U", ascending=False)}[sort].head(15)
-    rows = [[f'<span class="ffr-sym">{r.symbol}</span> <small>{r.sector}</small>', colored(r.ret, fmt.pct(r.ret * 100)),
+    rows = [[f'<span class="ffr-sym">{r.symbol}</span>' + (' <span class="ffr-chip" style="background:rgba(245,179,65,.18);'
+             'color:#F5B341">Top 5 đóng góp</span>' if r.symbol in top5 else '') + f' <small>{r.sector}</small>',
+             colored(r.ret, fmt.pct(r.ret * 100)),
              colored(r.net_flow, fmt.bn(r.net_flow, 1)), fmt.num(r.nf, 3, True), fmt.frac_pct(r.FPR, 1),
              colored(r.z_nf, fmt.num(r.z_nf, 2, True)), fmt.num(r.pct60_nf, 0), f"{int(r.streak):+d}" + (" ↺" if r.reversal else ""),
              fmt.frac_pct(r.U, 1) + (" *" if r.room_changed else ""), soft_chip(ABSORB_LABELS[r.absorb_state], ABSORB_COLORS[r.absorb_state])]
             for r in s.itertuples()]
-    md(table_html(["Mã", "%", "NF", "nf", "FPR", "z (60)", "Phân vị 60", "Chuỗi", "Room đã dùng", "Hấp thụ"], rows, left=(0,)))
-    st.caption("Chuỗi: + mua ròng / − bán ròng liên tiếp; ↺ đảo chiều sau chuỗi ≥ 3. * room thay đổi so với phiên trước "
+    md(table_html(["Mã", "%", "NF", "nf", "FPR", "z (60)", "Phân vị 60", "Chuỗi", "Room đã dùng", "Chiều giá – ngoại"], rows, left=(0,)))
+    st.caption("Nhãn 'Top 5 đóng góp': mã nằm trong 5 mã ảnh hưởng điểm VN-Index nhiều nhất phiên. "
+               "Chuỗi: + mua ròng / − bán ròng liên tiếp; ↺ đảo chiều sau chuỗi ≥ 3. * room thay đổi so với phiên trước "
                "(phát hành thêm/đổi giới hạn). z và phân vị chỉ dùng 60 phiên trước (không nhìn trước).")
 
 
@@ -94,7 +113,8 @@ def render() -> None:
     k = st.columns(5)
     for c, h in zip(k, [kpi("NF toàn sàn", fmt.bn(x["NF_total"]), color_for(x["NF_total"], p)),
                         kpi("z tổng NF (60 phiên)", fmt.num(x["z_NF_total"], 2, True)),
-                        kpi("HHI tập trung", fmt.num(x["HHI"], 3), sub="→1 khi dồn vào 1 mã"),
+                        kpi("HHI tập trung", fmt.num(x["HHI"], 3),
+                            sub=f"≈ dòng vốn trải đều trên {fmt.num(1 / x['HHI'] if x['HHI'] else float('nan'), 0)} mã"),
                         kpi("Top 5 / Σ|NF|", fmt.frac_pct(x["top5_share_flow"], 0)),
                         kpi("FPR toàn sàn", fmt.frac_pct(x["FPR_total"], 1), sub="phần còn lại thuộc khối nội")]):
         with c:
@@ -108,7 +128,7 @@ def render() -> None:
     s_ = da.stock_day(date)
     s_ = s_[s_["is_valid"]]
     md(f'<div class="ffr-insight" style="margin:4px 0 10px"><b>Nhận định theo quy tắc</b><br>'
-       f'{esc(narrative.foreign_summary(x, s_.nlargest(5, "net_flow"), s_.nsmallest(5, "net_flow")))}</div>')
+       f'{esc(narrative.foreign_summary(x, s_.nlargest(5, "net_flow"), s_.nsmallest(5, "net_flow")))} {extra_insight(date, s_)}</div>')
     with W.card("p3_rank"):
         W.title("Bảng xếp hạng dòng vốn", f"Phiên {date:%d/%m/%Y} · {group}")
         ranking(date, group)
@@ -147,7 +167,7 @@ def render() -> None:
                           text=[fmt.num(v, 0, True, " tỷ") for v in fig.data[0].x])
         plot(fig, "p3_groups")
     with W.card("p3_abs"):
-        W.title("Trạng thái hấp thụ của khối nội", "Mã–phiên khối ngoại bán ròng có ý nghĩa mà giá vẫn tăng = khối nội hấp thụ")
+        W.title("Chiều giá so với chiều khối ngoại", "Mã–phiên khối ngoại bán ròng có ý nghĩa mà giá vẫn tăng = \"Giá tăng dù ngoại bán\"")
         absorb(lo, hi, group)
 
 

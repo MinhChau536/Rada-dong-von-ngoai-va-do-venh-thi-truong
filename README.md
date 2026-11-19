@@ -36,7 +36,7 @@ Sinh viên: Lê Ngọc Minh Châu.
 | **RQ1** – VN-Index tăng/giảm có lan tỏa đến số đông cổ phiếu không? Bao nhiêu mã tạo ra phần lớn biến động? | Độ vênh D, AD, IQR, loại phiên, đóng góp điểm C, CR5, sai số tái lập ε | Tổng quan · Dẫn dắt & độ vênh |
 | **RQ2** – Dòng vốn ngoại tập trung vào đâu, có đi cùng giá không, khối nội phản ứng ra sao? | NF, nf, FPR, HHI, z60, chuỗi mua/bán, trạng thái ngoại – nội | Tổng quan · Ra-đa khối ngoại |
 | **RQ3** – Quanh các mốc FTSE (E1 08/10/2025, E2 08/04/2026, E3 18/09/2026), nhóm vào rổ có bất thường so với nhóm đối chứng không? | AR, CAR, CAAR, AFF, AVol, DiD | Sự kiện FTSE |
-| **RQ4** – Các mã trong watchlist phản ứng thế nào? | ER so với chỉ số và trung vị, β Dimson, phản ứng theo loại phiên, tối ưu danh mục | Watchlist Impact |
+| **RQ4** – Các mã trong watchlist phản ứng thế nào? | ER so với chỉ số và trung vị, β Dimson, phản ứng theo loại phiên (kiểm định trên ER), mức phơi nhiễm với nhóm dẫn dắt | Watchlist Impact |
 | **RQ5** – Cấu trúc thị trường thay đổi thế nào qua ba giai đoạn (250 phiên trước E1 / E1 → hiệu lực / sau hiệu lực)? | Kiểm định H4: OLS Newey–West, p hiệu chỉnh Holm, MDE | Phương pháp · PDF |
 
 Ba kênh **web, PDF và Telegram** cùng đọc một kho chỉ báo (`indicator_*`) và một bộ định dạng số (`src/common/fmt.py`), nên con số luôn khớp nhau giữa các kênh.
@@ -95,7 +95,7 @@ Thư viện chính: `streamlit`, `pandas`, `duckdb`, `plotly`, `scipy`, `statsmo
 
 ### 3.3. Tham số phân tích
 
-Mọi ngưỡng và tham số nằm tập trung trong **`config/settings.yaml`**, ví dụ: ngưỡng cảnh báo, lịch chạy, lambda EWMA, khẩu vị rủi ro danh mục, chi phí giao dịch dùng trong backtest. Trang **Phương pháp & giới hạn** đọc trực tiếp tệp này nên luôn hiện đúng giá trị đang dùng.
+Mọi ngưỡng và tham số nằm tập trung trong **`config/settings.yaml`**, ví dụ: ngưỡng cảnh báo, lịch chạy, lambda EWMA, chi phí giao dịch dùng trong backtest. Trang **Phương pháp & giới hạn** đọc trực tiếp tệp này nên luôn hiện đúng giá trị đang dùng.
 
 ---
 
@@ -188,15 +188,15 @@ Giao diện dạng **lưới thẻ** (kiểu các cổng thông tin chứng kho�
 
 | Nhóm | Trang | Nội dung chính |
 |---|---|---|
-| **Thị trường** | Tổng quan thị trường | 4 thẻ chỉ số HOSE (VN-Index), VN30, HNX, UPCoM · chất lượng xu hướng · Top 10 cổ phiếu (tăng/giảm/GTGD/KL đột biến) · nhóm dẫn dắt · danh mục theo dõi · nến + MA + mốc FTSE + điểm sức khỏe · khối ngoại mua/bán ròng, diễn biến mua – bán – ròng · thanh khoản · độ rộng · biến động ngành · bản đồ thị trường theo ngành · cổ phiếu nổi bật · so sánh hiệu suất |
+| **Thị trường** | Tổng quan thị trường | 4 thẻ chỉ số HOSE (VN-Index), VN30, HNX, UPCoM · chất lượng xu hướng và kết luận phiên · Top 10 cổ phiếu (tăng/giảm/GTGD/KL đột biến, lọc GTGD ≥ 10 tỷ) · nhóm dẫn dắt · nến + MA + mốc FTSE · khối ngoại mua/bán ròng, diễn biến mua – bán – ròng · thanh khoản · độ rộng · biến động ngành · bản đồ thị trường theo ngành · cổ phiếu nổi bật · so sánh hiệu suất · danh mục theo dõi (cuối trang). Mọi bảng hiển thị sẵn, không cần mở rộng |
+| | Chẩn đoán thị trường | Phiên hôm nay qua 5 bước (lan tỏa · ai tạo biến động · khối ngoại có đứng sau không · phần còn lại của thị trường · watchlist) · % biến động có ngoại cùng chiều · đóng góp điểm của 27 mã FTSE · 7 câu hỏi nghiên cứu giai đoạn FTSE · hồi quy gộp giải thích độ vênh (HAC) |
 | | Dẫn dắt & độ vênh | Thác nước đóng góp theo mã/ngành · bảng đóng góp chi tiết top 15 · đóng góp theo họ cổ phiếu và ngành · chuỗi D có dải phân vị · thống kê độ vênh 5/20/60/250 phiên · chỉ số loại trừ một họ cổ phiếu · phân phối CR5 · loại phiên · mã xuất hiện nhiều nhất trong Top 5 |
 | **Dòng vốn** | Ra-đa khối ngoại | Chỉ số NF, z60, HHI, FPR · top mua/bán ròng · diễn biến mua – bán – ròng · nhận định theo quy tắc · bảng xếp hạng (mua ròng, bán ròng, \|z\|, room) · khối ngoại theo ngành · lũy kế theo nhóm 1/5/20/60 phiên · chuỗi mua/bán ròng · HHI và NF lũy kế · dòng vốn theo nhóm · trạng thái hấp thụ của khối nội |
-| | Sự kiện FTSE | CAAR, CAFF hai nhóm có dải tin cậy · bảng kiểm định (t, BMP, dấu, Welch, Mann–Whitney, Holm) · DiD và hệ số theo tuần · cân bằng nhóm đối chứng |
-| **Danh mục & tiện ích** | Watchlist Impact | Quản lý danh mục · hồ sơ phản ứng từng mã · tối ưu danh mục theo khẩu vị (5 phương án, biên hiệu quả, đóng góp rủi ro, tương quan) · quy đổi ra số cổ phiếu · **tab riêng từng mã**: thông tin doanh nghiệp (vốn hóa, cổ phiếu niêm yết, tỷ trọng VN-Index, room ngoại, thanh khoản), giá 250 phiên, khối ngoại 60 phiên |
+| | Sự kiện FTSE | Dòng thời gian các mốc (E1–E3, L1–L2) có giải thích · danh sách 27 mã chính thức theo quy mô · lợi suất lũy kế các nhóm từ E1 · CAAR, CAFF (FTSE, nhóm All-World, nhóm All-Cap, đối chứng) · bảng tóm tắt có kết luận · bảng kiểm định đầy đủ (t, BMP, Kolari–Pynnönen, dấu, Welch, Mann–Whitney, Holm) · DiD và hệ số theo tuần · nhóm đối chứng và kiểm tra cân bằng |
+| **Danh mục & tiện ích** | Watchlist Impact | Quản lý danh mục · hồ sơ phản ứng từng mã · mức phơi nhiễm (trong nhóm dẫn dắt, họ Vingroup, β, tỷ lệ thua khi độ vênh cao) · **tab riêng từng mã**: thông tin doanh nghiệp (vốn hóa, cổ phiếu niêm yết, tỷ trọng VN-Index, room ngoại, thanh khoản), giá 250 phiên, khối ngoại 60 phiên |
 | | Báo cáo PDF | Xuất Market Snapshot / Closing Report · danh sách báo cáo đã sinh, tải về |
 | | Bot Telegram | Trạng thái bot · xem trước tin nhắn kèm nút bấm · gửi thử · danh sách lệnh · nhật ký cảnh báo |
-| **Hệ thống** | Chất lượng dữ liệu | Độ đầy đủ · ε · đối chiếu độ rộng · luồng WebSocket đã lưu · đối chiếu luồng ↔ REST · nhật ký lỗi · xuất CSV |
-| | Backtest | 5 tab: chống trùng cảnh báo · giá trị dự báo của tín hiệu · danh mục walk-forward · biên dao động · **giá trị kinh tế** |
+| **Hệ thống** | Kiểm chứng & dữ liệu | Ba tab: **Backtest** (chống trùng cảnh báo · giá trị dự báo · biên dao động · giá trị kinh tế) · **Chất lượng** (độ đầy đủ, ε, đối chiếu độ rộng, luồng WebSocket, nhật ký lỗi, xuất CSV) · **Kết nối** SSI |
 | | Phương pháp & giới hạn | Công thức (1)–(13) · tham số từ `settings.yaml` · kết quả kiểm định · giới hạn · mã kế thừa |
 | | Kết nối dữ liệu | Kiểm tra SSI REST + WebSocket · các nút chạy nền: cập nhật, tải lịch sử, ghi luồng, dựng lại chỉ báo |
 
@@ -213,7 +213,7 @@ Hai mẫu báo cáo dùng chung bố cục: **trang bìa** (logo, 4 chỉ số, 
 | Tên tệp | `FFR_snapshot_yyyymmdd_hhmm.pdf` | `FFR_closing_yyyymmdd.pdf` (mỗi phiên một tệp) |
 | Độ dài | Khoảng 14 trang | Khoảng 14 trang, có thêm bảng kiểm định H4 và Watchlist đầy đủ |
 
-**Các chương:** 1. Tóm tắt thị trường (số liệu đáng chú ý + bảng so với phiên trước, trung bình 5/20 phiên, phân vị 250 phiên) · 2. Tổng quan thị trường · 3. Dẫn dắt & độ vênh · 4. Ra-đa khối ngoại · 5. Sự kiện nâng hạng FTSE · 6. Watchlist Impact · 7. **Kết luận và khuyến nghị tổng quát** (bảng chấm điểm 7 tiêu chí theo quy tắc cố định, biên dao động) · 8. **Phụ lục: phương pháp tính và cơ sở khuyến nghị** (phương pháp từng phần, ngưỡng chấm điểm, ký hiệu).
+**Bố cục:** bìa (kèm kết luận phiên) · mục lục + tóm tắt điều hành gồm 3 câu trả lời của phiên · 1. Chẩn đoán phiên · 2. Dòng vốn ngoại · 3. Bối cảnh nâng hạng FTSE (CAAR, câu hỏi nghiên cứu, hồi quy gộp) · 4. Tác động lên watchlist · 5. Kết luận và hàm ý (điều kiện theo ngưỡng MA20/MA50/EWMA, không chấm điểm) · 6. Thị trường chung · 7. Phụ lục phương pháp.
 
 Mọi nhận xét trong báo cáo là phép so sánh có số cụ thể, không dùng tính từ đánh giá cảm tính. Nếu SSI chưa công bố khối ngoại cho một phiên, Closing vẫn xuất được, có ghi chú và để trống các mục khối ngoại. Tệp được lưu vào `reports_out/`.
 
@@ -232,7 +232,8 @@ Bot chỉ trả lời các chat_id có trong `TELEGRAM_CHAT_IDS`. Muốn bot tr�
 | `/menu`, `/help` | Menu chính dạng nút bấm, hướng dẫn |
 | `/market` · `/leaders` · `/foreign` · `/outlook` | Tổng quan · mã dẫn dắt · khối ngoại · triển vọng thống kê 5 và 20 phiên |
 | `/stock FPT` · `/sector FPT` · `/chart FPT` · `/intra FPT` | Thẻ phân tích mã · ngành của mã · biểu đồ ngày · giá từng phút trong phiên |
-| `/watch` · `/add FPT` · `/remove FPT` · `/portfolio` | Danh mục theo dõi và tối ưu theo khẩu vị |
+| `/watch` · `/add FPT` · `/remove FPT` | Danh mục theo dõi |
+| `/diag` | Chẩn đoán phiên: 3 câu trả lời và hàm ý |
 | `/alerts` | Cảnh báo tự động: bật/tắt, chọn loại, độ nhạy |
 | `/report` · `/status` | PDF gần nhất · tình trạng dữ liệu |
 | `/legend` | Giải thích ký hiệu 🟢🔴🟡⚪ và thuật ngữ (NN ròng, CR5, D, z60, HHI…) |
@@ -308,7 +309,7 @@ Lợi suất gần bằng thị trường nhưng **sụt giảm tối đa thấp
 │   ├── data/      database.py · schema.sql · backfill.py · updater.py · autoupdate.py · scheduler.py
 │   │              recorder_ssi.py · build_facts.py · quality.py · rebuild_all.py · diagnostics.py · sample_data.py
 │   ├── finance/   breadth.py · contribution.py · foreign_flow.py · domestic.py · utils.py
-│   ├── analytics/ pipeline.py · event_study.py · did.py · stats_tests.py · watchlist_impact.py · portfolio.py
+│   ├── analytics/ pipeline.py · event_study.py · did.py · stats_tests.py · watchlist_impact.py · diagnosis.py
 │   │              outlook.py · alerts.py · narrative.py · health.py
 │   ├── app/       main.py · theme.py · data_access.py
 │   │              components/ (widgets.py – thẻ dùng chung · charts.py · sidebar.py · ui.py · banners.py …)
@@ -364,7 +365,7 @@ Nguồn: kho [`web_phantichchungkhoan`](https://github.com/MinhChau536/web_phant
 | `_pal()`, `assets/styles/main_style.py` | `src/app/theme.py` | Viết lại – một nguồn màu cho CSS, Plotly, PDF |
 | `reports/pdf_generator.py`, `reports/cover.py`, `assets/fonts/` | `src/reports/`, `assets/fonts/` | Giữ font, làm lại bố cục |
 
-**Phần viết mới:** tầng SSI FastConnect V3 (REST + WebSocket), cập nhật tự động, lược đồ và chuỗi xử lý, các module độ vênh, dòng vốn, sự kiện FTSE, DiD, kiểm định, tối ưu danh mục, cảnh báo, nhận định, triển vọng thống kê, backtest, các trang web mới, hai mẫu PDF, bot Telegram, kiểm thử.
+**Phần viết mới:** tầng SSI FastConnect V3 (REST + WebSocket), cập nhật tự động, lược đồ và chuỗi xử lý, các module độ vênh, dòng vốn, sự kiện FTSE, DiD, kiểm định, chẩn đoán phiên, cảnh báo, nhận định, triển vọng thống kê, backtest, các trang web mới, hai mẫu PDF, bot Telegram, kiểm thử.
 
 ---
 

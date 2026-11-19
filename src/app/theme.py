@@ -166,7 +166,7 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ color:#
 .ffr-kpi {{ background:{p['card']}; border:1px solid {p['border']}; border-radius:12px; padding:10px 13px; height:100%; }}
 .ffr-kpi small {{ font-size:11px; color:{p['muted']}; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }}
 .ffr-kpi b {{ display:block; font-size:21px; font-weight:800; font-variant-numeric:tabular-nums; }}
-table.ffr-t {{ width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }}
+table.ffr-t {{ width:100%; border-collapse:collapse; font-size:13.5px; font-variant-numeric:tabular-nums; }}
 table.ffr-t th {{ text-align:right; font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:{p['muted']};
   font-weight:700; padding:7px 8px; border-bottom:1px solid {p['border']}; white-space:normal; vertical-align:bottom; }}
 table.ffr-t td {{ white-space:nowrap; text-align:right; padding:6px 8px; border-bottom:1px solid {p['track']}; color:{p['text']}; }}
@@ -206,7 +206,7 @@ div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:#1E3A5F !i
 div[class*="st-key-tcw"] .stTabs [aria-selected="true"] p {{ color:#FFFFFF !important; }}
 div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-highlight"], div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-border"] {{ display:none; }}
 .tc-tw {{ width:100%; overflow-x:auto; }}
-table.tc-t {{ width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums; }}
+table.tc-t {{ width:100%; border-collapse:collapse; font-size:13.5px; font-variant-numeric:tabular-nums; }}
 table.tc-t th {{ font-size:11.5px; font-weight:700; color:{p['text']}; padding:6px 6px; text-align:right;
   border-bottom:1px solid {p['border']}; white-space:normal; vertical-align:bottom; }}
 table.tc-t td {{ padding:6px 5px; text-align:right; border-bottom:1px solid {p['track']}; white-space:nowrap; color:{p['text']}; }}
@@ -241,7 +241,7 @@ section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a
 /* tiêu đề, nhãn */
 .ffr-sec h3, .ffr-title {{ font-family:{FONT}; font-weight:700 !important; letter-spacing:-.2px; }}
 .ffr-lbl, .ffr-kpi small {{ font-family:{FONT}; letter-spacing:.6px !important; font-weight:700 !important; }}
-table.ffr-t th, table.tc-t th {{ font-family:{FONT}; letter-spacing:.3px !important; font-size:11px !important; font-weight:700 !important; }}
+table.ffr-t th, table.tc-t th {{ font-family:{FONT}; letter-spacing:.3px !important; font-size:12px !important; font-weight:700 !important; }}
 .ffr-kpi {{ border-radius:14px !important; position:relative; overflow:hidden; }}
 .ffr-kpi::before {{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,{G},transparent); }}
 .ffr-kpi b {{ font-size:22px !important; }}

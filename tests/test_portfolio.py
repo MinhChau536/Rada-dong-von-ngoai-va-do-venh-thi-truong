@@ -98,13 +98,16 @@ def test_bot_runtime_pid_detection(tmp_path, monkeypatch):
     assert runtime.pid_alive(0) is False
 
 
-def test_report_telegram_backtest_are_separate_pages():
+def test_report_telegram_and_verification_pages():
+    """Báo cáo, Telegram là trang riêng; Backtest + Chất lượng + Kết nối gộp thành trang Kiểm chứng & dữ liệu."""
     from pathlib import Path
     src = Path("src/app/main.py").read_text(encoding="utf-8")
-    for slug in ('url_path="bao-cao"', 'url_path="telegram"', 'url_path="backtest"'):
+    for slug in ('url_path="bao-cao"', 'url_path="telegram"', 'url_path="kiem-chung"', 'url_path="chan-doan"'):
         assert slug in src
+    merged = Path("src/app/views/p_kiem_chung.py").read_text(encoding="utf-8")
+    assert "p10_backtest.render(embedded=True)" in merged and "p7_chat_luong.render(embedded=True)" in merged
     from src.app.components.banners import ART, TITLE_TO_SLUG
-    assert TITLE_TO_SLUG["Bot Telegram"] in ART and TITLE_TO_SLUG["Backtest"] in ART
+    assert TITLE_TO_SLUG["Bot Telegram"] in ART and TITLE_TO_SLUG["Kiểm chứng & dữ liệu"] in ART
 
 
 def test_stock_and_sector_cards_are_valid_telegram_html(demo_db):

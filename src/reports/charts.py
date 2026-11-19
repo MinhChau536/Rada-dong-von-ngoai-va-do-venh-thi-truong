@@ -423,3 +423,38 @@ def session_mix(types: Dict[str, int], n: int, size=(2.3, 2.3)) -> io.BytesIO:
               fontsize=6.2, ncol=1, handlelength=0.8)
     ax.set_title("Loại phiên 20 phiên", loc="center")
     return _png(fig)
+
+
+# ── 11. Đóng góp có khối ngoại cùng chiều + nhóm FTSE trong ΔVN-Index ───────
+def codir_chart(ex: pd.DataFrame, n: int = 60, size=(3.7, 2.4)) -> io.BytesIO:
+    e = ex.tail(n)
+    x = np.arange(len(e))
+    fig, ax = plt.subplots(figsize=size)
+    ax.bar(x, e["codir"] * 100, color="#38BDF8", alpha=0.55, width=0.8, label="Phiên")
+    ax.plot(x, (e["codir"] * 100).rolling(10).mean(), color=AMBER, lw=1.6, label="TB 10 phiên")
+    ax.axhline(50, color=MUTED, lw=0.7, ls=":")
+    ax.set_ylim(0, 100)
+    ax.set_title(f"% biến động VN-Index có khối ngoại đi cùng chiều · {len(e)} phiên")
+    step = max(len(e) // 5, 1)
+    ax.set_xticks(x[::step])
+    ax.set_xticklabels([f"{d:%d/%m}" for d in pd.to_datetime(e["trade_date"]).iloc[::step]])
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+    _clean(ax)
+    return _png(fig)
+
+
+def ftse_contrib_chart(ex: pd.DataFrame, n: int = 60, size=(3.7, 2.4)) -> io.BytesIO:
+    e = ex.tail(n)
+    x = np.arange(len(e))
+    rest = e["dI"] - e["ftse_C"]
+    fig, ax = plt.subplots(figsize=size)
+    ax.bar(x - 0.2, e["ftse_C"], color=AMBER, width=0.4, label="27 mã FTSE (điểm)")
+    ax.bar(x + 0.2, rest, color=SLATE, width=0.4, label="Các mã còn lại (điểm)")
+    ax.axhline(0, color=MUTED, lw=0.6)
+    ax.set_title("Điểm đóng góp vào VN-Index: 27 mã FTSE và các mã còn lại")
+    step = max(len(e) // 5, 1)
+    ax.set_xticks(x[::step])
+    ax.set_xticklabels([f"{d:%d/%m}" for d in pd.to_datetime(e["trade_date"]).iloc[::step]])
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
+    _clean(ax)
+    return _png(fig)

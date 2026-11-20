@@ -237,14 +237,26 @@ def render_movers(data: Dict) -> None:
     with tabs[2]:
         md(_movers(s.nlargest(n, "tv"), data["sparks"], "tv"))
     with tabs[3]:
-        md(_movers(s[s["vol_ratio"] >= 2].nlargest(n, "vol_ratio"), data["sparks"], "vol"))
+        spike = s[s["vol_ratio"] >= 2].nlargest(n, "vol_ratio")
+        if spike.empty:                       # phiên không có mã nào KL ≥ 2× TB20 → hiện các mã có KL/TB20 cao nhất
+            st.caption("Phiên này không có mã nào (GTGD ≥ 10 tỷ) có khối lượng ≥ 2 lần trung bình 20 phiên – "
+                       "dưới đây là 10 mã có tỷ lệ KL/TB20 cao nhất.")
+            spike = s.nlargest(n, "vol_ratio")
+        md(_movers(spike, data["sparks"], "vol"))
     with tabs[4]:
         md(_movers(s.reindex(s["C"].abs().sort_values(ascending=False).index).head(n), data["sparks"], "C"))
-    pick = st.selectbox("Mở hồ sơ mã", ["—"] + sorted(s["symbol"]), key="p1_pick", label_visibility="collapsed",
-                        format_func=lambda v: "🔎 Chọn mã để mở hồ sơ trong Watchlist Impact…" if v == "—" else v)
-    if pick != "—":
-        st.session_state["selected_symbol"] = pick
-        st.session_state["p1_pick"] = "—"
+
+    def _open_profile() -> None:
+        # chạy TRƯỚC khi ô chọn được vẽ lại → được phép đặt lại giá trị của chính ô (Streamlit cấm đổi sau khi vẽ)
+        v = st.session_state.get("p1_pick", "—")
+        if v != "—":
+            st.session_state["selected_symbol"] = v
+            st.session_state["p1_pick"] = "—"
+            st.session_state["_p1_goto_watch"] = True
+
+    st.selectbox("Mở hồ sơ mã", ["—"] + sorted(s["symbol"]), key="p1_pick", label_visibility="collapsed", on_change=_open_profile,
+                 format_func=lambda v: "🔎 Chọn mã để mở hồ sơ trong Watchlist Impact…" if v == "—" else v)
+    if st.session_state.pop("_p1_goto_watch", False):
         st.switch_page(st.session_state["_pages"]["watchlist"])
 
 

@@ -20,6 +20,7 @@ import argparse
 import dataclasses
 import enum
 import json
+import sys
 import threading
 import time
 from typing import Any, Dict, List, Optional
@@ -173,6 +174,7 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
     if seconds is None and not _claim_lock():
         log.info("Đã có bộ ghi luồng khác đang chạy hôm nay – thoát.")
         return {"messages": 0, "skipped": True, "reason": "running"}
+    _keep_awake(True)                                  # máy không tự ngủ khi đang ghi luồng (Windows)
     syms = symbols if symbols is not None else symbols_to_watch()
     rec = Recorder()
     cfg = Config(api_key=env("SSI_API_KEY"), api_secret=env("SSI_API_SECRET"), api_url=ssi_base_url(),
@@ -249,9 +251,22 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
                      [now_vn().date()])
     out = {"messages": rec.n, "by_channel": dict(zip(by.get("channel", []), by.get("n", [])))}
     log.info("Kết thúc ghi luồng: %s", out)
+    _keep_awake(False)
     if seconds is None and symbols is None:
         post_close_update()
     return out
+
+
+def _keep_awake(on: bool) -> None:
+    """Windows: SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED) – chặn chế độ ngủ do không thao tác trong lúc
+    tiến trình còn chạy (không chặn khi người dùng chủ động gập máy/ngủ). Máy ngủ giữa phiên làm luồng dừng và mất dữ liệu."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | (0x00000001 if on else 0))
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _claim_lock() -> bool:
@@ -301,7 +316,7 @@ def post_close_update(poll_sec: int = 90, until: str = "18:30") -> str:
     Số liệu cuối ngày (securitiesSummary, indexSummary) SSI công bố sau giờ đóng cửa một khoảng không cố định; trong lúc
     chờ, web vẫn hiển thị phiên tạm tính với giá chốt sau ATC. Bản chính thức thay thế ngay khi dựng xong.
     """
-    from src.data import autoupdate, updater
+    from src.data import updater
     from src.bot.intraday import _client
     today = now_vn().date()
     while now_vn().strftime("%H:%M") < until:
@@ -312,15 +327,18 @@ def post_close_update(poll_sec: int = 90, until: str = "18:30") -> str:
             ready = bool(c.index_summary("VNINDEX", today)) and bool(c.securities_summary("FPT", today, today))
             if ready:
                 log.info("SSI đã công bố số liệu cuối ngày %s – tải và dựng lại ngay", today)
-                au = autoupdate.start_if_behind()
-                if au.get("state") == "started":
-                    code = au["proc"].wait()
-                    log.info("Cập nhật cuối ngày xong (mã thoát %s)", code)
-                    return "updated" if code == 0 else "error"
-                if au.get("state") == "running":     # tiến trình khác đang cập nhật
+                try:                                  # chạy ngay trong tiến trình này (không qua autoupdate: hàm đó
+                    r = updater.update()              # thấy chính bộ ghi đang chạy nên sẽ bỏ qua)
+                    log.info("Cập nhật cuối ngày xong: %s, dữ liệu tới %s", r.get("status"), r["after"]["indicators"])
+                    # SSI có thể điều chỉnh số cuối ngày sau đó → 18:05 tải lại phiên một lần (updater.refresh_recent)
+                    while now_vn().strftime("%H:%M") < "18:05":
+                        time.sleep(60)
+                    r = updater.update()
+                    log.info("Tải lại sau 18:00: %s", r.get("status"))
+                    return str(r.get("status"))
+                except updater.Busy:                  # tiến trình khác đang cập nhật → chờ lượt sau
                     time.sleep(poll_sec)
                     continue
-                return str(au.get("state"))
             log.info("SSI chưa có số liệu cuối ngày %s – thử lại sau %d giây", today, poll_sec)
         except Exception as exc:  # noqa: BLE001
             log.warning("Kiểm tra số liệu cuối ngày lỗi: %s", exc)

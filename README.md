@@ -325,6 +325,8 @@ Bố cục: bìa + kết luận phiên · mục lục + tóm tắt điều hành
 - Phiên tạm tính từ WebSocket chỉ đầy đủ khi bộ ghi chạy từ đầu phiên; máy tắt trong giờ giao dịch thì mất phần luồng đó (bản REST chính thức vẫn được tải sau).
 - SSI FastConnect không cung cấp định giá (P/E, P/B) hay số liệu vĩ mô nên hệ thống không dùng.
 - Số mã tăng/giảm có thể lệch vài mã so với SSI vì SSI đếm cả CCQ/ETF.
+- Số cuối ngày SSI REST công bố ngay sau đóng cửa có thể còn được SSI điều chỉnh → hệ thống tự tải lại phiên gần nhất sau 18:00. Điểm UPCoM-Index từ REST của SSI lệch bảng giá iBoard vài phần mười điểm (dữ liệu gốc của SSI); UPCoM chỉ hiển thị tham khảo, phân tích dùng HOSE.
+- Máy ngủ/mất mạng trong phiên làm luồng dừng: bộ ghi giữ máy không tự ngủ, và **không chốt phiên** nếu lệnh khớp cuối trong luồng trước 14:44 – khi đó chờ bản REST chính thức.
 
 ---
 

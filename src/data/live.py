@@ -217,6 +217,13 @@ def promote(state: Dict) -> Optional[Dict]:
     import json
     from src.ssi_api.ssi_client import enrich_stock
     today = now_vn().date()
+    # Chỉ chốt khi luồng còn sống tới sau ATC: lệnh khớp cuối cùng phải sau 14:44 (máy ngủ / mất mạng giữa phiên → giá cũ,
+    # KHÔNG ghi vào kho chính; chờ bản REST chính thức)
+    last = max((str(t.get("trading_time", "")) for t in state.get("trade", {}).values()), default="")
+    if last[:10].replace("/", "-") != today.isoformat() or last[11:16] < "14:44":
+        log.warning("Luồng WebSocket ngừng từ %s (máy ngủ hoặc mất kết nối) – không chốt phiên từ luồng, chờ SSI REST",
+                    last[11:19] or "đầu phiên")
+        return None
     idx = index_rows(state, today)
     srows = stock_rows(state, today)
     if idx.empty or "VNINDEX" not in set(idx["index_code"]) or int(srows["close"].notna().sum()) < 50:

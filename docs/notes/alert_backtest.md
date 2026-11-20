@@ -17,20 +17,20 @@ _Tạo tự động bởi `src/analytics/alerts.py::backtest` – chạy lại k
 
 ## Giá trị dự báo (B8.4b) – toàn bộ lịch sử
 
-2717 phiên (2016-01-04 → 2026-11-19). Lợi suất VN-Index sau tín hiệu, nhân hướng tín hiệu (+1 khi chỉ số tăng / khối ngoại mua ròng). Lũy kế 5 phiên chồng lấp – p tham khảo.
+2718 phiên (2016-01-04 → 2026-11-20). Lợi suất VN-Index sau tín hiệu, nhân hướng tín hiệu (+1 khi chỉ số tăng / khối ngoại mua ròng). Lũy kế 5 phiên chồng lấp – p tham khảo.
 
 | Quy tắc | Kỳ | n tín hiệu | TB sau tín hiệu (%) | TB phiên thường (%) | Tỷ lệ cùng hướng | p Welch | p MW |
 |---|---|---|---|---|---|---|---|
-| 1. Chỉ số do ít mã dẫn dắt | t+1 | 101 | 0.001 | 0.045 | 52.5% | 0.711 | 0.323 |
-| 1. Chỉ số do ít mã dẫn dắt | t+1…t+5 | 100 | 0.059 | 0.213 | 55.0% | 0.551 | 0.426 |
+| 1. Chỉ số do ít mã dẫn dắt | t+1 | 101 | 0.001 | 0.045 | 52.5% | 0.712 | 0.324 |
+| 1. Chỉ số do ít mã dẫn dắt | t+1…t+5 | 100 | 0.059 | 0.212 | 55.0% | 0.554 | 0.429 |
 | 2. Độ vênh cao (D ≥ P90 250 phiên) | t+1 | 290 | 0.271 | 0.016 | 65.9% | 0.002 | 0.000 |
-| 2. Độ vênh cao (D ≥ P90 250 phiên) | t+1…t+5 | 283 | 0.699 | 0.146 | 66.8% | 0.004 | 0.000 |
+| 2. Độ vênh cao (D ≥ P90 250 phiên) | t+1…t+5 | 283 | 0.699 | 0.145 | 66.8% | 0.004 | 0.000 |
 | 2. Độ vênh cao (D ≥ P90 250 phiên) | ΔD phiên t+1 | 290 | -0.918 | – | 87.2% | – | 0.000 |
-| 3. Khối ngoại toàn sàn bất thường (|z| ≥ 2) | t+1 | 141 | 0.113 | 0.042 | 56.0% | 0.547 | 0.791 |
-| 3. Khối ngoại toàn sàn bất thường (|z| ≥ 2) | t+1…t+5 | 138 | 0.044 | 0.202 | 54.3% | 0.547 | 0.367 |
+| 3. Khối ngoại toàn sàn bất thường (|z| ≥ 2) | t+1 | 141 | 0.113 | 0.042 | 56.0% | 0.547 | 0.792 |
+| 3. Khối ngoại toàn sàn bất thường (|z| ≥ 2) | t+1…t+5 | 138 | 0.044 | 0.201 | 54.3% | 0.550 | 0.370 |
 | 3a. Khối ngoại MUA ròng mạnh (z ≥ 2) | t+1 | 61 | 0.208 | 0.040 | 67.2% | 0.328 | 0.095 |
-| 3a. Khối ngoại MUA ròng mạnh (z ≥ 2) | t+1…t+5 | 59 | 0.389 | 0.202 | 62.7% | 0.670 | 0.492 |
+| 3a. Khối ngoại MUA ròng mạnh (z ≥ 2) | t+1…t+5 | 59 | 0.389 | 0.201 | 62.7% | 0.669 | 0.490 |
 | 3b. Khối ngoại BÁN ròng mạnh (z ≤ −2) | t+1 | 80 | 0.041 | 0.046 | 47.5% | 0.974 | 0.065 |
-| 3b. Khối ngoại BÁN ròng mạnh (z ≤ −2) | t+1…t+5 | 79 | -0.213 | 0.206 | 48.1% | 0.183 | 0.072 |
+| 3b. Khối ngoại BÁN ròng mạnh (z ≤ −2) | t+1…t+5 | 79 | -0.213 | 0.205 | 48.1% | 0.184 | 0.073 |
 
 _Tạo tự động bởi `src/analytics/alerts.py::predictive`._

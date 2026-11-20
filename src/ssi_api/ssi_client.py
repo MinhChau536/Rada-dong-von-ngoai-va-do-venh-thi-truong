@@ -157,7 +157,9 @@ def enrich_index(row: Dict, ohlc: Optional[Dict] = None) -> Dict:
     val, pct, chg = _f(row.get("indexValue")), _f(row.get("indexChangePercentage")), _f(row.get("indexChange"))
     if val and pct is not None and pct > -100:
         expect = val - val / (1 + pct / 100)
-        if chg is None or abs(chg - expect) > max(0.05, abs(expect) * 0.02):
+        # % chỉ có 2 chữ số thập phân → sai số làm tròn tới val·0,005% (≈ 0,09 điểm với VN30 ~1.790): chỉ sửa khi lệch
+        # vượt xa mức đó (lỗi ×100 của phiên cũ), không ghi đè số đúng của SSI
+        if chg is None or abs(chg - expect) > max(0.05, abs(expect) * 0.02, val * 0.0001):
             r["indexChange"] = f"{expect:.2f}"
     for k in ("open", "high", "low", "close"):
         if ohlc and ohlc.get(k) is not None:

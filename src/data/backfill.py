@@ -192,8 +192,8 @@ def stocks(c: SSIClient, start: date, end: date, symbols: Optional[List[str]] = 
 
 
 # ── chỉ số ────────────────────────────────────────────────────────────────────
-def indexes(c: SSIClient, start: date, end: date) -> int:
-    ck = db.get_checkpoint(JOB_INDEX)
+def indexes(c: SSIClient, start: date, end: date, use_checkpoint: bool = True) -> int:
+    ck = db.get_checkpoint(JOB_INDEX) if use_checkpoint else None
     if ck:
         start = max(start, pd.Timestamp(ck).date() + timedelta(days=1))
     if start > end:
@@ -222,7 +222,7 @@ def indexes(c: SSIClient, start: date, end: date) -> int:
             db.upsert("raw_daily_index", pd.DataFrame(recs))
             n += len(recs)
         log.info("indexSummary %s %s→%s: %d phiên", code, start, end, len(recs))
-    if ok:
+    if ok and use_checkpoint:
         db.set_checkpoint(JOB_INDEX, end.strftime("%Y-%m-%d"))
     return n
 

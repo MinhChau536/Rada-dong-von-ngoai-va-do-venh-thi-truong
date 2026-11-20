@@ -1,5 +1,5 @@
 {
- "created": "2026-11-20 12:47:48",
+ "created": "2026-11-20 17:02:08",
  "source": "SSI FastConnect V3",
  "tables": {
   "alert_log": {
@@ -27,7 +27,7 @@
    ]
   },
   "data_quality_log": {
-   "rows": 7012,
+   "rows": 7115,
    "files": [
     "data_0.parquet"
    ]
@@ -45,7 +45,7 @@
    ]
   },
   "dim_securities": {
-   "rows": 4318,
+   "rows": 5230,
    "files": [
     "data_0.parquet"
    ]
@@ -75,44 +75,44 @@
    ]
   },
   "fact_daily_index": {
-   "rows": 10839,
+   "rows": 10843,
    "files": [
     "data_0.parquet"
    ]
   },
   "fact_daily_stock": {
-   "rows": 1015215,
+   "rows": 1015595,
    "files": [
     "data_0.parquet",
     "data_1.parquet"
    ]
   },
   "fact_intraday": {
-   "rows": 48450,
+   "rows": 49877,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_daily": {
-   "rows": 2717,
+   "rows": 2718,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_group_daily": {
-   "rows": 81949,
+   "rows": 81979,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_intraday": {
-   "rows": 1632,
+   "rows": 1680,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_stock_daily": {
-   "rows": 1015215,
+   "rows": 1015595,
    "files": [
     "data_0.parquet",
     "data_1.parquet",
@@ -126,13 +126,13 @@
    ]
   },
   "ingest_log": {
-   "rows": 33021,
+   "rows": 33889,
    "files": [
     "data_0.parquet"
    ]
   },
   "leaders_daily": {
-   "rows": 26929,
+   "rows": 26939,
    "files": [
     "data_0.parquet"
    ]
@@ -144,38 +144,38 @@
    ]
   },
   "raw_daily_index": {
-   "rows": 10839,
+   "rows": 10843,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_daily_stock": {
-   "rows": 1015215,
+   "rows": 1015595,
    "files": [
     "data_0.parquet",
     "data_1.parquet"
    ]
   },
   "raw_index_components": {
-   "rows": 151,
+   "rows": 181,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_intraday": {
-   "rows": 48450,
+   "rows": 49877,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_securities": {
-   "rows": 4451,
+   "rows": 5390,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_stream": {
-   "rows": 33432,
+   "rows": 67965,
    "files": [
     "data_0.parquet"
    ]
@@ -199,7 +199,7 @@
    ]
   },
   "source_events": {
-   "rows": 1,
+   "rows": 2,
    "files": [
     "data_0.parquet"
    ]
@@ -229,5 +229,5 @@
    ]
   }
  },
- "last_session": "2026-11-19 00:00:00"
+ "last_session": "2026-11-20 00:00:00"
 }

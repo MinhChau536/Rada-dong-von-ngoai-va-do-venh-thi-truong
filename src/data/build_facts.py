@@ -298,6 +298,14 @@ def build_daily_index(path: Optional[Path] = None) -> pd.DataFrame:
         df[c] = _num(df[c]).astype("Int64") if c in df.columns else pd.NA
     qrows: list = []
     df = _dedupe(df, ["trade_date", "index_code"], "daily_index", qrows)
+    # Thay đổi điểm = điểm phiên này − điểm phiên liền trước của cùng chỉ số (đúng cách bảng giá SSI hiển thị);
+    # chỉ giữ số indexChange của SSI ở phiên đầu chuỗi hoặc khi thiếu phiên liền trước (cách > 7 ngày)
+    df = df.sort_values(["index_code", "trade_date"])
+    prev_v = df.groupby("index_code")["value"].shift(1)
+    prev_d = pd.to_datetime(df.groupby("index_code")["trade_date"].shift(1))
+    ok = prev_v.notna() & ((pd.to_datetime(df["trade_date"]) - prev_d).dt.days <= 7) & df["value"].notna()
+    df.loc[ok, "change"] = (df.loc[ok, "value"] - prev_v[ok]).round(2)
+    df.loc[ok, "ratio_change"] = (df.loc[ok, "change"] / prev_v[ok] * 100).round(2)
     df["loaded_at"] = now_vn().replace(tzinfo=None)
     cols = ["trade_date", "index_code", "source"] + NUM_INDEX + INT_INDEX + ["loaded_at"]
     fact = df[cols]

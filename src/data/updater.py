@@ -123,6 +123,32 @@ def _write_status(rec: Dict) -> None:
     STATUS.write_text(json.dumps(rec, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
 
 
+REFRESH_AFTER = "18:00"   # SSI có thể điều chỉnh số cuối ngày trong vài giờ sau đóng cửa (vd. VN30 20/11: −1,61 → −1,67)
+
+
+def refresh_recent() -> bool:
+    """Tải lại phiên REST gần nhất nếu bản đang lưu được tải TRƯỚC 18:00 của chính ngày đó (có thể là số sơ bộ).
+    Mỗi phiên chỉ tải lại tới khi có một bản tải sau 18:00. Trả True nếu đã tải lại."""
+    from src.data import backfill
+    from src.ssi_api.ssi_client import SSIClient
+    try:
+        df = db.query_df("SELECT trade_date, MAX(loaded_at) AS t FROM raw_daily_index WHERE source = 'SSI' "
+                         "GROUP BY 1 ORDER BY 1 DESC LIMIT 1")
+    except Exception:  # noqa: BLE001
+        return False
+    if df.empty:
+        return False
+    d, t = pd.Timestamp(df["trade_date"].iat[0]).date(), pd.Timestamp(df["t"].iat[0])
+    cutoff = pd.Timestamp(f"{d} {REFRESH_AFTER}")
+    if t >= cutoff or now_vn().replace(tzinfo=None) < cutoff:
+        return False
+    log.info("Tải lại phiên %s (bản lưu lúc %s có thể là số sơ bộ của SSI)", d, f"{t:%H:%M}")
+    c = SSIClient()
+    backfill.stocks(c, d, d, use_checkpoint=False)
+    backfill.indexes(c, d, d, use_checkpoint=False)
+    return True
+
+
 def update(force: bool = False, robustness: bool = True) -> Dict:
     """Tải bù từ SSI rồi dựng lại khi có dữ liệu mới. Ném Busy nếu đang có lần cập nhật khác."""
     if not ssi_configured():
@@ -146,9 +172,14 @@ def update(force: bool = False, robustness: bool = True) -> Dict:
                 pass
             raise
         rec["repaired"] = repair_recent_gaps()
+        rec["refreshed"] = refresh_recent()
+        # Phiên đã có bản REST chính thức → xóa bản tạm tính chốt từ luồng WebSocket (SSI-WS) của phiên đó
+        for t in ("raw_daily_stock", "raw_daily_index"):
+            db.execute(f"DELETE FROM {t} WHERE source = 'SSI-WS' AND trade_date IN "
+                       f"(SELECT DISTINCT trade_date FROM {t} WHERE source = 'SSI')")
         mid = coverage()
         new_raw = (mid["raw_stock"] != before["raw_stock"] or mid["raw_index"] != before["raw_index"]
-                   or bool(rec["repaired"].get("fixed")))
+                   or bool(rec["repaired"].get("fixed")) or bool(rec["refreshed"]))
         stale = mid["indicators"] is None or (mid["raw_stock"] or "") > (mid["indicators"] or "")
         if force or new_raw or stale:
             res = rebuild_all.main(robustness=robustness)

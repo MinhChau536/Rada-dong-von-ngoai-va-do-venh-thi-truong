@@ -23,12 +23,8 @@ KEY_HINT = ("Tạo API Key + API Secret tại SSI Developer Portal (developers.s
 
 
 def public_ip() -> str:
-    for url in ("https://api.ipify.org", "https://ifconfig.me/ip"):
-        try:
-            return requests.get(url, timeout=6).text.strip()
-        except requests.RequestException:
-            continue
-    return "không xác định"
+    """Không gọi dịch vụ ngoài SSI: IP được phép xem/đăng ký trong SSI Developer Portal › Quản lý API Key."""
+    return "xem trong SSI Developer Portal › Quản lý API Key"
 
 
 def check_ssi() -> Dict:

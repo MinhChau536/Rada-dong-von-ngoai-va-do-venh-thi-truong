@@ -76,15 +76,7 @@ def build(date=None, db_path=None) -> Optional[Path]:
     ts = now_vn().replace(tzinfo=None)
     pdf = FFRPdf("Market Snapshot", f"Chụp lúc {ts:%H:%M %d/%m/%Y} (giờ VN) · phiên {ctx['date']:%d/%m/%Y}",
                  "SỐ LIỆU TRONG PHIÊN, CHƯA HOÀN TẤT", ctx["is_demo"])
-    chapters: List[Tuple[str, callable]] = [
-        ("Chẩn đoán phiên", lambda: C.ch_diagnosis(pdf, ctx)),
-        ("Dòng vốn ngoại", lambda: C.ch_flow(pdf, ctx)),
-        ("Bối cảnh nâng hạng FTSE", lambda: C.ch_ftse_context(pdf, ctx, db_path)),
-        ("Tác động lên watchlist", lambda: C.ch_watch_impact(pdf, ctx)),
-        ("Kết luận và hàm ý", lambda: C.ch_conclusion(pdf, ctx, db_path)),
-        ("Thị trường chung", lambda: C.ch_market(pdf, ctx)),
-        ("Phụ lục", lambda: C.ch_appendix(pdf, ctx, db_path)),
-    ]
+    chapters: List[Tuple[str, callable]] = [(t, (lambda k=k: C.render_one(pdf, ctx, k, db_path))) for t, k in C.CHAPTERS]
     front_matter(pdf, ctx, "Market Snapshot", f"Chụp lúc {ts:%H:%M} ngày {ts:%d/%m/%Y} (giờ Việt Nam)",
                  [c[0] for c in chapters], "Ảnh chụp thị trường trong phiên – số liệu có thể thay đổi đến khi đóng cửa.")
     for _, fn in chapters:
@@ -93,3 +85,8 @@ def build(date=None, db_path=None) -> Optional[Path]:
     log_report("snapshot", ctx["date"], out, "ok", "demo" if ctx["is_demo"] else "", db_path)
     log.info("Đã xuất %s", out.name)
     return out
+
+
+if __name__ == "__main__":
+    import sys
+    print(build(sys.argv[1] if len(sys.argv) > 1 else None))

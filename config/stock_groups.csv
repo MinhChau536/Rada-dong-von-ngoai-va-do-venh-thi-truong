@@ -1,174 +1,174 @@
-symbol,sector,family,foreign_limit,in_vn30
-VCB,Ngân hàng,,0.30,1
-BID,Ngân hàng,,0.30,1
-CTG,Ngân hàng,,0.30,1
-TCB,Ngân hàng,,0.225,1
-VPB,Ngân hàng,,0.30,1
-MBB,Ngân hàng,,0.2324,1
-ACB,Ngân hàng,,0.30,1
-HDB,Ngân hàng,,0.175,1
-STB,Ngân hàng,,0.30,1
-LPB,Ngân hàng,,0.05,1
-SHB,Ngân hàng,,0.30,1
-SSB,Ngân hàng,,0.30,1
-TPB,Ngân hàng,,0.30,1
-VIB,Ngân hàng,,0.205,1
-EIB,Ngân hàng,,0.30,0
-MSB,Ngân hàng,,0.275,0
-OCB,Ngân hàng,,0.30,0
-NAB,Ngân hàng,,0.30,0
-VIC,Bất động sản,VINGROUP,0.49,1
-VHM,Bất động sản,VINGROUP,0.49,1
-VRE,Bất động sản,VINGROUP,0.49,1
-VPL,Du lịch & Giải trí,VINGROUP,0.49,0
-BCM,Bất động sản,,0.49,1
-NVL,Bất động sản,,0.49,0
-KDH,Bất động sản,,0.49,0
-NLG,Bất động sản,,0.49,0
-DXG,Bất động sản,,0.49,0
-PDR,Bất động sản,,0.49,0
-DIG,Bất động sản,,0.49,0
-KBC,Bất động sản,,0.49,0
-IDC,Bất động sản,,0.49,0
-SZC,Bất động sản,,0.49,0
-HDG,Bất động sản,,0.49,0
-NTL,Bất động sản,,0.49,0
-CEO,Bất động sản,,0.49,0
-DXS,Bất động sản,,0.49,0
-KHG,Bất động sản,,0.49,0
-TCH,Bất động sản,,0.49,0
-HPG,Thép & VLXD,HOAPHAT,0.49,1
-HSG,Thép & VLXD,,0.49,0
-NKG,Thép & VLXD,,0.49,0
-HT1,Thép & VLXD,,0.49,0
-BMP,Thép & VLXD,,0.49,0
-VCG,Xây dựng,,0.49,0
-CTD,Xây dựng,,0.49,0
-HHV,Xây dựng,,0.49,0
-CII,Xây dựng,,0.49,0
-FCN,Xây dựng,,0.49,0
-PC1,Xây dựng,,0.49,0
-MWG,Bán lẻ & Tiêu dùng,,0.49,1
-PNJ,Bán lẻ & Tiêu dùng,,0.49,0
-FRT,Bán lẻ & Tiêu dùng,,0.49,0
-DGW,Bán lẻ & Tiêu dùng,,0.49,0
-MSN,Thực phẩm & Đồ uống,MASAN,0.49,1
-MCH,Thực phẩm & Đồ uống,MASAN,0.49,0
-VNM,Thực phẩm & Đồ uống,,1.00,1
-SAB,Thực phẩm & Đồ uống,,1.00,1
-KDC,Thực phẩm & Đồ uống,,0.49,0
-SBT,Thực phẩm & Đồ uống,,0.49,0
-DBC,Thực phẩm & Đồ uống,,0.49,0
-QNS,Thực phẩm & Đồ uống,,0.49,0
-FPT,Công nghệ,,0.49,1
-CMG,Công nghệ,,0.49,0
-ELC,Công nghệ,,0.49,0
-SSI,Chứng khoán,,1.00,1
-VND,Chứng khoán,,1.00,0
-HCM,Chứng khoán,,1.00,0
-VCI,Chứng khoán,,1.00,0
-VIX,Chứng khoán,,1.00,0
-SHS,Chứng khoán,,1.00,0
-FTS,Chứng khoán,,1.00,0
-CTS,Chứng khoán,,1.00,0
-BSI,Chứng khoán,,1.00,0
-ORS,Chứng khoán,,1.00,0
-GAS,Dầu khí & Năng lượng,,0.49,1
-PLX,Dầu khí & Năng lượng,,0.20,1
-PVD,Dầu khí & Năng lượng,,0.49,0
-PVT,Dầu khí & Năng lượng,,0.49,0
-BSR,Dầu khí & Năng lượng,,0.49,0
-POW,Tiện ích,,0.49,0
-REE,Tiện ích,,0.49,0
-GEX,Tiện ích,GELEX,0.49,0
-GEE,Tiện ích,GELEX,0.49,0
-NT2,Tiện ích,,0.49,0
-PPC,Tiện ích,,0.49,0
-BWE,Tiện ích,,0.49,0
-TDM,Tiện ích,,0.49,0
-DGC,Hóa chất & Phân bón,,0.49,1
-DCM,Hóa chất & Phân bón,,0.49,0
-DPM,Hóa chất & Phân bón,,0.49,0
-CSV,Hóa chất & Phân bón,,0.49,0
-LAS,Hóa chất & Phân bón,,0.49,0
-GVR,Cao su,,0.49,1
-DPR,Cao su,,0.49,0
-PHR,Cao su,,0.49,0
-VJC,Hàng không & Vận tải,,0.34,1
-HVN,Hàng không & Vận tải,,0.30,0
-GMD,Hàng không & Vận tải,,0.49,0
-VSC,Hàng không & Vận tải,,0.49,0
-HAH,Hàng không & Vận tải,,0.49,0
-VTP,Hàng không & Vận tải,,0.49,0
-SCS,Hàng không & Vận tải,,0.49,0
-ACV,Hàng không & Vận tải,,0.30,0
-BVH,Bảo hiểm,,0.49,0
-BMI,Bảo hiểm,,0.49,0
-PVI,Bảo hiểm,,0.49,0
-VHC,Thủy sản,,1.00,0
-ANV,Thủy sản,,1.00,0
-IDI,Thủy sản,,1.00,0
-FMC,Thủy sản,,1.00,0
-TNG,Dệt may,,1.00,0
-MSH,Dệt may,,1.00,0
-TCM,Dệt may,,1.00,0
-GIL,Dệt may,,1.00,0
-DHG,Dược phẩm,,1.00,0
-IMP,Dược phẩm,,1.00,0
-DBD,Dược phẩm,,1.00,0
-HAG,Nông nghiệp,,0.49,0
-HNG,Nông nghiệp,,0.49,0
-PAN,Nông nghiệp,,0.49,0
-DHC,Giấy & Bao bì,,0.49,0
-AAA,Giấy & Bao bì,,0.49,0
-TLG,Khác,,0.49,0
-SAM,Khác,,0.49,0
-EVF,Dịch vụ tài chính,,0.49,0
-HAX,Bán lẻ & Tiêu dùng,,0.49,0
-PET,Bán lẻ & Tiêu dùng,,0.49,0
-SKG,Hàng không & Vận tải,,0.49,0
-TV2,Xây dựng,,0.49,0
-LCG,Xây dựng,,0.49,0
-HBC,Xây dựng,,0.49,0
-DPG,Xây dựng,,0.49,0
-VPI,Bất động sản,,0.49,0
-AGG,Bất động sản,,0.49,0
-HQC,Bất động sản,,0.49,0
-SCR,Bất động sản,,0.49,0
-ITC,Bất động sản,,0.49,0
-LHG,Bất động sản,,0.49,0
-TIP,Bất động sản,,0.49,0
-D2D,Bất động sản,,0.49,0
-SGR,Bất động sản,,0.49,0
-VPH,Bất động sản,,0.49,0
-TDC,Bất động sản,,0.49,0
-CRE,Bất động sản,,0.49,0
-APH,Khác,,0.49,0
-YEG,Công nghệ,,0.49,0
-ST8,Công nghệ,,0.49,0
-SMC,Thép & VLXD,,0.49,0
-TLH,Thép & VLXD,,0.49,0
-POM,Thép & VLXD,,0.49,0
-VGC,Thép & VLXD,,0.49,0
-DHA,Thép & VLXD,,0.49,0
-KSB,Thép & VLXD,,0.49,0
-VSH,Tiện ích,,0.49,0
-SBA,Tiện ích,,0.49,0
-TBC,Tiện ích,,0.49,0
-CHP,Tiện ích,,0.49,0
-GSP,Dầu khí & Năng lượng,,0.49,0
-PGC,Dầu khí & Năng lượng,,0.49,0
-ASM,Thực phẩm & Đồ uống,,0.49,0
-LSS,Thực phẩm & Đồ uống,,0.49,0
-VCF,Thực phẩm & Đồ uống,,0.49,0
-SVC,Bán lẻ & Tiêu dùng,,0.49,0
-CTF,Bán lẻ & Tiêu dùng,,0.49,0
-TTF,Khác,,0.49,0
-RAL,Bán lẻ & Tiêu dùng,,0.49,0
-TMS,Hàng không & Vận tải,,0.49,0
-VOS,Hàng không & Vận tải,,0.49,0
-GEG,Tiện ích,,0.49,0
-BCG,Tiện ích,,0.49,0
-HDC,Bất động sản,,0.49,0
-NBB,Bất động sản,,0.49,0
-QCG,Bất động sản,,0.49,0
+symbol,family,foreign_limit,in_vn30
+VCB,,0.30,1
+BID,,0.30,1
+CTG,,0.30,1
+TCB,,0.225,1
+VPB,,0.30,1
+MBB,,0.2324,1
+ACB,,0.30,1
+HDB,,0.175,1
+STB,,0.30,1
+LPB,,0.05,1
+SHB,,0.30,1
+SSB,,0.30,1
+TPB,,0.30,1
+VIB,,0.205,1
+EIB,,0.30,0
+MSB,,0.275,0
+OCB,,0.30,0
+NAB,,0.30,0
+VIC,VINGROUP,0.49,1
+VHM,VINGROUP,0.49,1
+VRE,VINGROUP,0.49,1
+VPL,VINGROUP,0.49,0
+BCM,,0.49,1
+NVL,,0.49,0
+KDH,,0.49,0
+NLG,,0.49,0
+DXG,,0.49,0
+PDR,,0.49,0
+DIG,,0.49,0
+KBC,,0.49,0
+IDC,,0.49,0
+SZC,,0.49,0
+HDG,,0.49,0
+NTL,,0.49,0
+CEO,,0.49,0
+DXS,,0.49,0
+KHG,,0.49,0
+TCH,,0.49,0
+HPG,HOAPHAT,0.49,1
+HSG,,0.49,0
+NKG,,0.49,0
+HT1,,0.49,0
+BMP,,0.49,0
+VCG,,0.49,0
+CTD,,0.49,0
+HHV,,0.49,0
+CII,,0.49,0
+FCN,,0.49,0
+PC1,,0.49,0
+MWG,,0.49,1
+PNJ,,0.49,0
+FRT,,0.49,0
+DGW,,0.49,0
+MSN,MASAN,0.49,1
+MCH,MASAN,0.49,0
+VNM,,1.00,1
+SAB,,1.00,1
+KDC,,0.49,0
+SBT,,0.49,0
+DBC,,0.49,0
+QNS,,0.49,0
+FPT,,0.49,1
+CMG,,0.49,0
+ELC,,0.49,0
+SSI,,1.00,1
+VND,,1.00,0
+HCM,,1.00,0
+VCI,,1.00,0
+VIX,,1.00,0
+SHS,,1.00,0
+FTS,,1.00,0
+CTS,,1.00,0
+BSI,,1.00,0
+ORS,,1.00,0
+GAS,,0.49,1
+PLX,,0.20,1
+PVD,,0.49,0
+PVT,,0.49,0
+BSR,,0.49,0
+POW,,0.49,0
+REE,,0.49,0
+GEX,GELEX,0.49,0
+GEE,GELEX,0.49,0
+NT2,,0.49,0
+PPC,,0.49,0
+BWE,,0.49,0
+TDM,,0.49,0
+DGC,,0.49,1
+DCM,,0.49,0
+DPM,,0.49,0
+CSV,,0.49,0
+LAS,,0.49,0
+GVR,,0.49,1
+DPR,,0.49,0
+PHR,,0.49,0
+VJC,,0.34,1
+HVN,,0.30,0
+GMD,,0.49,0
+VSC,,0.49,0
+HAH,,0.49,0
+VTP,,0.49,0
+SCS,,0.49,0
+ACV,,0.30,0
+BVH,,0.49,0
+BMI,,0.49,0
+PVI,,0.49,0
+VHC,,1.00,0
+ANV,,1.00,0
+IDI,,1.00,0
+FMC,,1.00,0
+TNG,,1.00,0
+MSH,,1.00,0
+TCM,,1.00,0
+GIL,,1.00,0
+DHG,,1.00,0
+IMP,,1.00,0
+DBD,,1.00,0
+HAG,,0.49,0
+HNG,,0.49,0
+PAN,,0.49,0
+DHC,,0.49,0
+AAA,,0.49,0
+TLG,,0.49,0
+SAM,,0.49,0
+EVF,,0.49,0
+HAX,,0.49,0
+PET,,0.49,0
+SKG,,0.49,0
+TV2,,0.49,0
+LCG,,0.49,0
+HBC,,0.49,0
+DPG,,0.49,0
+VPI,,0.49,0
+AGG,,0.49,0
+HQC,,0.49,0
+SCR,,0.49,0
+ITC,,0.49,0
+LHG,,0.49,0
+TIP,,0.49,0
+D2D,,0.49,0
+SGR,,0.49,0
+VPH,,0.49,0
+TDC,,0.49,0
+CRE,,0.49,0
+APH,,0.49,0
+YEG,,0.49,0
+ST8,,0.49,0
+SMC,,0.49,0
+TLH,,0.49,0
+POM,,0.49,0
+VGC,,0.49,0
+DHA,,0.49,0
+KSB,,0.49,0
+VSH,,0.49,0
+SBA,,0.49,0
+TBC,,0.49,0
+CHP,,0.49,0
+GSP,,0.49,0
+PGC,,0.49,0
+ASM,,0.49,0
+LSS,,0.49,0
+VCF,,0.49,0
+SVC,,0.49,0
+CTF,,0.49,0
+TTF,,0.49,0
+RAL,,0.49,0
+TMS,,0.49,0
+VOS,,0.49,0
+GEG,,0.49,0
+BCG,,0.49,0
+HDC,,0.49,0
+NBB,,0.49,0
+QCG,,0.49,0

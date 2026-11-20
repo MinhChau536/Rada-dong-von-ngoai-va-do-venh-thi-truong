@@ -458,3 +458,42 @@ def ftse_contrib_chart(ex: pd.DataFrame, n: int = 60, size=(3.7, 2.4)) -> io.Byt
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2)
     _clean(ax)
     return _png(fig)
+
+
+# ── Chẩn đoán kỹ thuật: giá + MA, RSI(14), MACD ──────────────────────────────
+def tech_chart(t: Dict, n: int = 120, size=(7.4, 3.6)) -> io.BytesIO:
+    """Ba ô xếp dọc: VN-Index + MA20/50 + hỗ trợ/kháng cự · RSI(14) với vùng 30/70 · MACD và histogram."""
+    c = t["close_series"].tail(n)
+    rsi = t["rsi_series"].reindex(c.index)
+    m = t["macd_df"].reindex(c.index)
+    full = t["close_series"]
+    fig, (a1, a2, a3) = plt.subplots(3, 1, figsize=size, sharex=True, gridspec_kw={"height_ratios": [2.2, 1, 1]})
+    a1.plot(c.index, c.values, color=NAVY, lw=1.3, label="VN-Index")
+    a1.plot(c.index, full.rolling(20).mean().reindex(c.index), color=AMBER, lw=0.9, label="MA20")
+    a1.plot(c.index, full.rolling(50).mean().reindex(c.index), color=INDIGO, lw=0.9, label="MA50")
+    for lv in t["supports"][:2]:
+        a1.axhline(lv, color=UP, lw=0.7, ls="--")
+        a1.text(c.index[0], lv, f" hỗ trợ {_vn(lv)}", fontsize=6.2, color=UP, va="bottom")
+    for lv in t["resists"][:2]:
+        a1.axhline(lv, color=DOWN, lw=0.7, ls="--")
+        a1.text(c.index[0], lv, f" kháng cự {_vn(lv)}", fontsize=6.2, color=DOWN, va="bottom")
+    a1.set_title(f"Phân tích kỹ thuật VN-Index {len(c)} phiên: xu hướng, RSI(14), MACD(12,26,9)")
+    a1.legend(loc="upper right", ncol=3)
+    a2.plot(rsi.index, rsi.values, color=INDIGO, lw=1)
+    a2.axhspan(70, 100, color=DOWN, alpha=0.07, lw=0)
+    a2.axhspan(0, 30, color=UP, alpha=0.07, lw=0)
+    for y in (30, 70):
+        a2.axhline(y, color=MUTED, lw=0.6, ls=":")
+    a2.set_ylim(10, 90)
+    a2.set_ylabel("RSI", fontsize=7)
+    a3.bar(m.index, m["hist"], color=[UP if v >= 0 else DOWN for v in m["hist"]], width=1.0, alpha=0.6)
+    a3.plot(m.index, m["macd"], color=NAVY, lw=0.9, label="MACD")
+    a3.plot(m.index, m["signal"], color=AMBER, lw=0.9, label="Tín hiệu")
+    a3.axhline(0, color=MUTED, lw=0.5)
+    a3.set_ylabel("MACD", fontsize=7)
+    a3.legend(loc="upper left", ncol=2)
+    for a in (a1, a2, a3):
+        _clean(a)
+    _datefmt(a3, (c.index[-1] - c.index[0]).days)
+    fig.tight_layout(h_pad=0.3)
+    return _png(fig)

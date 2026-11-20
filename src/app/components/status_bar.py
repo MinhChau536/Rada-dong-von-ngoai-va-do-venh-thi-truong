@@ -46,10 +46,36 @@ def render(session_date=None, show_session: bool = True) -> None:
     demo = ""
     sess = sdate.strftime("%d/%m/%Y") if sdate is not None else "—"
     sess_pill = f'<span class="ffr-pill">📅 Phiên {sess}</span>' if show_session else ""
-    md(f'<div class="ffr-status">{demo}{sess_pill}'
+    li = da.live_info()
+    is_live = li is not None and sdate is not None and sdate == pd.Timestamp(li["session_date"])
+    if is_live:
+        tick = str(li.get("last_tick") or "")[-8:-3]
+        live_pill = (f'<span class="ffr-pill" style="border-color:#DC2626;color:#F87171"><b>● TRỰC TIẾP</b>&nbsp;'
+                     f'số liệu tới {tick or "—"} · dựng lúc {pd.Timestamp(li["built_at"]):%H:%M:%S} · '
+                     f'{int(li["n_traded"])}/{int(li["n_symbols"])} mã có khớp lệnh</span>')
+        comp_pill = '<span class="ffr-pill">Phiên tạm tính – chốt số liệu chính thức sau 15:05</span>'
+    elif sdate is not None and "SSI-WS" in da.session_sources(sdate):
+        live_pill = ('<span class="ffr-pill" style="border-color:#D97706;color:#F59E0B"><b>● ĐÓNG CỬA TẠM TÍNH</b>&nbsp;'
+                     'giá chốt ATC từ luồng WebSocket SSI · tự thay bằng số liệu REST chính thức khi SSI công bố</span>')
+        comp_pill = ""
+    else:
+        live_pill = ""
+        comp_pill = f'<span class="ffr-pill">Đầy đủ: {frac_pct(comp, 1) if comp is not None else "—"}</span>'
+    md(f'<div class="ffr-status">{demo}{sess_pill}{live_pill}'
        f'<span class="ffr-pill">⏱ {now_vn():%H:%M:%S} (giờ VN)</span>'
        f'<span class="ffr-pill">Nguồn: {active_source()}</span>{dots}'
-       f'<span class="ffr-pill">Đầy đủ: {frac_pct(comp, 1) if comp is not None else "—"}</span></div>')
+       f'{comp_pill}</div>')
+    if in_session() and li is not None:
+        age = (now_vn().replace(tzinfo=None) - pd.Timestamp(li["built_at"])).total_seconds() / 60
+        if age > float(get("alerts.stale_minutes", 5)):
+            st.warning(f"⚠️ Phiên tạm tính dựng cách đây {age:.0f} phút – bộ ghi WebSocket có thể đã dừng.")
+        elif not is_live:
+            st.info("Đang xem một phiên cũ. Chọn phiên hôm nay ở ô bên trái để xem số liệu trực tiếp.")
+        return
+    if in_session():
+        st.info("⏳ Chưa có phiên tạm tính của hôm nay – bộ ghi WebSocket SSI đang khởi động và dựng số liệu "
+                "(lần đầu mất khoảng 1–2 phút). Trang tự làm mới khi có số liệu; trong lúc chờ đang hiển thị phiên gần nhất.")
+        return
     # Dữ liệu cũ > 5 phút trong phiên → cảnh báo vàng
     if in_session():
         ok = srcs.get("SSI", (None, None, None))[2]

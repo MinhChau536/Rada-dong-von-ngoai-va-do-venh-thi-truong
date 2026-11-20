@@ -31,7 +31,9 @@ INT_INDEX = ["advances", "declines", "no_changes", "ceilings", "floors"]
 
 
 def source_priority() -> List[str]:
-    return ["SSI"]                 # nguồn duy nhất: SSI FastConnect V3
+    # SSI FastConnect V3: "SSI" = REST (chính thức) ưu tiên trên "SSI-WS" = phiên chốt từ luồng WebSocket lúc 15:05
+    # (src/data/live.promote) – cùng một nhà cung cấp, bản REST thay thế bản tạm tính khi SSI công bố số cuối ngày.
+    return ["SSI", "SSI-WS"]
 
 
 _THOUSANDS = re.compile(r"^-?\d{1,3}(,\d{3})+(\.\d+)?$")

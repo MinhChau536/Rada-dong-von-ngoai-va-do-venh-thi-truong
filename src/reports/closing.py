@@ -5,7 +5,7 @@ diễn biến tuần/tháng, dẫn dắt, triển vọng thống kê + bối c�
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -64,15 +64,7 @@ def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path],
     pdf = FFRPdf("Closing Report", f"Báo cáo cuối phiên {ctx['date']:%d/%m/%Y} · xuất {ts:%H:%M %d/%m/%Y}",
                  "SỐ LIỆU CUỐI PHIÊN – ĐÃ QUA KIỂM TRA CHẤT LƯỢNG", ctx["is_demo"])
     from src.reports import chapters as C
-    chapters = [
-        ("Chẩn đoán phiên", lambda: C.ch_diagnosis(pdf, ctx)),
-        ("Dòng vốn ngoại", lambda: C.ch_flow(pdf, ctx)),
-        ("Bối cảnh nâng hạng FTSE", lambda: C.ch_ftse_context(pdf, ctx, db_path)),
-        ("Tác động lên watchlist", lambda: C.ch_watch_impact(pdf, ctx)),
-        ("Kết luận và hàm ý", lambda: C.ch_conclusion(pdf, ctx, db_path)),
-        ("Thị trường chung", lambda: C.ch_market(pdf, ctx)),
-        ("Phụ lục", lambda: C.ch_appendix(pdf, ctx, db_path)),
-    ]
+    chapters: List[Tuple[str, callable]] = [(t, (lambda k=k: C.render_one(pdf, ctx, k, db_path))) for t, k in C.CHAPTERS]
     front_matter(pdf, ctx, "Closing Report", f"Xuất lúc {ts:%H:%M} ngày {ts:%d/%m/%Y} (giờ Việt Nam)",
                  [c[0] for c in chapters], "Báo cáo cuối phiên – số liệu đã khớp lệnh xong và qua kiểm tra chất lượng "
                  "(độ đầy đủ ≥ 98%, độ rộng khớp SSI, sai số tái lập chỉ số trong ngưỡng).")
@@ -81,3 +73,8 @@ def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path],
     out = save_pdf(pdf, _out_path("closing", pd.Timestamp(ctx["date"])))
     log_report("closing", ctx["date"], out, "ok", reason if reason != "đạt" else "", db_path)
     return out, reason if reason != "đạt" else "ok"
+
+
+if __name__ == "__main__":
+    import sys
+    print(build(sys.argv[1] if len(sys.argv) > 1 else None))

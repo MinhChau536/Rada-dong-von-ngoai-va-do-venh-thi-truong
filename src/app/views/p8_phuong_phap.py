@@ -1,4 +1,4 @@
-"""Trang 8 – Phương pháp & giới hạn (bước B11.2): công thức (1)–(13), nguồn, tham số đọc TRỰC TIẾP từ settings.yaml,
+"""Trang 8 – Phương pháp & giới hạn (bước B11.2): công thức (1)–(17), nguồn, tham số đọc TRỰC TIẾP từ settings.yaml,
 kết quả kiểm định & kiểm thử, độ vững, giới hạn, mã kế thừa."""
 from __future__ import annotations
 
@@ -26,6 +26,13 @@ FORMULAS = [
     ("(11) Chênh lệch kép", r"y_{i,t} = \mu_i + \lambda_t + \delta\,(FTSE_i\times Post_t) + \varepsilon_{i,t}"),
     ("(12) Lợi suất vượt trội", r"ER^I_{i,t} = r_{i,t}-r_{VNI,t},\quad ER^M_{i,t} = r_{i,t} - \operatorname{median}_j(r_{j,t})"),
     ("(13) Beta Dimson", r"r_{i,t} = a_i + \sum_{k=-1}^{1} b_{i,k} r_{VNI,t+k} + u_{i,t},\quad \beta^D_i = \sum_k \hat b_{i,k}"),
+    ("(14) RSI(14) – động lượng", r"RSI_t = 100 - \frac{100}{1+RS_t},\quad RS_t = \frac{\overline{U}_t}{\overline{D}_t},\ "
+                                  r"\overline{X}_t = \tfrac{13}{14}\overline{X}_{t-1} + \tfrac{1}{14}X_t"),
+    ("(15) MACD(12, 26, 9)", r"MACD_t = EMA_{12}(I)_t - EMA_{26}(I)_t,\quad Sig_t = EMA_9(MACD)_t,\quad H_t = MACD_t - Sig_t"),
+    ("(16) Cấu trúc đỉnh – đáy (Dow)", r"\text{tăng} \Leftrightarrow \max_{[t-19,t]} I > \max_{[t-39,t-20]} I \ \wedge\ "
+                                        r"\min_{[t-19,t]} I > \min_{[t-39,t-20]} I"),
+    ("(17) Khối lượng xác nhận", r"V^{*}_t = TV_t / \overline{TV}_{20},\quad \text{xác nhận} \Leftrightarrow "
+                                 r"\operatorname{sign}(r_t)\ \text{và}\ V^{*}_t \ge 1"),
 ]
 
 INHERITED = [
@@ -47,7 +54,7 @@ def render() -> None:
     header("Phương pháp & giới hạn", "Công thức, tham số, kết quả kiểm định, độ vững và những điều KHÔNG kết luận")
     status_bar.render()
     about.render_full()
-    section("Công thức (1)–(13)")
+    section("Công thức (1)–(17)")
     c1, c2 = st.columns(2)
     for i, (t, f) in enumerate(FORMULAS):
         with (c1 if i % 2 == 0 else c2):
@@ -108,7 +115,14 @@ def render() -> None:
     • Khác biệt trước/sau 21/9/2026 không quy hoàn toàn cho nâng hạng (lãi suất, tỷ giá, kết quả kinh doanh đồng thời).<br>
     • Nghiên cứu sự kiện ~25–30 mã nhóm xử lý → độ mạnh thống kê hạn chế; giai đoạn sau hiệu lực còn ngắn.<br>
     • Danh sách FTSE trong cấu hình phải đối chiếu thông báo chính thức (≥ 2 nguồn) trước khi diễn giải.<br>
-    • Mọi số liệu tải từ SSI FastConnect V3 (REST + WebSocket). Giá lịch sử của SSI đã điều chỉnh quyền; giá tham chiếu/trần/sàn được quy về cùng thang nên lợi suất ngày khớp % thay đổi chính thức.
+    • Chỉ báo kỹ thuật (công thức 14–17) mô tả trạng thái giá – khối lượng, không dự báo hướng đi.<br>
+    • Khuyến nghị trên trang Chẩn đoán thị trường và trong báo cáo chỉ ở cấp THỊ TRƯỜNG, suy ra từ chỉ báo theo quy tắc cố định
+      (MA20/MA50, ≥ 55% / ≤ 40% mã tăng, CR5 phân vị ≥ 80, |z khối ngoại 5 phiên| ≥ 1, σ ≥ 1,5% / ≤ 0,8%); không chọn cổ phiếu.<br>
+    • Ngành của cổ phiếu theo mã ICB do SSI trả về (danh mục chứng khoán SSI), gộp nhóm theo tiền tố mã ICB (src/finance/sectors.py).
+      Định giá (P/E, P/B) và số liệu vĩ mô không có trong SSI FastConnect nên không được dùng.<br>
+    • Thông tin tham chiếu ngoài API, có ghi nguồn: danh sách 27 mã và các mốc sự kiện FTSE Russell (config/ftse_universe.csv,
+      config/events.csv – cột source_url); định nghĩa họ cổ phiếu (Vingroup…) do đề tài đặt.<br>
+    • Mọi số liệu thị trường tải từ SSI FastConnect V3 (REST + WebSocket). Giá lịch sử của SSI đã điều chỉnh quyền; giá tham chiếu/trần/sàn được quy về cùng thang nên lợi suất ngày khớp % thay đổi chính thức.
     </div>""")
     section("Mã kế thừa từ đồ án giữa kỳ", "Kho web_phantichchungkhoan – ghi nguồn theo yêu cầu liêm chính học thuật")
     md(table_html(["Thành phần giữa kỳ", "Vị trí trong bản 3.2", "Cách dùng"], [list(x) for x in INHERITED], left=(0, 1, 2)))

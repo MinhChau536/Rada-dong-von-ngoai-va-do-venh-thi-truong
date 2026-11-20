@@ -8,7 +8,9 @@ Kết nối wss://stream.ssi.com.vn/ws/v3 qua SDK chính thức `ssi-sdk` (xác 
   • indexsummary.<VNINDEX|VN30|HNXINDEX|UPCOMINDEX>  – điểm, số mã tăng/giảm, GT khớp, khối ngoại toàn sàn
   • trade.index.<VNINDEX|VN30>                       – tick của chính chỉ số
   • room.<mã>  / trade.<mã>  cho VN30 + watchlist     – room & khối ngoại lũy kế; lệnh khớp kèm chiều chủ động
-Mỗi tin lưu nguyên văn (JSON) vào raw_stream (source='SSI'); ghi theo lô. SDK tự kết nối lại (backoff có trần) và
+  • trade/quote cả sàn HOSE + room mọi mã HOSE        – chỉ giữ TRẠNG THÁI MỚI NHẤT trong bộ nhớ (không lưu từng tin),
+                                                       cứ stream.live_build_sec giây dựng phiên tạm tính (src/data/live.py)
+Tin của chỉ số, VN30 và watchlist lưu nguyên văn (JSON) vào raw_stream (source='SSI'); ghi theo lô. SDK tự kết nối lại (backoff có trần) và
 làm mới token trước khi hết hạn. Luồng im lặng > stream.silence_sec giây trong phiên → source_status 'degraded'
 + thông báo sự cố qua Telegram; có tin trở lại → 'ok'.
 """
@@ -85,15 +87,34 @@ class Recorder:
         self.last_msg = time.monotonic()
         self.n = 0
         self.degraded = False
+        self.keep: Optional[set] = None          # mã lưu nguyên văn vào raw_stream (None = lưu mọi tin)
+        self.state: Dict[str, Dict[str, Dict]] = {"trade": {}, "room": {}, "indexsummary": {}}
+
+    def snapshot(self) -> Dict[str, Dict[str, Dict]]:
+        with self.lock:
+            return {k: dict(v) for k, v in self.state.items()}
 
     def on_data(self, msg: Any) -> None:
         row = to_row(msg)
         if row is None:
             return
+        ch, sym = row["channel"], row["symbol"]
+        if ch in self.state and sym:
+            try:
+                body = json.loads(row["payload"])
+                body = body.get("data") if ch == "indexsummary" and isinstance(body.get("data"), dict) else body
+                with self.lock:
+                    self.state[ch][sym] = body
+            except Exception:  # noqa: BLE001
+                pass
+        store = self.keep is None or ch in ("indexsummary", "trade.index", "market", "market.flag") or sym in self.keep
+        if ch == "quote" and self.keep is not None:
+            store = False
         with self.lock:
-            self.buf.append(row)
             self.n += 1
             self.last_msg = time.monotonic()
+            if store:
+                self.buf.append(row)
             full = len(self.buf) >= self.flush_rows
         if full:
             self.flush()
@@ -145,8 +166,13 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
         raise SystemExit("Thiếu SSI_API_KEY / SSI_API_SECRET trong .env")
     db.init_schema()
     if seconds is None and not in_recorder_window():
-        log.info("Ngoài cửa sổ ghi %s–%s – không chạy.", get("session.recorder_start"), get("session.recorder_end"))
+        log.info("Ngoài cửa sổ ghi %s–%s – không ghi luồng.", get("session.recorder_start"), get("session.recorder_end"))
+        if symbols is None and now_vn().weekday() < 5 and now_vn().strftime("%H:%M") >= get("session.recorder_end", "15:05"):
+            post_close_update()                       # máy bật sau giờ đóng cửa: vẫn tự lấy số liệu cuối ngày
         return {"messages": 0, "skipped": True}
+    if seconds is None and not _claim_lock():
+        log.info("Đã có bộ ghi luồng khác đang chạy hôm nay – thoát.")
+        return {"messages": 0, "skipped": True, "reason": "running"}
     syms = symbols if symbols is not None else symbols_to_watch()
     rec = Recorder()
     cfg = Config(api_key=env("SSI_API_KEY"), api_secret=env("SSI_API_SECRET"), api_url=ssi_base_url(),
@@ -160,18 +186,45 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
             s.connect()
             s.subscribe_index_summary(INDEXES)
             s.subscribe_index_trade(["VNINDEX", "VN30"])
-            if syms:
+            live_on = bool(get("stream.live_build", True)) and symbols is None
+            hose: List[str] = []
+            if live_on:
+                from ssi_sdk.enums import Board  # type: ignore
+                from src.data import live
+                hose = live.hose_symbols()
+                rec.keep = set(syms)
+                s.subscribe_board([Board.HOSE])                  # trade + quote cả sàn (chỉ giữ trạng thái mới nhất)
+                for i in range(0, len(hose), 100):
+                    s.subscribe_symbol_room(hose[i:i + 100])     # khối ngoại & room từng mã HOSE
+            elif syms:
                 s.subscribe_symbol_room(syms)
                 s.subscribe_symbol_trade(syms)
-            db.set_source_status("SSI", "ok", f"WebSocket V3 đã kết nối · {len(syms)} mã")
-            log.info("Đang ghi luồng SSI V3: %d chỉ số, %d mã", len(INDEXES), len(syms))
+            db.set_source_status("SSI", "ok", f"WebSocket V3 đã kết nối · {len(hose) or len(syms)} mã")
+            log.info("Đang ghi luồng SSI V3: %d chỉ số, %d mã lưu nguyên văn, %d mã HOSE theo dõi trạng thái",
+                     len(INDEXES), len(syms), len(hose))
             last_flush = time.monotonic()
+            every = float(get("stream.live_build_sec", 120))
+            last_build = time.monotonic() - every + 45          # lượt dựng đầu tiên sau ~45 giây nhận luồng
+            builder: Optional[threading.Thread] = None
+
+            def _build(force: bool = False) -> None:
+                try:
+                    from src.data import live
+                    if force or in_session():
+                        live.build(rec.snapshot())
+                except Exception as exc:  # noqa: BLE001 – lượt sau thử lại
+                    log.warning("Dựng phiên tạm tính lỗi: %s", exc)
+
             try:
                 while True:
                     time.sleep(2)
                     if time.monotonic() - last_flush > 10:
                         rec.flush()
                         last_flush = time.monotonic()
+                    if live_on and time.monotonic() - last_build >= every and not (builder and builder.is_alive()):
+                        builder = threading.Thread(target=_build, daemon=True)
+                        builder.start()
+                        last_build = time.monotonic()
                     rec.check_silence()
                     if t_end is not None:
                         if time.monotonic() >= t_end:
@@ -182,6 +235,12 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
                 log.info("Dừng theo yêu cầu")
             finally:
                 rec.flush()
+                if live_on and t_end is None:            # lượt dựng cuối với giá chốt sau ATC
+                    if builder and builder.is_alive():
+                        builder.join(timeout=120)
+                    _build(force=True)
+                    if now_vn().strftime("%H:%M") >= get("session.close", "15:00"):
+                        close_from_stream(rec.snapshot())  # chốt phiên vào kho chính → đủ kết quả trước 15:15
                 try:
                     s.disconnect()
                 except Exception:  # noqa: BLE001
@@ -190,7 +249,83 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
                      [now_vn().date()])
     out = {"messages": rec.n, "by_channel": dict(zip(by.get("channel", []), by.get("n", [])))}
     log.info("Kết thúc ghi luồng: %s", out)
+    if seconds is None and symbols is None:
+        post_close_update()
     return out
+
+
+def _claim_lock() -> bool:
+    """Ghi data/.recorder.lock = 'ngày pid=…' (bộ ghi chạy từ Task Scheduler, app hoặc bot đều dùng chung một khóa)."""
+    import os
+    from src.data import autoupdate
+    lock = autoupdate.REC_LOCK
+    today = now_vn().strftime("%Y-%m-%d")
+    try:
+        if lock.exists():
+            txt = lock.read_text(encoding="utf-8")
+            pid = int(txt.split("pid=")[-1]) if "pid=" in txt else 0
+            # pid trong khóa có thể là tiến trình CHA (python.exe của venv trên Windows là trình khởi chạy, tiến trình
+            # Python thật là con của nó) → coi là chính mình
+            if txt.startswith(today) and pid not in (os.getpid(), os.getppid()) and autoupdate._pid_alive(pid):
+                return False
+        lock.write_text(f"{today} pid={os.getpid()}", encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Không ghi được khóa bộ ghi: %s", exc)
+    return True
+
+
+def close_from_stream(state: Dict) -> Optional[Dict]:
+    """15:05: ghi phiên chốt từ luồng WebSocket vào kho chính (nguồn SSI-WS) rồi tính lại toàn bộ chỉ báo + kiểm định
+    (bỏ bảng độ vững để kịp 15:15). Bản REST chính thức của SSI thay thế sau đó (post_close_update)."""
+    from src.data import live, rebuild_all, updater
+    t0 = time.time()
+    try:
+        res = live.promote(state)
+        if not res:
+            return None
+        with updater.update_lock():
+            out = rebuild_all.main(robustness=False)
+        log.info("Đã tính xong phiên %s từ số liệu chốt WebSocket trong %.0f giây (hash %s)", now_vn().date(),
+                 time.time() - t0, out.get("hash"))
+        return res
+    except updater.Busy:
+        log.warning("Đang có tiến trình cập nhật khác – bỏ qua chốt phiên từ luồng")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Chốt phiên từ luồng lỗi: %s", exc)
+    return None
+
+
+def post_close_update(poll_sec: int = 90, until: str = "18:30") -> str:
+    """Sau đóng cửa: hỏi SSI REST mỗi `poll_sec` giây, có số liệu chính thức của hôm nay thì tải và dựng lại ngay.
+
+    Số liệu cuối ngày (securitiesSummary, indexSummary) SSI công bố sau giờ đóng cửa một khoảng không cố định; trong lúc
+    chờ, web vẫn hiển thị phiên tạm tính với giá chốt sau ATC. Bản chính thức thay thế ngay khi dựng xong.
+    """
+    from src.data import autoupdate, updater
+    from src.bot.intraday import _client
+    today = now_vn().date()
+    while now_vn().strftime("%H:%M") < until:
+        try:
+            if not updater.is_behind():
+                return "up_to_date"
+            c = _client()
+            ready = bool(c.index_summary("VNINDEX", today)) and bool(c.securities_summary("FPT", today, today))
+            if ready:
+                log.info("SSI đã công bố số liệu cuối ngày %s – tải và dựng lại ngay", today)
+                au = autoupdate.start_if_behind()
+                if au.get("state") == "started":
+                    code = au["proc"].wait()
+                    log.info("Cập nhật cuối ngày xong (mã thoát %s)", code)
+                    return "updated" if code == 0 else "error"
+                if au.get("state") == "running":     # tiến trình khác đang cập nhật
+                    time.sleep(poll_sec)
+                    continue
+                return str(au.get("state"))
+            log.info("SSI chưa có số liệu cuối ngày %s – thử lại sau %d giây", today, poll_sec)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Kiểm tra số liệu cuối ngày lỗi: %s", exc)
+        time.sleep(poll_sec)
+    return "timeout"
 
 
 def imbalance_from_stream(session_date) -> pd.DataFrame:

@@ -1,10 +1,10 @@
 """
-Trang "Chẩn đoán thị trường" – nối độ vênh, mã dẫn dắt, khối ngoại, nhóm FTSE và watchlist để trả lời mục tiêu tổng quát:
-vì sao chỉ số và số đông cổ phiếu đi lệch nhau trong giai đoạn FTSE, khối ngoại đóng vai trò gì, tác động lên danh mục ra sao.
+Trang "Chẩn đoán thị trường" – chẩn đoán VN-Index từ dữ liệu SSI FastConnect V3:
 
-Khối 1 – Chẩn đoán phiên (5 bước nối tiếp, mỗi bước 1–2 con số + một câu kết luận).
-Khối 2 – Kết luận nghiên cứu giai đoạn FTSE (mỗi giả thuyết một dòng: kết quả, p Holm, mức bằng chứng) + hồi quy gộp D.
-Khối 3 – Hàm ý cho nhà đầu tư (câu điều kiện, không phải lệnh mua/bán).
+  Kết luận + khuyến nghị cấp thị trường (quy tắc cố định, src/reports/chapters.market_recommendations)
+  1 · Phân tích kỹ thuật: MA20/50/200, cấu trúc đỉnh – đáy (Dow), RSI(14), MACD, khối lượng xác nhận (src/analytics/technical.py)
+  2 · Cấu trúc thị trường & dòng vốn: lan tỏa, CR5, khối ngoại 5 phiên, σ EWMA + chuỗi % biến động có ngoại cùng chiều
+  3 · Kịch bản theo dõi (hỗ trợ/kháng cự, biên dao động EWMA) · 4 · Góc nhìn phiên 5 bước · kết luận nghiên cứu giai đoạn FTSE
 """
 from __future__ import annotations
 
@@ -26,16 +26,27 @@ from src.finance.breadth import session_type_label
 from src.finance.domestic import ABSORB_LABELS
 
 
-@st.cache_data(ttl=600, show_spinner=False)
 def _extras(date) -> pd.DataFrame:
+    return _extras_v(pd.Timestamp(date), da._lv())
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _extras_v(date, v: str) -> pd.DataFrame:
     from src.data import database as db
-    st_ = db.query_df("SELECT trade_date, symbol, is_valid, w, C, net_flow, tv FROM indicator_stock_daily WHERE trade_date <= ?",
-                      [pd.Timestamp(date)])
+    cols = ["trade_date", "symbol", "is_valid", "w", "C", "net_flow", "tv"]
+    st_ = db.query_df(f"SELECT {', '.join(cols)} FROM indicator_stock_daily WHERE trade_date <= ?", [date])
+    ld = da._live_date()
+    if ld is not None and ld <= date:                    # phiên tạm tính hôm nay (kho phụ)
+        st_ = pd.concat([st_, da.stock_day(ld)[cols]], ignore_index=True)
     return dg.daily_extras(st_, da.daily())
 
 
-@st.cache_data(ttl=600, show_spinner=False)
 def _regression(date):
+    return _regression_v(pd.Timestamp(date), da._lv())
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _regression_v(date, v: str):
     d = da.daily()
     return dg.d_regression(d[pd.to_datetime(d["trade_date"]) <= pd.Timestamp(date)], _extras(date))
 
@@ -207,25 +218,122 @@ def research_block(date) -> None:
            + "Mô tả thống kê, không khẳng định quan hệ nhân quả.</div>")
 
 
+TONE = {"pos": ("Tích cực", "#16A34A"), "neg": ("Tiêu cực", "#DC2626"), "neu": ("Trung tính", "#64748B")}
+
+
+def _badge(lab: str, color: str) -> str:
+    return f'<span class="dx-ev" style="background:{color}22;color:{color};border:1px solid {color}66">{esc(lab)}</span>'
+
+
+def _tone(t: str) -> str:
+    lab, c = TONE.get(t, TONE["neu"])
+    return _badge(lab, c)
+
+
+def _hist(date) -> pd.DataFrame:
+    d = da.daily()
+    return d[pd.to_datetime(d["trade_date"]) <= pd.Timestamp(date)].reset_index(drop=True)
+
+
+def _diag_ctx(date) -> dict:
+    from src.analytics import outlook, technical
+    h = _hist(date)
+    vni = h.set_index(pd.to_datetime(h["trade_date"]))["vni"].astype(float)
+    return {"day": h.iloc[-1], "hist": h, "idx_hist": {"VN-Index": vni}, "vol_range": outlook.vol_range(vni),
+            "regime": technical.market_state(h)}
+
+
+def _rows_table(rows) -> str:
+    return table_html(["Khía cạnh", "Số liệu", "Đọc kết quả", "Đánh giá", "Quy tắc"],
+                      [[esc(r["name"]), esc(r["value"]), esc(r["reading"]), _tone(r["tone"]), esc(r["rule"])] for r in rows],
+                      left=(0, 1, 2, 3, 4))
+
+
+@safe_block("kết luận chẩn đoán")
+def summary_block(ctx) -> None:
+    from src.reports.chapters import market_recommendations
+    rec = market_recommendations(ctx)
+    md(f'<div class="dx-concl"><b>{esc(rec[0])}</b></div>')
+    md("".join(f'<div style="font-size:14px;margin:6px 0;line-height:1.55">• {esc(t)}</div>' for t in rec[1:]))
+    st.caption("Khuyến nghị ở cấp THỊ TRƯỜNG, suy ra từ chỉ báo theo quy tắc cố định (xem trang Phương pháp) – không chọn cổ phiếu, "
+               "không phải khuyến nghị mua/bán.")
+
+
+@safe_block("phân tích kỹ thuật")
+def technical_block(ctx) -> None:
+    from plotly.subplots import make_subplots
+    from src.analytics import technical
+    p = pal()
+    t = technical.snapshot(ctx["hist"])
+    md(_rows_table([r for r in ctx["regime"] if r.get("group") == "Kỹ thuật"]))
+    c = t["close_series"].tail(160)
+    m = t["macd_df"].reindex(c.index)
+    r = t["rsi_series"].reindex(c.index)
+    full = t["close_series"]
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, row_heights=[0.56, 0.22, 0.22], vertical_spacing=0.05,
+                        subplot_titles=("VN-Index · MA20 · MA50 · hỗ trợ / kháng cự", "RSI(14) – vùng quá bán 30 / quá mua 70",
+                                        "MACD(12, 26, 9) – histogram = MACD − tín hiệu"))
+    fig.add_scatter(x=c.index, y=c, name="VN-Index", line=dict(color="#E2E8F0" if p["dark"] else "#0F1E33", width=1.8), row=1, col=1)
+    fig.add_scatter(x=c.index, y=full.rolling(20).mean().reindex(c.index), name="MA20", line=dict(color="#F5B341", width=1.2),
+                    row=1, col=1)
+    fig.add_scatter(x=c.index, y=full.rolling(50).mean().reindex(c.index), name="MA50", line=dict(color="#818CF8", width=1.2),
+                    row=1, col=1)
+    for lv in t["supports"][:2]:
+        fig.add_hline(y=lv, line=dict(color="#16A34A", dash="dash", width=1), annotation_text=f"hỗ trợ {fmt.num(lv, 0)}",
+                      annotation_position="bottom left", row=1, col=1)
+    for lv in t["resists"][:2]:
+        fig.add_hline(y=lv, line=dict(color="#DC2626", dash="dash", width=1), annotation_text=f"kháng cự {fmt.num(lv, 0)}",
+                      annotation_position="top left", row=1, col=1)
+    fig.add_scatter(x=r.index, y=r, name="RSI(14)", line=dict(color="#38BDF8", width=1.3), row=2, col=1)
+    for y in (30, 70):
+        fig.add_hline(y=y, line=dict(color=p["muted"], dash="dot", width=1), row=2, col=1)
+    fig.add_bar(x=m.index, y=m["hist"], name="Histogram MACD", opacity=0.55,
+                marker_color=["#16A34A" if v >= 0 else "#DC2626" for v in m["hist"]], row=3, col=1)
+    fig.add_scatter(x=m.index, y=m["macd"], name="MACD", line=dict(color="#F5B341", width=1.2), row=3, col=1)
+    fig.add_scatter(x=m.index, y=m["signal"], name="Đường tín hiệu", line=dict(color="#818CF8", width=1.2), row=3, col=1)
+    plot(charts._lay(fig, p, 600, legend=dict(orientation="h", y=-0.07, x=0), margin=dict(l=8, r=8, t=30, b=8)), "dx_tech_fig")
+
+
+@safe_block("kịch bản")
+def scenario_block(ctx) -> None:
+    from src.analytics import technical
+    t = technical.snapshot(ctx["hist"])
+    md(table_html(["Kịch bản", "Điều kiện", "Ý nghĩa"],
+                  [[f"<b>{esc(s['case'])}</b>", esc(s["cond"]), esc(s["meaning"])]
+                   for s in technical.scenarios(t, ctx["vol_range"])], left=(0, 1, 2)))
+
+
 def render() -> None:
-    header("Chẩn đoán thị trường", "Nối độ vênh, mã dẫn dắt, khối ngoại, nhóm FTSE và danh mục theo dõi thành câu trả lời")
+    header("Chẩn đoán thị trường", "Phân tích kỹ thuật, cấu trúc dòng vốn và kịch bản theo dõi cho VN-Index")
     status_bar.render()
     st.markdown(DX_CSS, unsafe_allow_html=True)
-    md('<div class="ffr-insight"><b>Trang này dùng để làm gì?</b> Trả lời 3 câu hỏi bằng lời thường: (1) VN-Index hôm nay có '
-       'phản ánh đúng số đông cổ phiếu không; (2) mã nào tạo ra biến động và khối ngoại có đứng sau không; (3) điều đó ảnh hưởng gì '
-       'tới các mã bạn theo dõi. Phần dưới tổng hợp kết luận nghiên cứu cho cả giai đoạn FTSE. Đọc từ trên xuống – mỗi bước có '
-       '1–2 con số và một câu kết luận.</div>')
+    md('<div class="ffr-insight"><b>Chẩn đoán thị trường là gì?</b> Đánh giá sức khỏe, xu hướng và dòng tiền của thị trường. Trang '
+       'đi theo thứ tự: <b>(1) phân tích kỹ thuật</b> – xu hướng, cấu trúc đỉnh/đáy, RSI, MACD, khối lượng; <b>(2) cấu trúc thị '
+       'trường và dòng vốn</b> – lan tỏa, mức tập trung, khối ngoại; <b>(3) kịch bản theo dõi</b> với ngưỡng hỗ trợ/kháng cự; '
+       'cuối trang là <b>góc nhìn phiên</b> chi tiết 5 bước. Toàn bộ tính từ dữ liệu SSI FastConnect V3.</div>')
     sess = da.sessions()
     date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"📅 Phiên {d:%d/%m/%Y}", key="dx_date")
-    with W.card("dx_s"):
-        W.title("Phiên hôm nay diễn ra thế nào? – 5 bước", f"Phiên {date:%d/%m/%Y}")
-        session_block(date)
+    ctx = _diag_ctx(date)
+    with W.card("dx_sum"):
+        W.title("Kết luận chẩn đoán và khuyến nghị cho thị trường", f"Phiên {date:%d/%m/%Y} · tổng hợp từ các khối bên dưới")
+        summary_block(ctx)
+    with W.card("dx_tech"):
+        W.title("1 · Phân tích kỹ thuật", "Xu hướng (MA, cấu trúc đỉnh – đáy kiểu Dow) · động lượng (RSI, MACD) · khối lượng xác nhận")
+        technical_block(ctx)
+    with W.card("dx_struct"):
+        W.title("2 · Cấu trúc thị trường và dòng vốn", "Lan tỏa · tập trung đóng góp · khối ngoại · biến động")
+        md(_rows_table([r for r in ctx["regime"] if r.get("group") != "Kỹ thuật"]))
     link_series(date)
+    with W.card("dx_sc"):
+        W.title("3 · Kịch bản theo dõi", "Ngưỡng hỗ trợ/kháng cự từ đỉnh/đáy 20–250 phiên, MA và biên dao động EWMA")
+        scenario_block(ctx)
+    with W.card("dx_s"):
+        W.title("4 · Góc nhìn phiên – chẩn đoán 5 bước",
+                f"Phiên {date:%d/%m/%Y}: lan tỏa → ai tạo biến động → khối ngoại → phản ứng giá → watchlist")
+        session_block(date)
+        x = da.daily().set_index("trade_date").loc[date]
+        md("".join(f'<div style="font-size:14px;margin:6px 0">• {esc(t)}</div>' for t in dg.implications(x)))
     with W.card("dx_r"):
         W.title("Giai đoạn FTSE đã thay đổi thị trường thế nào?",
                 "Mỗi dòng một câu hỏi · Kết luận: Có bằng chứng (p < 0,05) / Bằng chứng yếu (p < 0,10) / Chưa đủ bằng chứng")
         research_block(date)
-    with W.card("dx_i"):
-        W.title("Hàm ý cho nhà đầu tư", "Câu điều kiện mô tả cách đọc chỉ số – không phải khuyến nghị mua/bán")
-        x = da.daily().set_index("trade_date").loc[date]
-        md("".join(f'<div style="font-size:14px;margin:6px 0">• {esc(t)}</div>' for t in dg.implications(x)))

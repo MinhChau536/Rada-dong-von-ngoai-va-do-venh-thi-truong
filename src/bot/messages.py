@@ -51,7 +51,7 @@ LEGEND = ("📖 <b>GIẢI THÍCH KÝ HIỆU</b>\n" + LINE + "\n"
           "🏷 <b>BIỂU TƯỢNG MỤC</b>\n"
           "📈 VN-Index · 🔷 VN30 · 🔶 HNX · 🔸 UPCoM\n"
           "🏆 mạnh nhất · 🐢 yếu nhất · 🥇 xếp hạng ngành\n"
-          "🧩 đánh giá tổng quát (điểm 0–100 theo số tiêu chí đạt)\n"
+          "🧩 trạng thái theo từng chỉ báo (không chấm điểm)\n"
           "🌏 khối ngoại · 🏭 ngành · 🔮 triển vọng thống kê · 🚨 tín hiệu cảnh báo\n\n"
           "📚 <b>THUẬT NGỮ</b>\n"
           "• <b>NN ròng</b>: giá trị khối ngoại mua − bán (tỷ đồng)\n"
@@ -264,7 +264,7 @@ def _live(symbol: str) -> Optional[Dict]:
 
 
 def stock_card(symbol: str, ctx: Optional[Dict] = None):
-    """Thẻ phân tích một mã: giá, hiệu suất so VN-Index, kỹ thuật, khối ngoại, NGÀNH của mã, đánh giá tổng quát /100."""
+    """Thẻ phân tích một mã: giá, hiệu suất so VN-Index, kỹ thuật, khối ngoại, NGÀNH của mã, trạng thái từng chỉ báo."""
     from src.analytics.health import rsi
     s = symbol.upper().strip()
     ctx = _ctx(ctx)
@@ -297,9 +297,6 @@ def stock_card(symbol: str, ctx: Optional[Dict] = None):
               ("Thanh khoản ≥ 10 tỷ/phiên", bool(tv20 >= 10e9)),
               ("Ngành mạnh hơn VN-Index 20 phiên", bool(sec and sec["r20"] > perf[20][1])),
               ("Room ngoại chưa cạn (đã dùng dưới 95%)", bool(U < 0.95))]
-    n_ok = sum(ok for _, ok in checks)
-    score = round(n_ok / len(checks) * 100)
-    verdict = "🟢 TÍCH CỰC" if score >= 70 else "🟡 TRUNG TÍNH" if score >= 45 else "🔴 TIÊU CỰC"
 
     lines = [f"📈 <b>{s}</b> · {escape(sector or '—')} · HOSE", f"📅 Phiên {d:%d/%m/%Y}\n{LINE}"]
     lv = _live(s)
@@ -310,7 +307,6 @@ def stock_card(symbol: str, ctx: Optional[Dict] = None):
               f"• Mở {fmt.price(r['open'])} · Cao {fmt.price(r['high'])} · Thấp {fmt.price(r['low'])}",
               f"• TC {fmt.price(r['ref'])} · Trần {fmt.price(r['ceiling'])} · Sàn {fmt.price(r['floor'])}",
               f"• KL {fmt.num(r['vol'] / 1e6, 2)} tr · GTGD {fmt.bn(r['tv'], 1, False)} · vốn hóa {fmt.bn(cap, 0, False)}",
-              f"• Vùng 52 tuần: {fmt.price(lo52)} – {fmt.price(hi52)} (đang ở {fmt.num(pos52, 0)}% biên độ)",
               "\n📆 <b>HIỆU SUẤT</b> (mã | VN-Index)"]
     for n, lbl in ((5, "1 tuần"), (20, "1 tháng"), (60, "3 tháng"), (250, "1 năm")):
         a, b = perf[n]
@@ -333,9 +329,9 @@ def stock_card(symbol: str, ctx: Optional[Dict] = None):
             pr = peers.sort_values("ret_20d", ascending=False).reset_index(drop=True)
             k = int(pr.index[pr["symbol"] == s][0]) + 1
             lines.append(f"• {s} đứng <b>{k}/{len(pr)}</b> mã trong ngành theo lợi suất 20 phiên")
-    lines.append(f"\n🧩 <b>ĐÁNH GIÁ TỔNG QUÁT: {score}/100 – {verdict}</b> ({n_ok}/{len(checks)} tiêu chí)")
+    lines.append("\n🧩 <b>TRẠNG THÁI THEO TỪNG CHỈ BÁO</b> (mô tả, không chấm điểm)")
     lines += [f"{'🟢' if ok else '🔴'} {escape(lbl)}" for lbl, ok in checks]
-    lines.append("<i>Tiêu chí mô tả trạng thái hiện tại, không phải tín hiệu mua/bán.</i>")
+    lines.append("<i>Mỗi dòng là một phép so sánh số liệu, không phải tín hiệu mua/bán.</i>")
     kb = [[("📈 Biểu đồ ngày", f"chart:{s}"), ("⏱ Trong phiên (1 phút)", f"intra:{s}")],
           [("🏭 Ngành", f"sec:{s}"), ("🔄 Làm mới", f"stock:{s}")],
           [("➖ Bỏ theo dõi", f"rm:{s}") if s in wl else ("➕ Theo dõi", f"add:{s}"), ("👁 Watchlist", "watch")],

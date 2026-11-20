@@ -126,6 +126,10 @@ def main() -> None:
             cid = str(update.effective_chat.id)
             if name == "al":
                 act, _, val = arg.partition(":")
+                if act == "how":
+                    text, rows = monitor.mechanism_text(cid)
+                    await send(update, text, rows)
+                    return
                 if act == "scan":
                     await update.effective_chat.send_action("typing")
                     text, rows = await asyncio.to_thread(monitor.preview, cid)
@@ -242,6 +246,8 @@ def main() -> None:
         await asyncio.sleep(15)
         while True:
             try:
+                from src.data import autoupdate as _au
+                await asyncio.to_thread(_au.start_recorder_if_session)   # bộ ghi WebSocket chết giữa phiên → bật lại
                 for cids, text, rows in await asyncio.to_thread(monitor.scan, sorted(allowed)):
                     for cid in cids:
                         try:

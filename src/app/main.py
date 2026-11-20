@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import pandas as pd
 import streamlit as st  # noqa: E402
 
 from src.app import data_access as da  # noqa: E402
@@ -36,14 +37,14 @@ from src.app.views import (p_chan_doan, p_kiem_chung, p0_ket_noi, p1_tong_quan, 
                            p6_bao_cao, p7_chat_luong, p8_phuong_phap, p9_telegram, p10_backtest)
 
 PAGES = {
-    "Thị trường": [
+    "Diễn biến thị trường": [                 # cùng thứ tự với báo cáo PDF: toàn cảnh → dẫn dắt → dòng vốn ngoại
         st.Page(p1_tong_quan.render, title="Tổng quan thị trường", icon=":material/dashboard:", url_path="tong-quan", default=True),
-        st.Page(p_chan_doan.render, title="Chẩn đoán thị trường", icon=":material/insights:", url_path="chan-doan"),
         st.Page(p2_dan_dat.render, title="Dẫn dắt & độ vênh", icon=":material/stacked_bar_chart:", url_path="dan-dat"),
-    ],
-    "Dòng vốn": [
         st.Page(p3_khoi_ngoai.render, title="Ra-đa khối ngoại", icon=":material/radar:", url_path="khoi-ngoai"),
-        st.Page(p4_su_kien.render, title="Sự kiện FTSE", icon=":material/event:", url_path="su-kien-ftse"),
+    ],
+    "Phân tích chuyên sâu": [
+        st.Page(p4_su_kien.render, title="Nâng hạng FTSE", icon=":material/event:", url_path="su-kien-ftse"),
+        st.Page(p_chan_doan.render, title="Chẩn đoán thị trường", icon=":material/insights:", url_path="chan-doan"),
     ],
     "Danh mục & tiện ích": [
         st.Page(p5_watchlist.render, title="Watchlist Impact", icon=":material/visibility:", url_path="watchlist"),
@@ -125,4 +126,31 @@ def _autoupdate_notice() -> None:
 md('<div class="ffr-acad">🎓 <span><b class="ffr-gold">Đề tài nghiên cứu học thuật</b> – mọi số liệu, biểu đồ và nhận định trên trang chỉ '
    'phục vụ học tập, nghiên cứu; <b class="ffr-gold">không mang tính chất khuyến nghị đầu tư</b>.</span></div>')   # nhắc trên MỌI trang
 _autoupdate_notice()
+
+
+# ── Trong giờ giao dịch: tự làm mới khi bộ ghi dựng xong phiên tạm tính mới (≈ 2 phút/lần, src/data/live.py) ──
+@st.fragment(run_every=20)
+def _live_watch() -> None:
+    from src.common.timeutil import in_session
+    if not in_session() and not st.session_state.get("_live_v"):
+        return
+    v = da._lv()
+    old = st.session_state.get("_live_v")
+    st.session_state["_live_v"] = v
+    if old is None or v == old:
+        return
+    prev_last = st.session_state.get("_live_last")
+    da.clear_cache()
+    new_last = da.sessions()[-1] if da.sessions() else None
+    st.session_state["_live_last"] = new_last
+    if prev_last is not None:                    # ô chọn phiên đang ở phiên mới nhất → chuyển sang phiên mới
+        for k, val in list(st.session_state.items()):
+            if isinstance(val, pd.Timestamp) and val == prev_last and k != "_live_last":
+                del st.session_state[k]
+    st.rerun(scope="app")
+
+
+if "_live_last" not in st.session_state:
+    st.session_state["_live_last"] = da.sessions()[-1] if da.ready() and da.sessions() else None
+_live_watch()
 nav.run()

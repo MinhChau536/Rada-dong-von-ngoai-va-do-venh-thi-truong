@@ -74,8 +74,8 @@ def coverage() -> Dict[str, Optional[str]]:
     """Dữ liệu đang tới phiên nào ở từng tầng + phiên đã đóng cửa gần nhất theo lịch."""
     from src.data.backfill import last_closed_session
     f = lambda d: d.isoformat() if d else None  # noqa: E731
-    return {"raw_stock": f(_max_date("SELECT MAX(trade_date) FROM raw_daily_stock")),
-            "raw_index": f(_max_date("SELECT MAX(trade_date) FROM raw_daily_index")),
+    return {"raw_stock": f(_max_date("SELECT MAX(trade_date) FROM raw_daily_stock WHERE source = 'SSI'")),   # chỉ bản REST
+            "raw_index": f(_max_date("SELECT MAX(trade_date) FROM raw_daily_index WHERE source = 'SSI'")),     # chính thức
             "indicators": f(_max_date("SELECT MAX(trade_date) FROM indicator_daily")),
             "stats_computed": f(_max_date("SELECT MAX(computed_at) FROM pipeline_meta")),
             "expected_last_session": last_closed_session().isoformat()}
@@ -84,7 +84,9 @@ def coverage() -> Dict[str, Optional[str]]:
 def is_behind() -> bool:
     """Kho chỉ báo chưa có phiên đã đóng cửa gần nhất (bỏ qua ngày lễ: so với raw đã tải)."""
     c = coverage()
-    return c["indicators"] is None or c["raw_stock"] is None or c["indicators"] < c["expected_last_session"]
+    # chỉ báo đã có phiên mới nhưng dựng từ bản tạm tính WebSocket (SSI-WS) → vẫn coi là thiếu để tải bản REST chính thức
+    return (c["indicators"] is None or c["raw_stock"] is None or c["indicators"] < c["expected_last_session"]
+            or c["raw_stock"] < c["expected_last_session"])
 
 
 def foreign_gaps(lookback: int = 10) -> List[date]:

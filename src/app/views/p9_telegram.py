@@ -50,7 +50,7 @@ def _message(kind: str, date, symbol: str, profile: str):
         return M.watch(None, ctx, with_buttons=True)
     if kind == "📈 Thẻ phân tích mã":
         return M.stock_card(symbol, ctx)
-    if kind == "💼 Tối ưu danh mục":
+    if kind == "🧭 Chẩn đoán phiên":
         return M.diagnosis(ctx)
     fn = {"📊 Thị trường": M.market, "🏁 Dẫn dắt": M.leaders, "🌏 Khối ngoại": M.foreign, "🔮 Triển vọng": M.outlook}[kind]
     return fn(ctx, with_buttons=True)
@@ -62,7 +62,7 @@ def _phone(text: str, kb, me) -> str:
     dark = p["dark"]
     bg, bubble, btn = ("#0E1621", "#182533", "#2B5278") if dark else ("#D9E7D0", "#FFFFFF", "rgba(80,120,90,.55)")
     fg = "#E9EEF2" if dark else "#0F172A"
-    body = text + f"\n\n<i>— {esc(get('app.bot_disclaimer'))}</i>"
+    body = (text + f"\n\n<i>— {esc(get('app.bot_disclaimer'))}</i>").replace("\n", "<br>")   # markdown bỏ xuống dòng trong HTML
     body = re.sub(r"<code>", '<code style="background:rgba(127,127,127,.18);color:inherit;padding:0 4px;border-radius:4px">', body)
     rows = "".join(
         '<div style="display:flex;gap:4px;margin-top:4px">' + "".join(
@@ -77,11 +77,90 @@ def _phone(text: str, kb, me) -> str:
             f'{rows}</div>')
 
 
+FEATURES = [
+    ("🔎", "Tra cứu bằng nút bấm", "Menu 10 nút: Thị trường, Dẫn dắt, Khối ngoại, Triển vọng, Chẩn đoán phiên, Watchlist, PDF… "
+                                  "Gõ thẳng mã (vd. FPT) để nhận thẻ phân tích mã. Mọi số liệu đọc từ cùng kho chỉ báo với web và PDF."),
+    ("🔔", "Cảnh báo tự động trong phiên", "Quét 2 phút/lần (9:00–15:05) bằng nến 1 phút SSI + luồng WebSocket: VN-Index vượt ±1%/±2%, "
+                                          "biến động 15 phút, vượt biên EWMA 95%, cắt MA50, khối ngoại bất thường, độ rộng lệch; mã "
+                                          "watchlist vượt ngưỡng %, trần/sàn, khối lượng đột biến, phá đỉnh/đáy 20 phiên."),
+    ("🗞", "Bản tin định kỳ", "11:35 bản tin giữa phiên + PDF Market Snapshot; 15:15 Chẩn đoán phiên + Closing Report; sau phiên tín "
+                             "hiệu xu hướng cuối ngày (đổi trạng thái MA50, động lượng, dòng vốn ngoại; mã watchlist cắt MA20, đỉnh/đáy mới)."),
+    ("🛡", "An toàn & chống làm phiền", "Chỉ trả lời chat_id được phép (danh sách trống = không trả lời ai); mỗi tín hiệu gửi tối đa "
+                                       "1 lần/ngày; chặn bấm nút lặp; token đặt trong .env, không có trong mã nguồn."),
+]
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _examples(date) -> list:
+    """Tin mẫu dựng từ dữ liệu SSI thật của phiên đã chọn (không cần token bot)."""
+    ctx = _ctx(date)
+    out = []
+    for title, fn in (("📊 Tin Thị trường", lambda: M.market(ctx, with_buttons=True)),
+                      ("🧭 Chẩn đoán phiên", lambda: M.diagnosis(ctx)),
+                      ("📈 Thẻ phân tích mã VIC", lambda: M.stock_card("VIC", ctx))):
+        try:
+            out.append((title,) + tuple(fn()))
+        except Exception as exc:  # noqa: BLE001
+            out.append((title, f"⚠️ Không dựng được: {esc(exc)}", M.BACK))
+    return out
+
+
+def _intro(me, p) -> None:
+    md('<div class="ffr-insight"><b>Bot Telegram là gì?</b> Phiên bản "bỏ túi" của FTSE Flow Radar: nhà đầu tư không cần mở web '
+       'vẫn nhận được chẩn đoán phiên, cảnh báo biến động và báo cáo PDF ngay trên điện thoại. Bot đọc <b>cùng kho chỉ báo</b> với '
+       'web và PDF (dữ liệu SSI FastConnect V3), nên mọi con số trùng khớp giữa ba kênh. Token bot không nằm trong mã nguồn vì bảo '
+       'mật – người chấm có thể xem đầy đủ nội dung bot gửi qua các <b>tin mẫu dựng từ dữ liệu thật</b> bên dưới, hoặc tự tạo bot '
+       'qua @BotFather rồi điền <code>TELEGRAM_BOT_TOKEN</code>, <code>TELEGRAM_CHAT_IDS</code> vào .env và chạy '
+       '<code>python -m src.bot.bot</code>.</div>')
+    cols = st.columns(4, gap="small")
+    for col, (ico, t, d) in zip(cols, FEATURES):
+        col.markdown(f'<div class="ffr-card" style="height:100%"><div style="font-size:26px">{ico}</div>'
+                     f'<div style="font-weight:800;font-size:15px;margin:4px 0">{esc(t)}</div>'
+                     f'<div style="font-size:13px;line-height:1.5;color:{p["muted"]}">{esc(d)}</div></div>', unsafe_allow_html=True)
+    section("Luồng hoạt động", "Từ SSI tới tin nhắn trên điện thoại")
+    md(table_html(["Bước", "Thành phần", "Việc làm"], [
+        ["1", "SSI FastConnect V3", "REST (số liệu cuối ngày, nến 1 phút) + WebSocket (khớp lệnh, room ngoại, tổng hợp chỉ số)"],
+        ["2", "Kho DuckDB + chuỗi chỉ báo", "Độ vênh, đóng góp điểm, khối ngoại, phân vị, EWMA… (src/analytics/pipeline.py)"],
+        ["3", "Bộ quét cảnh báo (src/bot/monitor.py)", "So từng chỉ báo với ngưỡng theo độ nhạy Thấp/Vừa/Cao; khóa chống trùng theo ngày"],
+        ["4", "Bộ soạn tin (src/bot/messages.py)", "Dựng tin HTML + bàn phím nút bấm; câu mô tả số liệu, không khuyến nghị mua/bán"],
+        ["5", "Telegram Bot API", "Gửi tới chat_id được phép; nhận lệnh/nút bấm và trả lời"],
+    ], left=(1, 2)))
+    section("Tin mẫu dựng từ dữ liệu thật", "Đúng nội dung và nút bấm bot gửi – không cần token")
+    sess = da.sessions()
+    d = sess[-1] if sess else None
+    if d is None:
+        empty("Chưa có dữ liệu.")
+        return
+    ex = _examples(d)
+    cols = st.columns(len(ex), gap="medium")
+    for col, (title, text, kb) in zip(cols, ex):
+        with col:
+            st.markdown(f"**{title}** · phiên {d:%d/%m/%Y}")
+            md(_phone(text, kb, me))
+    al = da.table("alert_log")
+    sent = al[(al["mode"] == "live") & (al["status"] == "sent")].sort_values("ts", ascending=False) if not al.empty else al
+    from src.bot import monitor
+    md(f'<div style="height:10px"></div>')
+    c1, c2 = st.columns([1, 1.2], gap="large")
+    with c1:
+        st.markdown("**🔔 Ví dụ cảnh báo tự động** (đúng định dạng bot gửi khi mã watchlist thủng đáy 20 phiên)")
+        sample = ("👁 <b>VNM – MÃ BẠN ĐANG THEO DÕI</b> · 09:49\n━━━━━━━━━━━━━━━━━━\n⚠️ Thủng <b>đáy 20 phiên</b> (52.000)\n\n"
+                  "• Giá 51.900 (-0,19% so tham chiếu) · KL 0,51 tr")
+        md(_phone(sample, [[("⏱ Trong phiên", "x"), ("📈 Thẻ phân tích", "x")], [("🏭 Ngành", "x"), ("🔔 Cài đặt cảnh báo", "x")]], me))
+        st.caption("Tin thật bot đã gửi phiên 19/11/2026 lúc 09:49 (nhật ký logs/app.log).")
+    with c2:
+        st.markdown("**📘 Cơ chế cảnh báo** – nội dung nút \"Cơ chế cảnh báo\" trong bot")
+        txt, kb = monitor.mechanism_text("preview")
+        md(_phone(txt, kb, me))
+
+
 def render() -> None:
-    header("Bot Telegram", "Radar trong túi: bản tin 11:35 & 15:15, cảnh báo tức thời, tra cứu mã bằng nút bấm",
+    header("Bot Telegram", "Radar trong túi: chẩn đoán phiên, cảnh báo tự động 2 phút/lần, bản tin 11:35 & 15:15, tra cứu mã bằng nút bấm",
            pills=["@" + ((_me() or {}).get("username") or "chưa cấu hình")])
     status_bar.render()
     p = pal()
+    _intro(_me(), p)
+    section("Trạng thái bot trên máy này", "Chỉ có khi đã cấu hình token trong .env và chạy python -m src.bot.bot")
     me, proc = _me(), runtime.bot_process()
     al = da.table("alert_log")
     live = al[al["mode"] == "live"] if not al.empty else al
@@ -119,14 +198,11 @@ def render() -> None:
         if kind == "📈 Thẻ phân tích mã":
             syms = da.symbols()
             sym = st.selectbox("Mã", syms, index=syms.index("FPT") if "FPT" in syms else 0, key="tg_sym")
-        if kind == "💼 Tối ưu danh mục":
-            prof = st.segmented_control("Khẩu vị", ["Thận trọng", "Cân bằng", "Tăng trưởng"], default="Cân bằng",
-                                        key="tg_prof") or "Cân bằng"
         try:
             text, kb = _message(kind, date, sym, prof)
         except Exception as exc:  # noqa: BLE001
             text, kb = f"⚠️ Không dựng được tin: {esc(type(exc).__name__)}: {esc(exc)}", M.BACK
-        st.caption("Thẻ mã, Watchlist, Danh mục và Tình trạng luôn dùng dữ liệu mới nhất; các tin còn lại theo phiên đã chọn.")
+        st.caption("Thẻ mã, Watchlist và Tình trạng luôn dùng dữ liệu mới nhất; các tin còn lại theo phiên đã chọn.")
         b1, b2 = st.columns(2)
         if b1.button("📤 Gửi tin này", type="primary", width="stretch", disabled=not tg.configured()):
             ok = tg.send_message(text, html=True, keyboard=kb)

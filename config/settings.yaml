@@ -143,6 +143,8 @@ ssi:
 stream:
   silence_sec: 120            # luồng im lặng > 120 giây trong phiên → ghi sự cố, SDK tự kết nối lại
   flush_rows: 200
+  live_build: true            # trong phiên: dựng phiên tạm tính từ luồng cả sàn HOSE cho web (src/data/live.py)
+  live_build_sec: 120         # chu kỳ dựng (giây) → độ trễ số liệu trên web ≈ 2–3 phút
 
 # ── Lịch phiên & tác vụ (giờ Việt Nam) ───────────────────────────────────────
 session:

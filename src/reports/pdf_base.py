@@ -273,19 +273,32 @@ class FFRPdf(FPDF):
             self.set_line_width(0.2)
 
         head()
+        line_h = 4.1
         for r in rows:
-            if self.get_y() + row_h > self.page_break_trigger:
+            # ô dài tự xuống dòng; chiều cao hàng = ô nhiều dòng nhất (không để chữ tràn sang cột bên cạnh)
+            n_lines = [len(self.multi_cell(w - 1.2, line_h, str(c), dry_run=True, output="LINES")) or 1
+                       for c, w in zip(r, widths)]
+            h = max(row_h, max(n_lines) * line_h + 1.3)
+            if self.get_y() + h > self.page_break_trigger:
                 self.add_page()
                 head()                          # lặp lại tiêu đề cột khi bảng sang trang
-            self.set_x(x0)
-            for i, (c, w, a) in enumerate(zip(r, widths, aligns)):
+            y = self.get_y()
+            x = x0
+            for i, (c, w, a, nl) in enumerate(zip(r, widths, aligns, n_lines)):
                 txt = str(c)
                 if txt[:1] in "+-" and len(txt) > 1 and txt[1:2].isdigit() and i > 0:
                     self.color("up" if txt[0] == "+" else "down")
                 else:
                     self.color("text")
-                self.cell(w, row_h, txt, align=a, border="B")
-            self.ln()
+                if nl <= 1:
+                    self.set_xy(x, y)
+                    self.cell(w, h, txt, align=a)
+                else:
+                    self.set_xy(x + 0.6, y + 0.65)
+                    self.multi_cell(w - 1.2, line_h, txt, align=a)
+                x += w
+            self.line(x0, y + h, x0 + sum(widths), y + h)
+            self.set_xy(x0, y + h)
         self.color("text")
         self.ln(2)
 
@@ -369,10 +382,13 @@ class FFRPdf(FPDF):
         self.set_y(y + h + 3)
 
     # ── chương có đánh số + mục lục ──────────────────────────────────────────
-    def h1(self, title: str, lead: str = "", keep: float = 95, concl: str = "") -> None:
+    def h1(self, title: str, lead: str = "", keep: float = 95, concl: str = "", new_page: bool = True) -> None:
         """Tiêu đề chương: tự đánh số, ghi vào mục lục (fpdf2 start_section). keep: chỗ trống tối thiểu để tiêu đề
         không nằm lẻ cuối trang tách khỏi nội dung đầu chương."""
-        self.ensure(keep)
+        if new_page and self.get_y() > 40:                   # mỗi chương bắt đầu ở trang mới
+            self.add_page()
+        else:
+            self.ensure(keep)
         self.chapter_no += 1
         label = f"{self.chapter_no}. {title}"
         self.start_section(label, level=0)

@@ -24,6 +24,13 @@ SCHEMA_FILE = Path(__file__).with_name("schema.sql")
 
 
 _RESTORE_LOCK = threading.Lock()
+_PATH_LOCKS: dict = {}
+_PATH_LOCKS_GUARD = threading.Lock()
+
+
+def _path_lock(p: str) -> threading.RLock:
+    with _PATH_LOCKS_GUARD:
+        return _PATH_LOCKS.setdefault(str(Path(p).resolve()).lower(), threading.RLock())
 
 
 def _auto_restore() -> None:
@@ -46,22 +53,27 @@ def connect(read_only: bool = False, path: Optional[Path] = None, retries: int =
     if path is None:
         _auto_restore()
     p = str(path or db_path())
-    last_exc: Optional[Exception] = None
-    for i in range(retries):
+    lock = _path_lock(p)
+    lock.acquire()                     # trong MỘT tiến trình: các luồng mở kho lần lượt (DuckDB không cho mở cùng tệp
+    try:                               # đồng thời với cấu hình khác nhau – đọc/ghi – ở hai luồng)
+        last_exc: Optional[Exception] = None
+        for i in range(retries):
+            try:
+                if read_only and not Path(p).exists():
+                    read_only = False  # lần đầu: tạo tệp
+                con = duckdb.connect(p, read_only=read_only)
+                break
+            except (duckdb.IOException, duckdb.ConnectionException) as exc:  # tệp đang bị khóa → chờ ngắn rồi thử lại
+                last_exc = exc
+                time.sleep(0.3 * (i + 1))
+        else:
+            raise last_exc  # type: ignore[misc]
         try:
-            if read_only and not Path(p).exists():
-                read_only = False  # lần đầu: tạo tệp
-            con = duckdb.connect(p, read_only=read_only)
-            break
-        except duckdb.IOException as exc:  # tệp đang bị tiến trình khác khóa → chờ ngắn rồi thử lại
-            last_exc = exc
-            time.sleep(0.3 * (i + 1))
-    else:
-        raise last_exc  # type: ignore[misc]
-    try:
-        yield con
+            yield con
+        finally:
+            con.close()
     finally:
-        con.close()
+        lock.release()
 
 
 def init_schema(path: Optional[Path] = None) -> None:

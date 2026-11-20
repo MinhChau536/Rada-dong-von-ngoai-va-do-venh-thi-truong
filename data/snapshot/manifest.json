@@ -1,9 +1,9 @@
 {
- "created": "2026-11-19 09:26:25",
+ "created": "2026-11-20 12:47:48",
  "source": "SSI FastConnect V3",
  "tables": {
   "alert_log": {
-   "rows": 680,
+   "rows": 676,
    "files": [
     "data_0.parquet"
    ]
@@ -27,7 +27,7 @@
    ]
   },
   "data_quality_log": {
-   "rows": 6943,
+   "rows": 7012,
    "files": [
     "data_0.parquet"
    ]
@@ -45,7 +45,7 @@
    ]
   },
   "dim_securities": {
-   "rows": 3419,
+   "rows": 4318,
    "files": [
     "data_0.parquet"
    ]
@@ -75,44 +75,44 @@
    ]
   },
   "fact_daily_index": {
-   "rows": 10835,
+   "rows": 10839,
    "files": [
     "data_0.parquet"
    ]
   },
   "fact_daily_stock": {
-   "rows": 1014836,
+   "rows": 1015215,
    "files": [
     "data_0.parquet",
     "data_1.parquet"
    ]
   },
   "fact_intraday": {
-   "rows": 47022,
+   "rows": 48450,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_daily": {
-   "rows": 2716,
+   "rows": 2717,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_group_daily": {
-   "rows": 74436,
+   "rows": 81949,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_intraday": {
-   "rows": 1584,
+   "rows": 1632,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_stock_daily": {
-   "rows": 1014836,
+   "rows": 1015215,
    "files": [
     "data_0.parquet",
     "data_1.parquet",
@@ -126,13 +126,13 @@
    ]
   },
   "ingest_log": {
-   "rows": 31065,
+   "rows": 33021,
    "files": [
     "data_0.parquet"
    ]
   },
   "leaders_daily": {
-   "rows": 26919,
+   "rows": 26929,
    "files": [
     "data_0.parquet"
    ]
@@ -144,38 +144,38 @@
    ]
   },
   "raw_daily_index": {
-   "rows": 10835,
+   "rows": 10839,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_daily_stock": {
-   "rows": 1014836,
+   "rows": 1015215,
    "files": [
     "data_0.parquet",
     "data_1.parquet"
    ]
   },
   "raw_index_components": {
-   "rows": 121,
+   "rows": 151,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_intraday": {
-   "rows": 47022,
+   "rows": 48450,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_securities": {
-   "rows": 3525,
+   "rows": 4451,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_stream": {
-   "rows": 1450,
+   "rows": 33432,
    "files": [
     "data_0.parquet"
    ]
@@ -187,7 +187,7 @@
    ]
   },
   "reports_log": {
-   "rows": 37,
+   "rows": 49,
    "files": [
     "data_0.parquet"
    ]
@@ -199,7 +199,7 @@
    ]
   },
   "source_events": {
-   "rows": 0,
+   "rows": 1,
    "files": [
     "data_0.parquet"
    ]
@@ -229,5 +229,5 @@
    ]
   }
  },
- "last_session": "2026-11-18 00:00:00"
+ "last_session": "2026-11-19 00:00:00"
 }

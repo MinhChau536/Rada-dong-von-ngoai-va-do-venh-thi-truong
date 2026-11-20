@@ -115,10 +115,42 @@ def _read_csv(name: str) -> pd.DataFrame:
     return pd.read_csv(p, dtype=str, keep_default_na=False, encoding="utf-8")
 
 
+_ICB_CACHE: Dict[str, Dict[str, str]] = {}
+
+
+def ssi_icb_sectors() -> Dict[str, str]:
+    """{mã: nhóm ngành} từ mã ICB trong danh mục chứng khoán SSI (bảng raw_securities, bản mới nhất mỗi mã)."""
+    if "map" in _ICB_CACHE:
+        return _ICB_CACHE["map"]
+    out: Dict[str, str] = {}
+    try:
+        from src.data import database as db
+        from src.finance.sectors import sector_of
+        if db.table_exists("raw_securities"):
+            r = db.query_df("SELECT symbol, json_extract_string(arg_max(payload, as_of), '$.icbCode') AS icb "
+                            "FROM raw_securities GROUP BY symbol")
+            out = {str(s).upper(): sector_of(c) for s, c in zip(r["symbol"], r["icb"]) if c}
+    except Exception:  # noqa: BLE001 – kho chưa có danh mục SSI
+        out = {}
+    if out:
+        _ICB_CACHE["map"] = out
+    return out
+
+
 def stock_groups() -> pd.DataFrame:
+    """Nhóm cổ phiếu: NGÀNH theo ICB của SSI (ssi_icb_sectors); HỌ cổ phiếu (Vingroup…) là định nghĩa nhóm nghiên cứu
+    trong config/stock_groups.csv; foreign_limit chỉ là giới hạn sở hữu theo quy định, dùng dự phòng khi SSI không trả room."""
     df = _read_csv("stock_groups.csv")
-    if df.empty:
+    icb = ssi_icb_sectors()
+    if df.empty and not icb:
         return df
+    if df.empty:
+        df = pd.DataFrame(columns=["symbol", "family", "foreign_limit", "in_vn30"])
+    extra = sorted(set(icb) - set(df["symbol"]))
+    if extra:
+        df = pd.concat([df, pd.DataFrame({"symbol": extra, "family": "", "foreign_limit": "", "in_vn30": "0"})],
+                       ignore_index=True)
+    df["sector"] = df["symbol"].map(icb).fillna("Khác") if icb else df.get("sector", "Khác")
     df["foreign_limit"] = pd.to_numeric(df["foreign_limit"], errors="coerce").fillna(0.49)
     df["in_vn30"] = df["in_vn30"].astype(str).str.strip().isin(["1", "true", "True"])
     df["family"] = df["family"].replace("", None)

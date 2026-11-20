@@ -36,6 +36,8 @@ def start_if_behind() -> Dict:
         from src.data import updater
         if running():
             return {"state": "running"}
+        if recorder_alive():                     # bộ ghi luồng đang chạy: nó tự chốt phiên lúc 15:05 và tự lấy bản REST
+            return {"state": "recorder"}
         cov = updater.coverage()
         if not updater.is_behind():
             return {"state": "up_to_date", "last": cov["indicators"]}
@@ -73,6 +75,41 @@ def _in_session(now=None) -> bool:
     return get("session.recorder_start", "08:55") <= t < get("session.recorder_end", "15:05")
 
 
+def _pid_alive(pid: int) -> bool:
+    """Tiến trình còn sống không (không gửi tín hiệu nào tới tiến trình)."""
+    if pid <= 0:
+        return False
+    if sys.platform == "win32":
+        import ctypes
+        k = ctypes.windll.kernel32
+        h = k.OpenProcess(0x1000, False, pid)            # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        ok = k.GetExitCodeProcess(h, ctypes.byref(code))
+        k.CloseHandle(h)
+        return bool(ok) and code.value == 259            # STILL_ACTIVE
+    import os
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def recorder_alive() -> bool:
+    """Có bộ ghi luồng (Task Scheduler / app / bot) đang chạy trong ngày hôm nay."""
+    from src.common.timeutil import now_vn
+    try:
+        if not REC_LOCK.exists():
+            return False
+        txt = REC_LOCK.read_text(encoding="utf-8")
+        pid = int(txt.split("pid=")[-1]) if "pid=" in txt else 0
+        return txt.startswith(now_vn().strftime("%Y-%m-%d")) and _pid_alive(pid)
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def start_recorder_if_session() -> Dict:
     """Bật `python -m src.data.recorder_ssi` (ghi tới hết phiên) nếu đang trong giờ và hôm nay chưa có bộ ghi nào chạy."""
     from src.common.timeutil import now_vn
@@ -82,8 +119,13 @@ def start_recorder_if_session() -> Dict:
         return {"state": "off_hours"}
     today = now_vn().strftime("%Y-%m-%d")
     try:
-        if REC_LOCK.exists() and REC_LOCK.read_text(encoding="utf-8").startswith(today):
-            return {"state": "running"}
+        if REC_LOCK.exists():
+            txt = REC_LOCK.read_text(encoding="utf-8")
+            pid = int(txt.split("pid=")[-1]) if "pid=" in txt else 0
+            if txt.startswith(today) and _pid_alive(pid):
+                return {"state": "running", "pid": pid}
+            if txt.startswith(today):
+                log.warning("Bộ ghi luồng (pid %s) đã dừng giữa phiên – bật lại", pid)
         REC_LOG.parent.mkdir(parents=True, exist_ok=True)
         fh = open(REC_LOG, "a", encoding="utf-8")
         proc = subprocess.Popen([sys.executable, "-m", "src.data.recorder_ssi"], cwd=str(ROOT), stdout=fh,

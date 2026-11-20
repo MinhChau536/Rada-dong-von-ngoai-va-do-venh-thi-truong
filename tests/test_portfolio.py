@@ -125,7 +125,7 @@ def test_stock_and_sector_cards_are_valid_telegram_html(demo_db):
         assert not [t for t in re.findall(r"<[^>]*>?", text) if not allowed.fullmatch(t)], fn.__name__
         assert len(text) < 4000 and all(len(c.encode()) <= 64 for row in kb for _, c in row)
     text, kb = M.stock_card(sym, ctx)
-    assert "ĐÁNH GIÁ TỔNG QUÁT" in text and any(c == f"intra:{sym}" for row in kb for _, c in row)
+    assert "TRẠNG THÁI THEO TỪNG CHỈ BÁO" in text and "/100" not in text and any(c == f"intra:{sym}" for row in kb for _, c in row)
 
 
 def test_intraday_summary_and_chart():

@@ -1,11 +1,6 @@
 # FTSE Flow Radar 3.2
 
-**Radar dòng vốn ngoại và độ vênh thị trường chứng khoán Việt Nam trong giai đoạn nâng hạng FTSE** – ứng dụng web Streamlit, báo cáo PDF và bot Telegram, dữ liệu thật từ **SSI FastConnect V3** (REST + WebSocket).
-
-Đồ án cá nhân cuối kỳ · Học phần *Gói phần mềm ứng dụng cho tài chính 1* · Trường ĐH Kinh tế – Luật (ĐHQG-HCM) · Sinh viên: Lê Ngọc Minh Châu.
-
-> 🎓 **Đề tài nghiên cứu học thuật – không mang tính chất khuyến nghị đầu tư.** Hệ thống chỉ đọc dữ liệu thị trường, **không đặt, sửa hay hủy lệnh**. Lời nhắc này xuất hiện trên mọi trang web, mọi trang PDF và mọi tin nhắn bot.
-
+**Radar dòng vốn ngoại và độ vênh thị trường chứng khoán Việt Nam trong giai đoạn nâng hạng FTSE** – ứng dụng web Streamlit, báo cáo PDF và bot Telegram, dữ liệu thật từ **SSI FastConnect V3** (REST + WebSocket).Đề tài nghiên cứu học thuật – không mang tính chất khuyến nghị đầu tư.
 ## Mục lục
 
 1. [Tóm tắt](#1-tóm-tắt)

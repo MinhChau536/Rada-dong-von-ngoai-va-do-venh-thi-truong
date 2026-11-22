@@ -18,6 +18,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 os.chdir(ROOT)
+for _s in (sys.stdout, sys.stderr):          # console Windows mặc định (cp1252) không in được tiếng Việt
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        pass
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")   # tiến trình con (bot, streamlit) cũng in UTF-8
 sys.path.insert(0, str(ROOT))
 
 

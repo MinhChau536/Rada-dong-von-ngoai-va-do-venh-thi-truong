@@ -128,7 +128,11 @@ Lần chạy đầu, kho `data/ffr.duckdb` được **tự dựng từ `data/sna
 
 ### 6.1. Một lệnh: web + bot
 
+Mỗi lần mở lại dự án (đã cài đặt ở mục 4):
+
 ```powershell
+cd "đường\dẫn\tới\Rada-dong-von-ngoai-va-do-venh-thi-truong"
+.venv\Scripts\activate
 python run.py              # thêm --no-bot nếu chỉ cần web, --port 8502 để đổi cổng
 ```
 

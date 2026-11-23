@@ -106,7 +106,10 @@ def render(embedded: bool = False) -> None:
     for col, (job, (label, _)) in zip(c, JOBS.items()):
         with col:
             md(f'<div class="ffr-kpi"><small>{esc(label)}</small><b style="font-size:15px">{_job_state(job)}</b></div>')
-            if st.button("Chạy", key=f"run_{job}", width="stretch", disabled=_job_state(job) == "đang chạy…"):
+            from src.common.config import public_mode
+            if st.button("Chạy", key=f"run_{job}", width="stretch",
+                         disabled=public_mode() or _job_state(job) == "đang chạy…",
+                         help="Bản công khai chỉ xem – chạy tác vụ trên máy tác giả" if public_mode() else None):
                 _start(job)
                 st.rerun()
     md(f'<div style="font-size:12.5px;color:{p["muted"]};margin-top:8px">Thứ tự: <b>Tải dữ liệu SSI</b> (≈ 10–20 phút lần '

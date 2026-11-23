@@ -53,6 +53,12 @@ def env(name: str, default: Optional[str] = None) -> Optional[str]:
     return os.getenv(name, default)
 
 
+def public_mode() -> bool:
+    """Bản công khai (Streamlit Community Cloud hoặc FFR_PUBLIC=1): chỉ xem – khóa các thao tác ghi dữ liệu,
+    gửi Telegram, chạy tác vụ nền. Streamlit Cloud đặt mã nguồn tại /mount/src."""
+    return os.getenv("FFR_PUBLIC", "") == "1" or os.path.isdir("/mount/src")
+
+
 def _real(v: Optional[str]) -> bool:
     return bool(v) and not str(v).startswith("your_")
 

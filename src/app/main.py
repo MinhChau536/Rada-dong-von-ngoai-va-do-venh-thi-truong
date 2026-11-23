@@ -125,7 +125,15 @@ def _autoupdate_notice() -> None:
 
 md('<div class="ffr-acad">🎓 <span><b class="ffr-gold">Đề tài nghiên cứu học thuật</b> – mọi số liệu, biểu đồ và nhận định trên trang chỉ '
    'phục vụ học tập, nghiên cứu; <b class="ffr-gold">không mang tính chất khuyến nghị đầu tư</b>.</span></div>')   # nhắc trên MỌI trang
-_autoupdate_notice()
+from src.common.config import public_mode  # noqa: E402
+if public_mode():
+    _last = da.sessions()[-1] if da.ready() and da.sessions() else None
+    md('<div class="ffr-note">🌐 <span><b>Bản công khai (chỉ xem)</b> – dữ liệu SSI FastConnect tới phiên '
+       f'<b>{_last:%d/%m/%Y}</b>, cập nhật khi tác giả đẩy dữ liệu mới lên GitHub. Số liệu trực tiếp trong phiên, '
+       'bot Telegram và các tác vụ tải dữ liệu chạy trên máy tác giả.</span></div>' if _last is not None else
+       '<div class="ffr-note">🌐 <span><b>Bản công khai (chỉ xem)</b></span></div>')
+else:
+    _autoupdate_notice()
 
 
 # ── Trong giờ giao dịch: tự làm mới khi bộ ghi dựng xong phiên tạm tính mới (≈ 2 phút/lần, src/data/live.py) ──

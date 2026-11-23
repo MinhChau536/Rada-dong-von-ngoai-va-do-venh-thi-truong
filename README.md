@@ -174,6 +174,14 @@ python tools/schedule_windows.py --remove # gỡ
 
 Máy tắt nhiều ngày: lần chạy sau tự lấp mọi phiên còn thiếu qua REST. Luồng WebSocket không tải bù được.
 
+### 6.4. Bản công khai trên Internet (Streamlit Community Cloud)
+
+1. Đăng nhập [share.streamlit.io](https://share.streamlit.io) bằng tài khoản GitHub → **Create app** → *Deploy a public app from GitHub*.
+2. Repository `MinhChau536/Rada-dong-von-ngoai-va-do-venh-thi-truong`, branch `main`, main file `src/app/main.py`; *Advanced settings* → Python **3.12**. Không cần nhập secrets.
+3. Bấm **Deploy** – lần đầu khoảng 5–10 phút (cài thư viện + dựng kho từ `data/snapshot/`).
+
+Bản công khai tự bật **chế độ chỉ xem**: khóa sửa watchlist, gửi Telegram và các tác vụ tải dữ liệu; dữ liệu là gói `data/snapshot/` trên GitHub. Mỗi lần `git push`, Streamlit Cloud **tự cập nhật** – không phải deploy lại. Muốn đưa dữ liệu mới lên bản công khai: `python -m tools.snapshot export` rồi commit và push (mỗi lần thêm ~270 MB vào lịch sử git, nên chỉ làm khi cần, ví dụ trước khi nộp bài). Số liệu trực tiếp trong phiên và bot Telegram chỉ chạy trên máy cá nhân.
+
 ---
 
 ## 7. Dữ liệu SSI FastConnect V3

@@ -21,6 +21,12 @@ from src.finance.domestic import ABSORB_LABELS
 
 
 @st.cache_data(ttl=60, show_spinner=False)
+
+def _ro() -> bool:
+    """Bản công khai: danh mục theo dõi chỉ xem (không cho khách sửa danh mục dùng chung)."""
+    from src.common.config import public_mode
+    return public_mode()
+
 def profiles(symbols: tuple, date) -> dict:
     d = pd.Timestamp(date)
     day = da.daily()
@@ -49,7 +55,7 @@ def manage(wl: List[str]) -> None:
         for i in range(0, len(wl), per):
             cols = st.columns(per)
             for c, s in zip(cols, wl[i:i + per]):
-                if c.button(f"✕  {s}", key=f"p5_del_{s}", width="stretch", help=f"Xóa {s} khỏi danh mục"):
+                if c.button(f"✕  {s}", key=f"p5_del_{s}", width="stretch", help=f"Xóa {s} khỏi danh mục", disabled=_ro()):
                     wi.remove(s)
                     st.toast(f"Đã xóa {s}")
                     _changed()
@@ -59,7 +65,7 @@ def manage(wl: List[str]) -> None:
     c1, c2, c3, c4 = st.columns([3, 1, 1, 1.2], vertical_alignment="bottom")
     new = c1.multiselect("Thêm mã", [s for s in da.symbols() if s not in wl], key=f"p5_add_many_{ver}",
                          placeholder="Chọn một hoặc nhiều mã HOSE…")
-    if c2.button("➕ Thêm", width="stretch", disabled=not new, key="p5_add_btn"):
+    if c2.button("➕ Thêm", width="stretch", disabled=not new or _ro(), key="p5_add_btn"):
         room = mx - len(wl)
         for s in new[:max(room, 0)]:
             wi.add(s, "người dùng thêm")
@@ -68,7 +74,7 @@ def manage(wl: List[str]) -> None:
         st.session_state["p5_form_ver"] = ver + 1
         _changed()
     confirm = c4.checkbox("Xác nhận xóa hết", key=f"p5_confirm_clear_{ver}")
-    if c3.button("🗑 Xóa hết", width="stretch", disabled=not (wl and confirm), key="p5_clear_btn"):
+    if c3.button("🗑 Xóa hết", width="stretch", disabled=not (wl and confirm) or _ro(), key="p5_clear_btn"):
         wi.clear()
         st.session_state["p5_form_ver"] = ver + 1
         _changed()
@@ -76,7 +82,7 @@ def manage(wl: List[str]) -> None:
     if sel and sel not in wl:
         a, b, c = st.columns([4, 1.2, 1.2], vertical_alignment="center")
         a.info(f"Đang xem tạm **{sel}** (mở từ ô tra cứu / trang Tổng quan) – chưa thuộc danh mục.")
-        if b.button(f"➕ Thêm {sel}", width="stretch", key="p5_add_sel"):
+        if b.button(f"➕ Thêm {sel}", width="stretch", key="p5_add_sel", disabled=_ro()):
             wi.add(sel, "người dùng thêm")
             _changed()
         if c.button("✕ Bỏ xem tạm", width="stretch", key="p5_drop_sel"):
@@ -311,7 +317,7 @@ def symbol_tab(pick: str, data, date) -> None:
 
 def render() -> None:
     header("Watchlist Impact", "Trạng thái thị trường và dòng vốn đã tác động thế nào đến từng mã bạn theo dõi · "
-           "tối ưu danh mục theo khẩu vị rủi ro")
+           "mức phơi nhiễm với nhóm dẫn dắt")
     status_bar.render()
     st.markdown(WL_CSS, unsafe_allow_html=True)
     wi.ensure_default()

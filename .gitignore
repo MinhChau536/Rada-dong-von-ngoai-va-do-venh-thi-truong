@@ -34,3 +34,6 @@ venv/
 # Kết quả kiểm thử sinh tự động (giữ test_summary.csv và pytest_output.txt làm bằng chứng)
 docs/coverage.json
 docs/pytest_junit.xml
+# Báo cáo môn học (có thông tin cá nhân) – không đẩy lên GitHub công khai
+report/*.docx
+report/*.pdf

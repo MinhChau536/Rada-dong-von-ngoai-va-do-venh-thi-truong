@@ -1,9 +1,9 @@
 {
- "created": "2026-11-20 17:02:08",
+ "created": "2026-11-23 23:23:24",
  "source": "SSI FastConnect V3",
  "tables": {
   "alert_log": {
-   "rows": 676,
+   "rows": 664,
    "files": [
     "data_0.parquet"
    ]
@@ -27,7 +27,7 @@
    ]
   },
   "data_quality_log": {
-   "rows": 7115,
+   "rows": 7151,
    "files": [
     "data_0.parquet"
    ]
@@ -45,7 +45,7 @@
    ]
   },
   "dim_securities": {
-   "rows": 5230,
+   "rows": 6145,
    "files": [
     "data_0.parquet"
    ]
@@ -75,44 +75,44 @@
    ]
   },
   "fact_daily_index": {
-   "rows": 10843,
+   "rows": 10847,
    "files": [
     "data_0.parquet"
    ]
   },
   "fact_daily_stock": {
-   "rows": 1015595,
+   "rows": 1015963,
    "files": [
     "data_0.parquet",
     "data_1.parquet"
    ]
   },
   "fact_intraday": {
-   "rows": 49877,
+   "rows": 51305,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_daily": {
-   "rows": 2718,
+   "rows": 2719,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_group_daily": {
-   "rows": 81979,
+   "rows": 82009,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_intraday": {
-   "rows": 1680,
+   "rows": 1728,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_stock_daily": {
-   "rows": 1015595,
+   "rows": 1015963,
    "files": [
     "data_0.parquet",
     "data_1.parquet",
@@ -126,13 +126,13 @@
    ]
   },
   "ingest_log": {
-   "rows": 33889,
+   "rows": 34409,
    "files": [
     "data_0.parquet"
    ]
   },
   "leaders_daily": {
-   "rows": 26939,
+   "rows": 26949,
    "files": [
     "data_0.parquet"
    ]
@@ -144,32 +144,32 @@
    ]
   },
   "raw_daily_index": {
-   "rows": 10843,
+   "rows": 10847,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_daily_stock": {
-   "rows": 1015595,
+   "rows": 1015963,
    "files": [
     "data_0.parquet",
     "data_1.parquet"
    ]
   },
   "raw_index_components": {
-   "rows": 181,
+   "rows": 211,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_intraday": {
-   "rows": 49877,
+   "rows": 51305,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_securities": {
-   "rows": 5390,
+   "rows": 6332,
    "files": [
     "data_0.parquet"
    ]
@@ -187,7 +187,7 @@
    ]
   },
   "reports_log": {
-   "rows": 49,
+   "rows": 50,
    "files": [
     "data_0.parquet"
    ]
@@ -229,5 +229,5 @@
    ]
   }
  },
- "last_session": "2026-11-20 00:00:00"
+ "last_session": "2026-11-23 00:00:00"
 }

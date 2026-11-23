@@ -37,3 +37,5 @@ docs/pytest_junit.xml
 # Báo cáo môn học (có thông tin cá nhân) – không đẩy lên GitHub công khai
 report/*.docx
 report/*.pdf
+*BaoCao*.docx
+*BaoCao*.pdf

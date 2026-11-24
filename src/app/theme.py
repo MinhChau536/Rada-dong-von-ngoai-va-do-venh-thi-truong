@@ -99,7 +99,9 @@ section[data-testid="stSidebar"] {{ background:linear-gradient(180deg,{p['sideba
   width:330px !important; min-width:330px !important; border-right:1px solid rgba(245,179,65,.14); }}
 section[data-testid="stSidebar"] * {{ color:{p['sidebar_text']}; }}
 /* thanh menu cuộn được bằng chuột, bàn di và kéo thanh cuộn – thanh cuộn luôn hiện */
-[data-testid="stSidebarContent"] {{ overflow-y:auto !important; overscroll-behavior:contain;
+[data-testid="stAppViewContainer"] {{ height:100vh !important; height:100dvh !important; max-height:100dvh !important; }}
+section[data-testid="stSidebar"] {{ height:100vh !important; height:100dvh !important; max-height:100dvh !important; }}
+[data-testid="stSidebarContent"] {{ height:100% !important; max-height:100dvh !important; overflow-y:auto !important; overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(245,179,65,.55) rgba(255,255,255,.06); }}
 [data-testid="stSidebarContent"]::-webkit-scrollbar {{ width:9px; }}
 [data-testid="stSidebarContent"]::-webkit-scrollbar-track {{ background:rgba(255,255,255,.05); }}

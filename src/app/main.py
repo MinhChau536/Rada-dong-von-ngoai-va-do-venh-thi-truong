@@ -129,8 +129,8 @@ from src.common.config import public_mode  # noqa: E402
 if public_mode():
     _last = da.sessions()[-1] if da.ready() and da.sessions() else None
     md('<div class="ffr-note">🌐 <span><b>Bản công khai (chỉ xem)</b> – dữ liệu SSI FastConnect tới phiên '
-       f'<b>{_last:%d/%m/%Y}</b>, cập nhật khi tác giả đẩy dữ liệu mới lên GitHub. Số liệu trực tiếp trong phiên, '
-       'bot Telegram và các tác vụ tải dữ liệu chạy trên máy tác giả.</span></div>' if _last is not None else
+       f'<b>{_last:%d/%m/%Y}</b>. Bản này chỉ hiển thị dữ liệu đã lưu; số liệu trực tiếp trong phiên, bot Telegram và '
+       'các tác vụ tải dữ liệu chạy khi cài đặt dự án trên máy (xem README).</span></div>' if _last is not None else
        '<div class="ffr-note">🌐 <span><b>Bản công khai (chỉ xem)</b></span></div>')
 else:
     _autoupdate_notice()

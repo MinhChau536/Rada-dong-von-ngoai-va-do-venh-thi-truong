@@ -109,7 +109,7 @@ def render(embedded: bool = False) -> None:
             from src.common.config import public_mode
             if st.button("Chạy", key=f"run_{job}", width="stretch",
                          disabled=public_mode() or _job_state(job) == "đang chạy…",
-                         help="Bản công khai chỉ xem – chạy tác vụ trên máy tác giả" if public_mode() else None):
+                         help="Bản công khai chỉ xem – chạy tác vụ khi cài đặt dự án trên máy" if public_mode() else None):
                 _start(job)
                 st.rerun()
     md(f'<div style="font-size:12.5px;color:{p["muted"]};margin-top:8px">Thứ tự: <b>Tải dữ liệu SSI</b> (≈ 10–20 phút lần '

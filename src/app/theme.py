@@ -98,6 +98,13 @@ h1,h2,h3,h4,p,span,div,label {{ font-family:{FONT}; }}
 section[data-testid="stSidebar"] {{ background:linear-gradient(180deg,{p['sidebar']} 0%,#0B1A30 100%) !important;
   width:330px !important; min-width:330px !important; border-right:1px solid rgba(245,179,65,.14); }}
 section[data-testid="stSidebar"] * {{ color:{p['sidebar_text']}; }}
+/* thanh menu cuộn được bằng chuột, bàn di và kéo thanh cuộn – thanh cuộn luôn hiện */
+[data-testid="stSidebarContent"] {{ overflow-y:auto !important; overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(245,179,65,.55) rgba(255,255,255,.06); }}
+[data-testid="stSidebarContent"]::-webkit-scrollbar {{ width:9px; }}
+[data-testid="stSidebarContent"]::-webkit-scrollbar-track {{ background:rgba(255,255,255,.05); }}
+[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb {{ background:rgba(245,179,65,.55); border-radius:8px; }}
+[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb:hover {{ background:rgba(245,179,65,.85); }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ border-radius:8px; padding:4px 10px; border-left:3px solid transparent; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{ background:rgba(20,184,166,.10); }}
 section[data-testid="stSidebar"] input {{ background:rgba(255,255,255,.06) !important; color:#E6EDF5 !important;

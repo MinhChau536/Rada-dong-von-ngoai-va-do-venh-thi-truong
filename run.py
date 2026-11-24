@@ -31,7 +31,7 @@ def say(msg: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def refresh_data(wait_live_sec: int = 300) -> None:
+def refresh_data(wait_live_sec: int = 60) -> None:
     from src.common.config import ssi_configured
     from src.common.timeutil import in_session
     from src.data import autoupdate, updater
@@ -39,16 +39,23 @@ def refresh_data(wait_live_sec: int = 300) -> None:
         say("Chưa có SSI_API_KEY / SSI_API_SECRET trong .env – mở web ở chế độ kết nối dữ liệu.")
         return
     if in_session():
-        say("Đang trong giờ giao dịch – bật bộ ghi luồng WebSocket SSI và chờ số liệu trong phiên…")
-        autoupdate.start_recorder_if_session()
         from src.data import live
+        autoupdate.start_recorder_if_session()           # vẫn bật bộ ghi: SSI phát dữ liệu lúc nào thì dựng lúc đó
+        if live.meta():
+            say("Đã có số liệu trong phiên – mở web.")
+            return
+        if not live.ssi_has_today():
+            say("SSI FastConnect CHƯA phát dữ liệu phiên hôm nay (masterdata, nến 1 phút đều trống) – có thể là ngày "
+                "nghỉ hoặc SSI đang gián đoạn. Mở web ngay với phiên gần nhất; bộ ghi chạy nền, có số liệu thì web tự làm mới.")
+            return
+        say(f"Đang trong giờ giao dịch – bộ ghi luồng WebSocket SSI đang dựng phiên tạm tính (tối đa {wait_live_sec} giây)…")
         t0 = time.time()
         while time.time() - t0 < wait_live_sec:
             m = live.meta()
             if m:
                 say(f"Đã có số liệu trong phiên tới {str(m.get('last_tick'))[-8:]} ({int(m['n_traded'])} mã có khớp lệnh).")
                 return
-            time.sleep(5)
+            time.sleep(3)
         say("Chưa dựng xong phiên tạm tính – web vẫn mở và tự làm mới khi có số liệu.")
         return
     if autoupdate.recorder_alive():

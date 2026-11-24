@@ -206,7 +206,7 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
                      len(INDEXES), len(syms), len(hose))
             last_flush = time.monotonic()
             every = float(get("stream.live_build_sec", 120))
-            last_build = time.monotonic() - every + 45          # lượt dựng đầu tiên sau ~45 giây nhận luồng
+            last_build = time.monotonic() - every + 20          # lượt dựng đầu tiên sau ~20 giây nhận luồng
             builder: Optional[threading.Thread] = None
 
             def _build(force: bool = False) -> None:

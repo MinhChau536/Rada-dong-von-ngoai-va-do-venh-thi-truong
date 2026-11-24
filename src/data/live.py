@@ -35,7 +35,9 @@ log = get_logger(__name__)
 LIVE_DB = abs_path("data/live.duckdb")
 TMP_DB = abs_path("data/live_build.duckdb")
 HIST_SESSIONS = 320          # đủ cho phân vị 250 phiên, z 60 phiên, MA50
-BOOT_PER_BUILD = 400         # khởi động giữa phiên: bù mọi mã thiếu bằng nến 1 phút (≈ 0,25 giây/mã)
+BOOT_PER_BUILD = 400         # khởi động giữa phiên: bù mọi mã thiếu bằng nến 1 phút
+BOOT_WORKERS = 6             # tải song song (≈ 400 mã trong ~25 giây thay vì ~100 giây)
+PROBE_SYMBOLS = ("VCB", "FPT", "HPG", "SSI", "MWG")
 INDEX_MAP = {"VNINDEX": "VNINDEX", "VN30": "VN30", "HNXINDEX": "HNXINDEX", "HNXUPCOMINDEX": "UPCOMINDEX",
              "UPCOMINDEX": "UPCOMINDEX"}
 
@@ -59,6 +61,28 @@ def _master(today: date) -> Dict[str, Dict]:
     return _MASTER["rows"]
 
 
+_PROBE: Dict = {}
+
+
+def ssi_has_today(today: Optional[date] = None, ttl: int = 120) -> bool:
+    """SSI đã phát dữ liệu của phiên hôm nay chưa? (masterdata hôm nay hoặc nến 1 phút của vài mã thanh khoản cao).
+
+    Ngày nghỉ / SSI chưa phát dữ liệu → False: khỏi chờ phiên tạm tính vô ích. Kết quả lưu ttl giây."""
+    today = today or now_vn().date()
+    if _PROBE.get("date") == today and time.time() - _PROBE.get("t", 0) < ttl:
+        return _PROBE["ok"]
+    ok = False
+    try:
+        from src.bot.intraday import _client
+        ok = bool(_client().master_data(today, today))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Kiểm tra masterdata hôm nay lỗi: %s", exc)
+    if not ok:
+        ok = any(not _bars(s, today).empty for s in PROBE_SYMBOLS)
+    _PROBE.update(date=today, t=time.time(), ok=ok)
+    return ok
+
+
 def _bars(symbol: str, today: date) -> pd.DataFrame:
     from src.bot.intraday import _bars as b
     try:
@@ -72,8 +96,12 @@ def _bootstrap(symbols: list, today: date) -> None:
     """Mã chưa có tin trade: lấy nến 1 phút REST của hôm nay (mỗi lượt tối đa BOOT_PER_BUILD mã)."""
     now = time.time()
     todo = [s for s in symbols if s not in _BOOT or ("close" not in _BOOT[s] and now - _BOOT[s].get("_t", 0) > 600)][:BOOT_PER_BUILD]
-    for s in todo:
-        df = _bars(s, today)
+    if not todo:
+        return
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=BOOT_WORKERS) as ex:     # máy khách SSI tự giữ nhịp 0,06 giây/yêu cầu
+        got = dict(zip(todo, ex.map(lambda s: _bars(s, today), todo)))
+    for s, df in got.items():
         if df.empty:
             _BOOT[s] = {"_t": now}      # chưa khớp lệnh nào → thử lại sau 10 phút
             continue

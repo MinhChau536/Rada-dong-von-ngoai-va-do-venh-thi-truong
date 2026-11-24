@@ -80,6 +80,18 @@ def css(mode: str = "light") -> str:
 html, body, [data-testid="stAppViewContainer"], .stApp {{ background:{p['bg']} !important; color:{p['text']};
   font-family:{FONT}; }}
 [data-testid="stHeader"] {{ background:transparent; }}
+/* nút mở lại thanh bên khi đã thu gọn – luôn nổi rõ ở góc trái trên */
+[data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"] {{ z-index:1000020 !important;
+  visibility:visible !important; opacity:1 !important; display:flex !important; }}
+[data-testid="stSidebarCollapsedControl"] button, button[data-testid="stExpandSidebarButton"],
+[data-testid="stExpandSidebarButton"] button {{ background:#F5B341 !important; color:#0F1E33 !important;
+  border:1px solid #B7791F !important; border-radius:10px !important; width:40px !important; height:40px !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.35) !important; opacity:1 !important; visibility:visible !important; }}
+[data-testid="stSidebarCollapsedControl"] svg, [data-testid="stExpandSidebarButton"] svg,
+[data-testid="stSidebarCollapsedControl"] span, [data-testid="stExpandSidebarButton"] span {{ color:#0F1E33 !important;
+  fill:#0F1E33 !important; }}
+[data-testid="stSidebarCollapsedControl"] button:hover, button[data-testid="stExpandSidebarButton"]:hover {{
+  background:#FFD27A !important; }}
 .block-container {{ padding:1.1rem 2.2rem 3rem !important; max-width:100% !important; }}
 h1,h2,h3,h4,p,span,div,label {{ font-family:{FONT}; }}
 /* ── thanh bên ── */

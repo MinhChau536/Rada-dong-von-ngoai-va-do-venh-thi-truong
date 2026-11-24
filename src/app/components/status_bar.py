@@ -26,6 +26,16 @@ def source_state() -> dict:
     return out
 
 
+@st.cache_data(ttl=120, show_spinner=False)
+def _ssi_today() -> bool:
+    """SSI đã phát dữ liệu phiên hôm nay chưa (kiểm tra 2 phút/lần)."""
+    try:
+        from src.data import live
+        return live.ssi_has_today()
+    except Exception:  # noqa: BLE001
+        return True
+
+
 def active_source() -> str:
     return "SSI FastConnect V3"
 
@@ -73,8 +83,15 @@ def render(session_date=None, show_session: bool = True) -> None:
             st.info("Đang xem một phiên cũ. Chọn phiên hôm nay ở ô bên trái để xem số liệu trực tiếp.")
         return
     if in_session():
-        st.info("⏳ Chưa có phiên tạm tính của hôm nay – bộ ghi WebSocket SSI đang khởi động và dựng số liệu "
-                "(lần đầu mất khoảng 1–2 phút). Trang tự làm mới khi có số liệu; trong lúc chờ đang hiển thị phiên gần nhất.")
+        from src.common.config import public_mode
+        if public_mode():                        # bản công khai không chạy bộ ghi – chỉ có dữ liệu đã đẩy lên
+            return
+        if not _ssi_today():
+            st.info("ℹ️ SSI FastConnect chưa phát dữ liệu phiên hôm nay (masterdata và nến 1 phút đều trống – ngày nghỉ "
+                    "hoặc SSI gián đoạn). Đang hiển thị phiên gần nhất; bộ ghi vẫn chạy nền và trang tự làm mới khi SSI có số liệu.")
+            return
+        st.info("⏳ Chưa có phiên tạm tính của hôm nay – bộ ghi WebSocket SSI đang dựng số liệu "
+                "(lần đầu khoảng 30–60 giây). Trang tự làm mới khi có số liệu; trong lúc chờ đang hiển thị phiên gần nhất.")
         return
     # Dữ liệu cũ > 5 phút trong phiên → cảnh báo vàng
     if in_session():

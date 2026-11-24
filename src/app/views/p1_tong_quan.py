@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from src.analytics import narrative
 from src.analytics.health import market_health, period_returns
 from src.analytics.watchlist_impact import get_watchlist
 from src.app import data_access as da
@@ -314,6 +313,13 @@ def render_footer() -> None:
        f'<span>{get("app.disclaimer")}</span></div>')
 
 
+def _scope(name: str, sub: str) -> None:
+    """Nhãn phạm vi dữ liệu giữa các khối (toàn thị trường / riêng HOSE)."""
+    md(f'<div style="display:flex;align-items:baseline;gap:10px;margin:18px 2px 6px;border-bottom:1px solid var(--ffr-border);'
+       f'padding-bottom:4px"><span style="font-weight:800;font-size:15px;letter-spacing:.06em;text-transform:uppercase;'
+       f'color:var(--ffr-accent)">{name}</span><span style="font-size:12.5px;color:var(--ffr-muted)">{sub}</span></div>')
+
+
 def render() -> None:
     sess = da.sessions()
     header("Tổng quan thị trường", "Chỉ số, độ vênh, mã dẫn dắt, dòng vốn khối ngoại và tác động lên danh mục theo dõi")
@@ -325,52 +331,43 @@ def render() -> None:
         status_bar.render(date, show_session=False)        # ô chọn phiên bên trái đã hiện phiên
     about.render_intro()
     data, D = load_overview(date), W.load(date)
-    # 1. Bốn chỉ số + chất lượng xu hướng + kết luận phiên
+    # ── A. TOÀN THỊ TRƯỜNG (4 chỉ số: HOSE, HNX, UPCoM) ──
+    _scope("Toàn thị trường", "VN-Index · VN30 · HNX-Index · UPCoM-Index")
     render_index_cards(data)
+    with W.card("p1_chart"):
+        W.title("Diễn biến chỉ số", "Nến ngày · MA20 · MA50 · khối lượng · mốc FTSE · chọn chỉ số bên dưới")
+        render_index_chart(data)
+    with W.card("p1_perf"):
+        W.title("So sánh hiệu suất", "Chuẩn hóa = 100 · 4 chỉ số và mã đang chọn · 1 tuần đến 1 năm")
+        render_performance(data)
+    # ── B. SÀN HOSE: tổng quát → chi tiết ──
+    _scope("Sàn HOSE – từ tổng quát đến chi tiết", "Các bảng dưới đây tính trên cổ phiếu niêm yết HOSE")
     with W.card("p1_trend"):
-        W.title("Chất lượng xu hướng hôm nay", "Chỉ số có phản ánh số đông cổ phiếu không")
+        W.title("Chất lượng xu hướng hôm nay", "HOSE · chỉ số có phản ánh số đông cổ phiếu không")
         render_trend_quality(data)
         render_conclusion(data)
-    # 2. Diễn biến chỉ số
-    with W.card("p1_chart"):
-        W.title("Diễn biến chỉ số", "Nến ngày · MA20 · MA50 · khối lượng · mốc FTSE")
-        render_index_chart(data)
-    # 3. Thanh khoản · độ rộng · ngành
     for i, (col, fn) in enumerate(zip(st.columns(3, gap="small"), (W.w_liquidity, W.w_breadth, W.w_sectors))):
         with col, W.card(f"p1_r3{i}"):
             fn(D)
-    # 4. Top 10 cổ phiếu · nhóm dẫn dắt
-    c1, c2 = st.columns([1.15, 1], gap="small")
-    with c1, W.card("p1_top"):
-        W.w_top(D)
-    with c2, W.card("p1_lead"):
+    # Ai kéo chỉ số · ai mua bán ròng – đặt cạnh nhau
+    c1, c2 = st.columns(2, gap="small")
+    with c1, W.card("p1_lead"):
         W.w_leaders(D)
         if st.button("Xem chi tiết dẫn dắt & độ vênh →", key="p1_to_p2"):
             st.switch_page(st.session_state["_pages"]["dan-dat"])
-    # 5. Khối ngoại
-    c1, c2 = st.columns([1, 2], gap="small")
-    with c1, W.card("p1_ft"):
+    with c2, W.card("p1_ft"):
         W.w_foreign_top(D)
-    with c2, W.card("p1_ff"):
-        W.w_foreign_flow(D)
-        s = data["stock"][data["stock"]["is_valid"]]
-        md(f'<div class="ffr-insight" style="margin-top:8px">{esc(narrative.foreign_summary(data["day"], s.nlargest(5, "net_flow"), s.nsmallest(5, "net_flow")))}</div>')
         if st.button("Xem Ra-đa khối ngoại →", key="p1_to_p3"):
             st.switch_page(st.session_state["_pages"]["khoi-ngoai"])
-    # 6. Bản đồ thị trường + độ rộng theo rổ
+    with W.card("p1_movers"):
+        W.title("Cổ phiếu nổi bật phiên", "HOSE · GTGD ≥ 10 tỷ · tăng/giảm mạnh, GTGD lớn, đột biến khối lượng, đóng góp điểm")
+        render_movers(data)
     with W.card("p1_map"):
         W.w_map(D)
     with W.card("p1_basket"):
         W.title("Độ rộng theo rổ cổ phiếu", "HOSE toàn sàn · VN30 · nhóm FTSE · đối chứng · watchlist")
         render_breadth(data)
-    # 7. Cổ phiếu nổi bật + so sánh hiệu suất
-    with W.card("p1_movers"):
-        W.title("Cổ phiếu nổi bật – bảng chi tiết", "HOSE · GTGD ≥ 10 tỷ · khối lượng, khối ngoại, hiệu suất 20 phiên")
-        render_movers(data)
-    with W.card("p1_perf"):
-        W.title("So sánh hiệu suất", "Chuẩn hóa = 100 · chỉ số và mã đang chọn")
-        render_performance(data)
-    # 8. Danh mục theo dõi – cuối trang
+    # ── C. Danh mục của người dùng ──
     with W.card("p1_wl"):
         W.title("Danh mục theo dõi hôm nay", "Kết nối trang Watchlist Impact · bấm để xem hồ sơ")
         render_watchlist_strip(data)

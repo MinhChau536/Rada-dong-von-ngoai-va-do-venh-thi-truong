@@ -120,7 +120,7 @@ def render() -> None:
         with c:
             md(h)
     D = W.load(date)
-    c1, c2 = st.columns([1, 2], gap="small")
+    c1, c2 = st.columns([1.25, 2], gap="small")
     with c1, W.card("p3_top"):
         W.w_foreign_top(D)
     with c2, W.card("p3_flow"):

@@ -180,8 +180,8 @@ def w_leaders(D: Dict) -> None:
 @safe_block("khối ngoại")
 def w_foreign_top(D: Dict) -> None:
     v = D["stock"][D["stock"]["is_valid"]]
-    title("Khối ngoại")
-    t1, t2, t3 = st.tabs(["NN mua ròng", "NN bán ròng", "Theo nhóm"])
+    title("Top 10 mã khối ngoại mua/bán ròng", f"HOSE · phiên {D['date']:%d/%m/%Y} · giá trị ròng = mua − bán (tỷ đồng)")
+    t1, t2, t3 = st.tabs(["Mua ròng", "Bán ròng", "Theo nhóm"])
     for tab, df in ((t1, v[v["net_flow"] > 0].nlargest(10, "net_flow")), (t2, v[v["net_flow"] < 0].nsmallest(10, "net_flow"))):
         with tab:
             rows = [[str(i), _sym(r.symbol), _chg(r.net_flow, fmt.num(r.net_flow / 1e9, 2, True)), fmt.price(r.close),
@@ -281,7 +281,7 @@ def w_breadth(D: Dict) -> None:
 @safe_block("ngành")
 def w_sectors(D: Dict) -> None:
     p = pal()
-    title("Biến động ngành", "Lợi suất theo vốn hóa")
+    title("Biến động ngành", "HOSE · lợi suất bình quân theo vốn hóa")
     dates = sorted(D["range"]["trade_date"].unique())
     tabs = st.tabs(["1 phiên", "5 phiên", "20 phiên"])
     for tab, n in zip(tabs, (1, 5, 20)):

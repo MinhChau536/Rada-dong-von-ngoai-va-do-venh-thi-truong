@@ -57,6 +57,8 @@ _LIVE_SEEN = {"v": None}
 
 def _refresh_live(snapshot) -> bool:
     """Dựng lại data/live.duckdb khi GitHub có bản số liệu trong phiên mới hơn (data/live_snapshot/)."""
+    if not hasattr(snapshot, "live_stamp"):            # module cũ còn trong bộ nhớ – lần chạy sau sẽ nạp lại
+        return False
     cur = snapshot.live_stamp()
     if not cur or _LIVE_SEEN["v"] == cur:
         return False

@@ -20,7 +20,8 @@ DELTA_REL = "data/snapshot_delta"
 
 
 def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+    # tắt gc/maintenance tự động cho lệnh của bộ đẩy: repack ~300 MB làm commit treo hàng phút giữa phiên
+    return subprocess.run(["git", "-c", "gc.auto=0", "-c", "maintenance.auto=false", *args], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
                           errors="replace", timeout=300, check=check)
 
 

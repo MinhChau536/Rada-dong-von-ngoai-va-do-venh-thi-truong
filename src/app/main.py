@@ -16,10 +16,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # Streamlit Cloud kéo code mới sau mỗi git push nhưng giữ module cũ trong bộ nhớ → lỗi import hàm mới (vd. session_label).
-# Khi bất kỳ tệp .py trong src/ đổi, bỏ toàn bộ module src.* đã nạp để lần chạy này nạp lại bản mới.
-_SRC_SIG = max((f.stat().st_mtime for f in (ROOT / "src").rglob("*.py")), default=0.0)
+# Khi bất kỳ tệp .py trong src/ hoặc tools/ đổi, bỏ toàn bộ module src.*, tools.* đã nạp để lần chạy này nạp lại bản mới.
+_SRC_SIG = max((f.stat().st_mtime for d in ("src", "tools") for f in (ROOT / d).rglob("*.py")), default=0.0)
 if getattr(sys, "_ffr_src_sig", _SRC_SIG) != _SRC_SIG:
-    for _m in [m for m in sys.modules if m == "src" or m.startswith("src.")]:
+    for _m in [m for m in sys.modules if m in ("src", "tools") or m.startswith(("src.", "tools."))]:
         sys.modules.pop(_m, None)
 sys._ffr_src_sig = _SRC_SIG
 

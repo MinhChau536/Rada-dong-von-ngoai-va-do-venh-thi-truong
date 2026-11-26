@@ -14,7 +14,7 @@ from src.app import data_access as da
 from src.app.components import charts, status_bar
 from src.app.components.states import empty, no_data_reason, safe_block
 from src.app.components.ui import colored, esc, header, kpi, md, pal, plot, section, soft_chip, table_html
-from src.app.theme import ABSORB_COLORS, WEB_SESSION_COLORS as SESSION_COLORS, color_for
+from src.app.theme import ABSORB_COLORS, SESSION_COLORS, color_for
 from src.common import fmt
 from src.finance.breadth import SESSION_TYPES
 from src.finance.domestic import ABSORB_LABELS
@@ -49,13 +49,13 @@ def manage(wl: List[str]) -> None:
     from src.common.config import get
     p = pal()
     mx = int(get("watchlist_max", 15))
-    md(f'<div class="ffr-lbl" style="margin:4px 0 6px">Danh mục đang theo dõi · {len(wl)}/{mx} mã · bấm vào mã để xóa</div>')
+    md(f'<div class="ffr-lbl" style="margin:4px 0 6px">Danh mục đang theo dõi · {len(wl)}/{mx} mã · bấm ✕ để xóa</div>')
     if wl:
         per = 8
         for i in range(0, len(wl), per):
             cols = st.columns(per)
             for c, s in zip(cols, wl[i:i + per]):
-                if c.button(s, icon=":material/close:", key=f"p5_del_{s}", width="stretch", help=f"Xóa {s} khỏi danh mục", disabled=_ro()):
+                if c.button(f"✕  {s}", key=f"p5_del_{s}", width="stretch", help=f"Xóa {s} khỏi danh mục", disabled=_ro()):
                     wi.remove(s)
                     st.toast(f"Đã xóa {s}")
                     _changed()
@@ -65,7 +65,7 @@ def manage(wl: List[str]) -> None:
     c1, c2, c3, c4 = st.columns([3, 1, 1, 1.2], vertical_alignment="bottom")
     new = c1.multiselect("Thêm mã", [s for s in da.symbols() if s not in wl], key=f"p5_add_many_{ver}",
                          placeholder="Chọn một hoặc nhiều mã HOSE…")
-    if c2.button("Thêm", icon=":material/add:", width="stretch", disabled=not new or _ro(), key="p5_add_btn"):
+    if c2.button("➕ Thêm", width="stretch", disabled=not new or _ro(), key="p5_add_btn"):
         room = mx - len(wl)
         for s in new[:max(room, 0)]:
             wi.add(s, "người dùng thêm")
@@ -74,7 +74,7 @@ def manage(wl: List[str]) -> None:
         st.session_state["p5_form_ver"] = ver + 1
         _changed()
     confirm = c4.checkbox("Xác nhận xóa hết", key=f"p5_confirm_clear_{ver}")
-    if c3.button("Xóa hết", icon=":material/delete:", width="stretch", disabled=not (wl and confirm) or _ro(), key="p5_clear_btn"):
+    if c3.button("🗑 Xóa hết", width="stretch", disabled=not (wl and confirm) or _ro(), key="p5_clear_btn"):
         wi.clear()
         st.session_state["p5_form_ver"] = ver + 1
         _changed()
@@ -82,10 +82,10 @@ def manage(wl: List[str]) -> None:
     if sel and sel not in wl:
         a, b, c = st.columns([4, 1.2, 1.2], vertical_alignment="center")
         a.info(f"Đang xem tạm **{sel}** (mở từ ô tra cứu / trang Tổng quan) – chưa thuộc danh mục.")
-        if b.button(f"Thêm {sel}", icon=":material/add:", width="stretch", key="p5_add_sel", disabled=_ro()):
+        if b.button(f"➕ Thêm {sel}", width="stretch", key="p5_add_sel", disabled=_ro()):
             wi.add(sel, "người dùng thêm")
             _changed()
-        if c.button("Bỏ xem tạm", icon=":material/close:", width="stretch", key="p5_drop_sel"):
+        if c.button("✕ Bỏ xem tạm", width="stretch", key="p5_drop_sel"):
             st.session_state.pop("selected_symbol", None)
             st.rerun()
     st.caption("Danh mục lưu trong DuckDB (bảng watchlist) – giữ nguyên sau khi tải lại trang và dùng chung với bot Telegram. "
@@ -146,7 +146,7 @@ def company_card(ci: dict) -> None:
     if "close" not in ci:
         empty(no_data_reason(None, ci["symbol"]))
         return
-    tags = "".join(f'<span class="ffr-chip" style="background:var(--ffr-soft);color:var(--ffr-accent);border:1px solid var(--ffr-border);margin-right:6px">{esc(g)}</span>'
+    tags = "".join(f'<span class="ffr-chip" style="background:rgba(245,179,65,.14);color:#F5B341;margin-right:6px">{esc(g)}</span>'
                    for g in ci["groups"] + ([f"Họ {ci['family']}"] if ci.get("family") else []))
     years = (pd.Timestamp.today() - ci["first"]).days / 365.25
     since = (f"từ {ci['first']:%d/%m/%Y}" + (" (đầu kho dữ liệu)" if ci["first_is_data"] else "")
@@ -169,17 +169,18 @@ def company_card(ci: dict) -> None:
 
 
 WL_CSS = """<style>
-.wl-co { border:1px solid var(--ffr-border); border-radius:16px; padding:20px 24px; margin:6px 0 16px; background:var(--ffr-card); }
+.wl-co { border:1px solid rgba(245,179,65,.28); border-radius:16px; padding:18px 20px; margin:6px 0 14px;
+  background:linear-gradient(120deg,rgba(245,179,65,.10),rgba(15,30,51,.0) 55%); }
 .wl-co-head { display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; }
-.wl-co-sym { font-size:30px; font-weight:600; color:var(--ffr-accent); letter-spacing:-.01em; line-height:1; }
+.wl-co-sym { font-size:30px; font-weight:800; color:#F5B341; letter-spacing:.5px; line-height:1; }
 .wl-co-name { font-size:16px; font-weight:700; margin-top:6px; }
-.wl-co-meta, .wl-co-note { font-size:13px; color:var(--ffr-muted); margin-top:4px; }
+.wl-co-meta, .wl-co-note { font-size:12.5px; opacity:.75; margin-top:4px; }
 .wl-co-note { margin-top:10px; font-style:italic; }
-.wl-tile small { font-size:13px; font-weight:500; color:var(--ffr-muted); }
+.wl-tile small { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; opacity:.7; }
 .wl-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-top:14px; }
 .wl-tile { border:1px solid rgba(148,163,184,.18); border-radius:12px; padding:10px 12px; background:rgba(255,255,255,.03); }
-.wl-tile b { display:block; font-size:19px; font-weight:600; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
-.wl-tile span { font-size:13px; opacity:.7; }
+.wl-tile b { display:block; font-size:19px; font-weight:800; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
+.wl-tile span { font-size:11.5px; opacity:.7; }
 </style>"""
 
 
@@ -292,7 +293,7 @@ def symbol_tab(pick: str, data, date) -> None:
         fig = go.Figure()
         fig.add_bar(x=f["trade_date"], y=f["net_flow"] / 1e9, name="Ròng", marker_color=[color_for(v, p) for v in f["net_flow"].fillna(0)])
         fig.add_scatter(x=f["trade_date"], y=(f["net_flow"].fillna(0) / 1e9).cumsum(), name="Lũy kế", yaxis="y2",
-                        line=dict(color=p["text"], width=2))
+                        line=dict(color="#F5B341", width=2))
         plot(charts._lay(fig, p, 340, legend=dict(orientation="h", y=-0.15, x=0),
                          yaxis2=dict(overlaying="y", side="right", showgrid=False), margin=dict(l=8, r=8, t=10, b=8)), f"p5_ff_{pick}")
     c1, c2 = st.columns([1.4, 1], gap="medium")
@@ -331,7 +332,7 @@ def render() -> None:
         empty("Danh mục trống – thêm mã ở mục Quản lý.")
         return
     data = profiles(tuple(syms), date)
-    tabs = st.tabs(["Toàn danh mục"] + [f"{s}" + (" (xem tạm)" if s not in wl else "") for s in syms])
+    tabs = st.tabs(["📊 Toàn danh mục"] + [f"🔎 {s}" + (" (xem tạm)" if s not in wl else "") for s in syms])
     with tabs[0]:
         overview_tab(syms, wl, data, date)
     for t, s in zip(tabs[1:], syms):

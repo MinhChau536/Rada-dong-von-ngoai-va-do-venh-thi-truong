@@ -99,7 +99,7 @@ def render() -> None:
     if not rb.empty:
         md(table_html(["Biến thể", "Mốc", "Nhóm", "Kiểm định", "Ước lượng", "p", "Có ý nghĩa 5%"],
                       [[r.variant, r.event_id, r.group, r.test, fmt.num(r.estimate, 4, True), fmt.num(r.p_value, 4),
-                        "Có" if r.sig_5pct else "—"] for r in rb.itertuples()], left=(0, 1, 2, 3)))
+                        "✅" if r.sig_5pct else "—"] for r in rb.itertuples()], left=(0, 1, 2, 3)))
     section("Kết quả kiểm thử tự động")
     ts = ROOT / "docs" / "test_summary.csv"
     if ts.exists():

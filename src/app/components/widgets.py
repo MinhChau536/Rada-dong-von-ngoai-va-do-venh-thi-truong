@@ -217,10 +217,10 @@ def w_foreign_flow(D: Dict) -> None:
     t1, t2 = st.tabs(["Mua – bán – ròng", "Lũy kế 60 phiên"])
     with t1:
         fig = go.Figure()
-        fig.add_bar(x=h["trade_date"], y=h["FB_total"] / 1e9, name="Giá trị mua", marker_color=p["buy"])
+        fig.add_bar(x=h["trade_date"], y=h["FB_total"] / 1e9, name="Giá trị mua", marker_color="#1E3A5F")
         fig.add_bar(x=h["trade_date"], y=-h["FS_total"] / 1e9, name="Giá trị bán", marker_color=p["down"])
         fig.add_scatter(x=h["trade_date"], y=h["NF_total"] / 1e9, name="Ròng", mode="lines+markers",
-                        line=dict(color=p["text"], width=2))
+                        line=dict(color="#F59E0B", width=2, shape="spline"))
         _fig(fig, 300, dates=True, barmode="relative", showlegend=True, legend=dict(orientation="h", y=-0.18, x=0))
         plot(fig, "tc_ff")
         x = D["day"]
@@ -250,7 +250,7 @@ def w_liquidity(D: Dict) -> None:
     fig = go.Figure()
     fig.add_bar(x=h["trade_date"], y=tv, marker_color=[p["up"] if r >= 0 else p["down"] for r in h["r_vni_pct"].fillna(0)],
                 opacity=.75, name="GTGD")
-    fig.add_scatter(x=h["trade_date"], y=ma, name="TB 20 phiên", line=dict(color=p["neutral_line"], width=2))
+    fig.add_scatter(x=h["trade_date"], y=ma, name="TB 20 phiên", line=dict(color="#F59E0B", width=2))
     _fig(fig, 300, dates=True, showlegend=True, legend=dict(orientation="h", y=-0.18, x=0))
     plot(fig, "tc_liq")
     last, avg = tv.iloc[-1], ma.iloc[-1]
@@ -291,8 +291,9 @@ def w_sectors(D: Dict) -> None:
                                    marker_color=[color_for(v, p) for v in s["ret_pct"]],
                                    text=[fmt.pct(v, 1) for v in s["ret_pct"]], textposition="outside", cliponaxis=False,
                                    hovertemplate="%{y}: %{x:+.2f}%<extra></extra>"))
-            _fig(fig, 340)
-            fig.update_yaxes(tickfont=dict(size=12))
+            fig.update_traces(textfont_size=12.5)
+            _fig(fig, 430)
+            fig.update_yaxes(tickfont=dict(size=13))
             span = float(s["ret_pct"].abs().max() or 1) * 1.35
             fig.update_xaxes(range=[-span, span])
             plot(fig, f"tc_sec{n}")

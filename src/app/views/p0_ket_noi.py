@@ -84,7 +84,7 @@ def render(embedded: bool = False) -> None:
     cols = st.columns(max(1, len(diag)))
     for col, (name, r) in zip(cols, diag.items()):
         with col:
-            hint = f'<div style="font-size:13px;color:{p["muted"]};margin-top:8px">→ {esc(r["hint"])}</div>' if r["hint"] else ""
+            hint = f'<div style="font-size:12px;color:{p["muted"]};margin-top:8px">→ {esc(r["hint"])}</div>' if r["hint"] else ""
             md(f'<div class="ffr-card"><div style="display:flex;justify-content:space-between;align-items:center">'
                f'<b style="font-size:15px">{esc(name)}</b>{_badge(r["ok"])}</div>'
                f'<div style="font-size:13px;margin-top:8px">{esc(r["detail"])}</div>{hint}</div>')

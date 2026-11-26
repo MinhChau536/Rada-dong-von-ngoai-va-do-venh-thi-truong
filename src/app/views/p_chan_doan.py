@@ -19,7 +19,7 @@ from src.app import data_access as da
 from src.app.components import charts, status_bar
 from src.app.components import widgets as W
 from src.app.components.states import empty, safe_block
-from src.app.components.ui import chip_ink, colored, esc, header, md, pal, plot, table_html
+from src.app.components.ui import colored, esc, header, md, pal, plot, table_html
 from src.app.theme import color_for
 from src.common import fmt
 from src.finance.breadth import session_label, session_type_label  # noqa: F401
@@ -57,15 +57,15 @@ def _step(no: int, title: str, value_html: str, sentence: str) -> str:
 
 
 DX_CSS = """<style>
-.dx-step { display:flex; gap:16px; border:1px solid var(--ffr-border); border-radius:12px; padding:16px; margin-bottom:12px;
-  background:var(--ffr-card); }
-.dx-no { flex:0 0 34px; height:34px; border-radius:50%; background:var(--ffr-soft); color:var(--ffr-accent); border:1px solid var(--ffr-border); font-weight:600; display:flex;
+.dx-step { display:flex; gap:14px; border:1px solid rgba(148,163,184,.18); border-radius:14px; padding:12px 14px; margin-bottom:10px;
+  background:rgba(255,255,255,.025); }
+.dx-no { flex:0 0 34px; height:34px; border-radius:50%; background:#F5B341; color:#1A1206; font-weight:800; display:flex;
   align-items:center; justify-content:center; font-size:16px; }
-.dx-q { font-weight:600; font-size:15.5px; }
+.dx-q { font-weight:700; font-size:15px; }
 .dx-v { display:flex; gap:18px; flex-wrap:wrap; margin:4px 0; font-size:13px; opacity:.9; }
 .dx-v b { font-size:18px; font-variant-numeric:tabular-nums; }
-.dx-a { font-size:14.5px; line-height:1.6; }
-.dx-ev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:13px; font-weight:600; white-space:nowrap; }
+.dx-a { font-size:13.5px; line-height:1.55; }
+.dx-ev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
 .dx-concl { border:none; border-left:3px solid var(--ffr-accent); border-radius:0; padding:4px 0 4px 14px;
   font-size:15px; line-height:1.6; margin:4px 0 12px; background:transparent; }
 </style>"""
@@ -75,7 +75,7 @@ EV_COLORS = {"Có bằng chứng": "#16A34A", "Bằng chứng yếu": "#D97706",
 
 def _ev(label: str) -> str:
     c = EV_COLORS.get(label, "#64748B")
-    return f'<span class="dx-ev" style="background:{c}22;color:{chip_ink(c)};border:1px solid {c}66">{label}</span>'
+    return f'<span class="dx-ev" style="background:{c}22;color:{c};border:1px solid {c}66">{label}</span>'
 
 
 @safe_block("chẩn đoán phiên")
@@ -146,18 +146,18 @@ def link_series(date) -> None:
                 "Mỗi cột = % điểm biến động VN-Index đến từ các mã khối ngoại mua/bán ròng ≥ 5% GTGD cùng chiều giá · "
                 "đường chấm = mức thường lệ (trung vị 250 phiên) · quan hệ cùng phiên, không phải nhân quả")
         fig = go.Figure()
-        fig.add_bar(x=ex["trade_date"], y=ex["codir"] * 100, marker_color=p["accent"], name="% biến động có khối ngoại cùng chiều")
+        fig.add_bar(x=ex["trade_date"], y=ex["codir"] * 100, marker_color="rgba(56,189,248,.45)", name="% biến động có khối ngoại cùng chiều")
         fig.add_scatter(x=ex["trade_date"], y=(ex["codir"] * 100).rolling(10).mean(), name="Trung bình 10 phiên",
-                        line=dict(color=p["text"], width=2))
+                        line=dict(color="#F5B341", width=2))
         fig.add_scatter(x=ex["trade_date"], y=ex["codir_base"] * 100, name="Thường lệ (trung vị 250 phiên)",
                         line=dict(color=p["muted"], dash="dot", width=1.5))
         plot(charts._lay(fig, p, 300, legend=dict(orientation="h", y=-0.18, x=0), margin=dict(l=8, r=8, t=8, b=8)), "dx_cod_fig")
     with c2, W.card("dx_ftse"):
         W.title("27 mã FTSE đóng góp bao nhiêu điểm vào VN-Index mỗi phiên?",
-                "Cột màu = điểm do 27 mã vào rổ FTSE tạo ra · cột xám = các mã còn lại · cộng hai cột = mức tăng/giảm của VN-Index")
+                "Cột vàng = điểm do 27 mã vào rổ FTSE tạo ra · cột xám = các mã còn lại · cộng hai cột = mức tăng/giảm của VN-Index")
         rest = ex["dI"] - ex["ftse_C"]
         fig = go.Figure()
-        fig.add_bar(x=ex["trade_date"], y=ex["ftse_C"], name="27 mã FTSE (điểm)", marker_color=p["accent"])
+        fig.add_bar(x=ex["trade_date"], y=ex["ftse_C"], name="27 mã FTSE (điểm)", marker_color="#F5B341")
         fig.add_bar(x=ex["trade_date"], y=rest, name="Các mã còn lại (điểm)", marker_color="rgba(148,163,184,.55)")
         plot(charts._lay(fig, p, 300, barmode="relative", legend=dict(orientation="h", y=-0.18, x=0),
                          margin=dict(l=8, r=8, t=8, b=8)), "dx_ftse_fig")
@@ -218,7 +218,7 @@ TONE = {"pos": ("Tích cực", "#16A34A"), "neg": ("Tiêu cực", "#DC2626"), "n
 
 
 def _badge(lab: str, color: str) -> str:
-    return f'<span class="dx-ev" style="background:{color}22;color:{chip_ink(color)};border:1px solid {color}66">{esc(lab)}</span>'
+    return f'<span class="dx-ev" style="background:{color}22;color:{color};border:1px solid {color}66">{esc(lab)}</span>'
 
 
 def _tone(t: str) -> str:
@@ -270,7 +270,7 @@ def technical_block(ctx) -> None:
                         subplot_titles=("VN-Index · MA20 · MA50 · hỗ trợ / kháng cự", "RSI(14) – vùng quá bán 30 / quá mua 70",
                                         "MACD(12, 26, 9) – histogram = MACD − tín hiệu"))
     fig.add_scatter(x=c.index, y=c, name="VN-Index", line=dict(color="#E2E8F0" if p["dark"] else "#0F1E33", width=1.8), row=1, col=1)
-    fig.add_scatter(x=c.index, y=full.rolling(20).mean().reindex(c.index), name="MA20", line=dict(color=p["ma20"], width=1.2),
+    fig.add_scatter(x=c.index, y=full.rolling(20).mean().reindex(c.index), name="MA20", line=dict(color="#F5B341", width=1.2),
                     row=1, col=1)
     fig.add_scatter(x=c.index, y=full.rolling(50).mean().reindex(c.index), name="MA50", line=dict(color="#818CF8", width=1.2),
                     row=1, col=1)
@@ -285,7 +285,7 @@ def technical_block(ctx) -> None:
         fig.add_hline(y=y, line=dict(color=p["muted"], dash="dot", width=1), row=2, col=1)
     fig.add_bar(x=m.index, y=m["hist"], name="Histogram MACD", opacity=0.55,
                 marker_color=["#16A34A" if v >= 0 else "#DC2626" for v in m["hist"]], row=3, col=1)
-    fig.add_scatter(x=m.index, y=m["macd"], name="MACD", line=dict(color=p["accent"], width=1.2), row=3, col=1)
+    fig.add_scatter(x=m.index, y=m["macd"], name="MACD", line=dict(color="#F5B341", width=1.2), row=3, col=1)
     fig.add_scatter(x=m.index, y=m["signal"], name="Đường tín hiệu", line=dict(color="#818CF8", width=1.2), row=3, col=1)
     plot(charts._lay(fig, p, 600, legend=dict(orientation="h", y=-0.07, x=0), margin=dict(l=8, r=8, t=30, b=8)), "dx_tech_fig")
 
@@ -304,7 +304,7 @@ def render() -> None:
     status_bar.render()
     st.markdown(DX_CSS, unsafe_allow_html=True)
     sess = da.sessions()
-    date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"Phiên {d:%d/%m/%Y}", key="dx_date")
+    date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"📅 Phiên {d:%d/%m/%Y}", key="dx_date")
     ctx = _diag_ctx(date)
     t1, t2, t3, t4 = st.tabs(["Tổng kết phiên", "Phân tích kỹ thuật", "Dòng tiền & cấu trúc", "Kịch bản theo dõi"])
     with t1:

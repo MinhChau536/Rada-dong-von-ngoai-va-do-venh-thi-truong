@@ -24,7 +24,7 @@ def render(groups: Dict[str, List], current) -> None:
            f'<small>Radar dòng vốn ngoại</small><small>Phiên bản {get("app.version")} · học thuật</small></div></div>')
         syms = da.symbols() if da.ready() else []
         pick = st.selectbox("Tra cứu mã", ["—"] + syms, key="sb_search", label_visibility="collapsed",
-                            format_func=lambda s: "Tra cứu mã, ví dụ FPT…" if s == "—" else s)
+                            format_func=lambda s: "🔎 Tra cứu mã, ví dụ FPT…" if s == "—" else s)
         if pick and pick != "—" and pick != st.session_state.get("selected_symbol"):
             st.session_state["selected_symbol"] = pick
             st.session_state["sb_search_go"] = True
@@ -51,14 +51,14 @@ def render(groups: Dict[str, List], current) -> None:
                     da.clear_cache()
                     st.rerun()
             cur = normalize(st.session_state.get("bg_choice"))
-            bg = st.selectbox("Hình nền", BACKGROUNDS, index=BACKGROUNDS.index(cur) if cur in BACKGROUNDS else 0,
+            bg = st.selectbox("🎨 Hình nền", BACKGROUNDS, index=BACKGROUNDS.index(cur) if cur in BACKGROUNDS else 0,
                               key="sb_bg", help="Đổi nền trang – lựa chọn được lưu cho lần mở sau. Đêm sao: rê chuột để nối chòm sao, bấm để bắn sao băng.")
             if bg != cur:
                 st.session_state["bg_choice"] = bg
                 save_prefs(background=bg)
             if bg == STARS:
-                st.caption("Rê chuột để nối chòm sao · bấm chuột để bắn sao băng" if st.session_state.get("theme") == "dark"
-                           else "Bầu trời sao hiện ở chế độ **Tối** – chế độ Sáng dùng nền trơn")
+                st.caption("✨ Rê chuột để nối chòm sao · bấm chuột để bắn sao băng" if st.session_state.get("theme") == "dark"
+                           else "✨ Bầu trời sao hiện ở chế độ **Tối** – chế độ Sáng dùng nền trơn")
             if bg in ("Ảnh của tôi", PAGE_PHOTO):
                 if bg == "Ảnh của tôi":
                     up = st.file_uploader("Tải ảnh nền (JPG/PNG/WebP)", type=["jpg", "jpeg", "png", "webp"], key="sb_bg_up",
@@ -80,5 +80,5 @@ def render(groups: Dict[str, List], current) -> None:
            f'<div class="ffr-srcr"><span class="ffr-dot" style="background:{ok}"></span>SSI FastConnect V3<em>REST + WS</em></div>'
            f'<div class="ffr-srcr"><span class="ffr-dot" style="background:#14B8A6"></span>Phiên mới nhất<em>{last}</em></div>'
            f'<div class="ffr-srcr"><span class="ffr-dot" style="background:#7F8EA3"></span>Kho DuckDB<em>{n_sess} phiên</em></div></div>')
-        md('<div class="ffr-disc"><div class="ffr-disc-t">Đề tài nghiên cứu học thuật</div>'
+        md('<div class="ffr-disc"><div class="ffr-disc-t">🎓 Đề tài nghiên cứu học thuật</div>'
            'Không mang tính chất khuyến nghị đầu tư. Hệ thống chỉ đọc dữ liệu, không đặt lệnh.</div>')

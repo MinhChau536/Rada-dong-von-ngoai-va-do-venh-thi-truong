@@ -34,7 +34,7 @@ def empty(msg: str) -> None:
 
 def source_error(source: str, exc: Exception, last_ok: Optional[str] = None) -> None:
     extra = f" Dữ liệu gần nhất: {last_ok}." if last_ok else ""
-    st.warning(f"Lỗi nguồn {source}: {exc}.{extra} Số liệu cũ KHÔNG được hiển thị như số mới.")
+    st.warning(f"⚠️ Lỗi nguồn {source}: {exc}.{extra} Số liệu cũ KHÔNG được hiển thị như số mới.")
 
 
 def safe_block(title: str = "khối") -> Callable:
@@ -46,7 +46,7 @@ def safe_block(title: str = "khối") -> Callable:
                 return fn(*a, **k)
             except Exception as exc:  # noqa: BLE001
                 log.error("Lỗi khối %s: %s\n%s", title, exc, traceback.format_exc())
-                st.warning(f"Không hiển thị được {title}: {exc}")
+                st.warning(f"⚠️ Không hiển thị được {title}: {exc}")
                 return None
         return wrap
     return deco

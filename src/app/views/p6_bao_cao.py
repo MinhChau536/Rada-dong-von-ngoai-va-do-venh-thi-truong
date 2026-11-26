@@ -27,15 +27,15 @@ def render() -> None:
     is_live = ld is not None and pd.Timestamp(date) == ld
     ok_closed, why = closing.closed_check(date)
     if is_live:
-        st.info(f"Phiên {ld:%d/%m/%Y} đang giao dịch – chỉ xuất được **Market Snapshot** từ số liệu tạm tính (cập nhật ~2 phút/lần). "
+        st.info(f"⏱ Phiên {ld:%d/%m/%Y} đang giao dịch – chỉ xuất được **Market Snapshot** từ số liệu tạm tính (cập nhật ~2 phút/lần). "
                 "Closing Report mở sau khi SSI công bố số liệu đóng cửa chính thức (thường 15:05–15:30).")
-    if c2.button("Xuất Market Snapshot", type="primary", width="stretch", icon=":material/description:",
+    if c2.button("📄 Xuất Market Snapshot", type="primary", width="stretch",
                  help="Ảnh chụp thị trường – trong phiên dùng số liệu tạm tính của hôm nay"):
         with st.spinner("Đang dựng PDF…"):
             p = snapshot.build(date)
         st.success(f"Đã xuất {p.name}") if p else st.error("Không xuất được – không có dữ liệu phiên.")
         da.clear_cache()
-    if c3.button("Xuất Closing Report", width="stretch", icon=":material/summarize:", disabled=not ok_closed,
+    if c3.button("📑 Xuất Closing Report", width="stretch", disabled=not ok_closed,
                  help=why or "Báo cáo cuối phiên – chỉ xuất khi kiểm tra chất lượng cuối phiên đạt"):
         with st.spinner("Đang kiểm tra chất lượng và dựng PDF…"):
             p, reason = closing.build(date)
@@ -67,7 +67,7 @@ def render() -> None:
         cols = st.columns([1.3, 1, 1, 3, 1.2])
         cols[0].write(pd.Timestamp(r.created_at).strftime("%d/%m %H:%M"))
         cols[1].write(r.kind)
-        cols[2].write("" + r.status if r.status == "ok" else "" + str(r.status))
+        cols[2].write("✅ " + r.status if r.status == "ok" else "⛔ " + str(r.status))
         cols[3].caption(r.file or (r.note or ""))
         if isinstance(r.path, str) and Path(r.path).exists():
             cols[4].download_button("Tải về", Path(r.path).read_bytes(), file_name=r.file,

@@ -28,7 +28,7 @@ EV_EXPLAIN = {"E1": "FTSE Russell công bố nâng hạng Việt Nam lên thị 
 def _stats_table(df: pd.DataFrame) -> None:
     rows = []
     for r in df.itertuples():
-        star = "Có" if pd.notna(r.p_value) and r.p_value < 0.05 else "—"
+        star = "✅" if pd.notna(r.p_value) and r.p_value < 0.05 else ""
         est = (f"{fmt.frac_pct(r.estimate, 1)} CAR > 0" if r.test == "Dấu tổng quát"
                else fmt.num(r.estimate * (100 if r.metric == "CAR" else 1), 3, True) + ("%" if r.metric == "CAR" else ""))
         rows.append([GROUP_LBL.get(r.group, r.group), r.metric, r.window, r.test, est, fmt.num(r.statistic, 2, True),
@@ -64,9 +64,9 @@ def _timeline(ev: pd.DataFrame) -> None:
         f'<div class="ft-ev"><b>{r.event_id}</b><span>{r.event_date:%d/%m/%Y}</span><em>{esc(r.label)}</em>'
         f'<small>{esc(EV_EXPLAIN.get(r.event_id, ""))}</small></div>' for r in ev.sort_values("event_date").itertuples())
     md('<style>.ft-tl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:4px 0 6px}'
-       '.ft-ev{border:1px solid var(--ffr-border);border-radius:12px;padding:12px 16px;'
-       'background:var(--ffr-card);display:flex;flex-direction:column;gap:2px}.ft-ev b{color:var(--ffr-accent);font-size:15px;font-weight:600}'
-       '.ft-ev span{font-weight:600;font-size:14px}.ft-ev em{font-style:normal;font-size:14px}.ft-ev small{color:var(--ffr-muted);font-size:13px;'
+       '.ft-ev{border:1px solid rgba(148,163,184,.2);border-left:3px solid #F5B341;border-radius:12px;padding:9px 12px;'
+       'background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:2px}.ft-ev b{color:#F5B341;font-size:15px}'
+       '.ft-ev span{font-weight:700;font-size:13.5px}.ft-ev em{font-style:normal;font-size:13px}.ft-ev small{opacity:.75;font-size:12px;'
        'line-height:1.4}</style>' + f'<div class="ft-tl">{items}</div>')
 
 
@@ -101,8 +101,8 @@ def _cum_groups(p) -> None:
         fig.add_scatter(x=x["trade_date"], y=cum, name=f"{lbl} ({fmt.pct(cum.iloc[-1], 1)})", line=dict(color=col, width=w))
     for r in events().itertuples():
         if r.event_date >= e1:
-            fig.add_vline(x=r.event_date, line=dict(color=p["muted"], width=1, dash="dot"))
-            fig.add_annotation(x=r.event_date, y=1, yref="paper", text=r.event_id, showarrow=False, font=dict(color=p["muted"], size=12),
+            fig.add_vline(x=r.event_date, line=dict(color="#F5B341", width=1, dash="dot"))
+            fig.add_annotation(x=r.event_date, y=1, yref="paper", text=r.event_id, showarrow=False, font=dict(color="#F5B341", size=11),
                                yanchor="bottom")
     fig.add_hline(y=0, line=dict(color=p["muted"], width=1))
     plot(charts._lay(fig, p, 360, hovermode="x unified", legend=dict(orientation="h", y=-0.15, x=0),

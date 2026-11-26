@@ -47,9 +47,9 @@
 |---|---|---|
 | RQ1 – Chỉ số có lan tỏa tới số đông cổ phiếu? Bao nhiêu mã tạo phần lớn biến động? | D, AD, IQR, loại phiên, đóng góp C, CR5, ε | Tổng quan · Dẫn dắt & độ vênh |
 | RQ2 – Dòng vốn ngoại tập trung ở đâu, có cùng chiều giá không? | NF, nf, FPR, HHI, z60, chiều giá – ngoại | Ra-đa khối ngoại |
-| RQ3 – Quanh các mốc FTSE, nhóm 27 mã có lợi suất bất thường so với nhóm đối chứng? | AR, CAR, CAAR, DiD | Nghiên cứu: nâng hạng FTSE |
+| RQ3 – Quanh các mốc FTSE, nhóm 27 mã có lợi suất bất thường so với nhóm đối chứng? | AR, CAR, CAAR, DiD | Sự kiện nâng hạng FTSE |
 | RQ4 – Các mã trong danh mục theo dõi phản ứng thế nào? | ERᴹ, β Dimson, phơi nhiễm với nhóm dẫn dắt | Watchlist Impact |
-| RQ5 – Cấu trúc thị trường có thay đổi sau công bố FTSE? | Kiểm định H4 (OLS HAC, Holm), hồi quy gộp D | Nghiên cứu: nâng hạng FTSE · Chẩn đoán thị trường |
+| RQ5 – Cấu trúc thị trường có thay đổi sau công bố FTSE? | Kiểm định H4 (OLS HAC, Holm), hồi quy gộp D | Sự kiện nâng hạng FTSE · Chẩn đoán thị trường |
 
 **Giá trị kỳ vọng.** Một câu trả lời bằng số liệu cho mỗi phiên, cập nhật theo phút trong giờ giao dịch, đồng bộ giữa web – PDF – Telegram.
 
@@ -166,13 +166,15 @@ python tools/schedule_windows.py --remove # gỡ
 | Giờ (thứ 2 – thứ 6) | Việc hệ thống làm | Web / PDF / bot hiển thị |
 |---|---|---|
 | 08:50 | Bộ ghi luồng khởi động (Task Scheduler; hoặc khi mở web/bot) | Phiên gần nhất |
-| **09:00 – 15:00** | Ghi WebSocket cả sàn HOSE; **2 phút/lần** dựng phiên tạm tính và chạy lại chuỗi chỉ báo | ● TRỰC TIẾP, trễ ~2–3 phút, web tự làm mới |
+| **09:00 – 15:00** | Ghi WebSocket cả sàn HOSE; **2 phút/lần** dựng phiên tạm tính, chạy lại chuỗi chỉ báo và đẩy số liệu tạm tính lên GitHub (`data/live_snapshot/`) | ● TRỰC TIẾP trên máy và trên bản công khai, trễ ~2–4 phút, web tự làm mới; báo cáo chỉ xuất được **Market Snapshot** |
 | 11:35 | Bản tin giữa phiên + Market Snapshot qua Telegram | |
 | **15:05 – 15:15** | Chốt phiên từ luồng (giá sau ATC, khối ngoại cả phiên), tính lại toàn bộ chỉ báo và kiểm định | ● ĐÓNG CỬA TẠM TÍNH |
-| 15:15 | Chẩn đoán phiên + Closing Report qua Telegram | |
-| Khi SSI công bố số cuối ngày | Hỏi REST 90 giây/lần (tới 18:30), tải và **thay bản tạm tính** bằng số chính thức | Số liệu chính thức |
+| 15:15 | Chẩn đoán phiên + Closing Report qua Telegram (chỉ khi đã có số đóng cửa chính thức) | |
+| Khi SSI công bố số cuối ngày | Hỏi REST 90 giây/lần (tới 18:30), tải và **thay bản tạm tính** bằng số chính thức, đẩy `data/snapshot_delta/` lên GitHub | Số liệu chính thức · mở **Closing Report** |
 
 Máy tắt nhiều ngày: lần chạy sau tự lấp mọi phiên còn thiếu qua REST. Luồng WebSocket không tải bù được.
+
+**Số liệu trong phiên cần máy chạy bộ ghi.** Bộ ghi bật giữa phiên vẫn dựng được giá và chỉ số ngay (bù bằng nến 1 phút REST), nhưng khối ngoại của một mã chỉ có khi mã đó phát sinh giao dịch khối ngoại sau lúc bật – thanh trạng thái hiện "Khối ngoại tạm tính: x/381 mã có số liệu". Số đầy đủ có sau khi SSI công bố số cuối ngày.
 
 ### 6.4. Bản công khai trên Internet (Streamlit Community Cloud)
 
@@ -182,7 +184,7 @@ Máy tắt nhiều ngày: lần chạy sau tự lấp mọi phiên còn thiếu 
 
 Bản công khai tự bật **chế độ chỉ xem**: khóa sửa watchlist, gửi Telegram và các tác vụ tải dữ liệu. Mỗi lần `git push`, Streamlit Cloud **tự cập nhật** – không phải deploy lại.
 
-**Dữ liệu phiên mới tự lên bản công khai.** SSI FastConnect chỉ cho gọi từ IP đã đăng ký, nên máy chủ đám mây không tự tải được; thay vào đó, sau khi máy cá nhân tải xong số liệu cuối ngày (bộ ghi `recorder_ssi` hoặc `run.py`), `tools/publish_data.py` xuất **gói bổ sung** `data/snapshot_delta/` (chỉ các phiên mới, vài MB) rồi commit + push **đúng thư mục đó** (không bao giờ đụng `.env` hay báo cáo). Streamlit Cloud thấy commit mới → tự dựng lại kho từ `data/snapshot/` + `data/snapshot_delta/` trong vài chục giây. Tắt bằng `publish.auto_push: false` trong `config/settings.yaml`; chạy tay: `python -m tools.publish_data`. Gói gốc `data/snapshot/` (~280 MB) chỉ cần xuất lại khi định nghĩa chỉ báo thay đổi.
+**Dữ liệu tự lên bản công khai.** SSI FastConnect chỉ cho gọi từ IP đã đăng ký, nên máy chủ đám mây không tự tải được. **Trong phiên**, sau mỗi lượt dựng phiên tạm tính (≥ 2 phút/lần), bộ ghi xuất các dòng của hôm nay vào `data/live_snapshot/` (vài trăm KB) và đẩy lên GitHub; máy chủ Cloud dựng lại phiên tạm tính, trang đang mở tự làm mới sau ≤ 20 giây. **Sau đóng cửa**, khi máy cá nhân tải xong số liệu cuối ngày (bộ ghi `recorder_ssi` hoặc `run.py`), `tools/publish_data.py` xuất **gói bổ sung** `data/snapshot_delta/` (chỉ các phiên mới, vài MB) rồi commit + push **đúng thư mục đó** (không bao giờ đụng `.env` hay báo cáo). Streamlit Cloud thấy commit mới → tự dựng lại kho từ `data/snapshot/` + `data/snapshot_delta/` trong vài chục giây. Tắt bằng `publish.auto_push: false` / `publish.live_push: false` trong `config/settings.yaml`. Bộ đẩy không push nếu máy đang có commit code chưa đẩy (tránh đẩy hộ việc đang làm dở); chạy tay: `python -m tools.publish_data`. Gói gốc `data/snapshot/` (~280 MB) chỉ cần xuất lại khi định nghĩa chỉ báo thay đổi.
 
 ---
 
@@ -271,13 +273,13 @@ Công thức đầy đủ (1)–(17) trên trang *Phương pháp & giới hạn*
 | Nhóm | Trang | Nội dung chính (các tab con) |
 |---|---|---|
 | **Diễn biến thị trường** | Tổng quan thị trường | Chỉ phần cốt lõi, từ tổng quát đến chi tiết: 4 thẻ chỉ số → [biểu đồ chỉ số \| so sánh hiệu suất] → tóm tắt phiên HOSE + một câu kết luận → [nhóm dẫn dắt \| top 10 khối ngoại mua/bán ròng] → cổ phiếu nổi bật → [thanh khoản \| ngành] → bản đồ thị trường → watchlist |
-| | Chẩn đoán thị trường | Tab *Kết luận phiên* (điều cần theo dõi + chẩn đoán 5 bước) · *Phân tích kỹ thuật* (MA, RSI, MACD, hỗ trợ/kháng cự) · *Cấu trúc & dòng vốn* · *Kịch bản theo dõi*; kiểm định giai đoạn FTSE thu gọn ở cuối trang |
-| | Dẫn dắt & độ vênh | Tab *Phiên này* (thác nước, bảng đóng góp, họ & ngành) · *Độ vênh & lan tỏa* (chuỗi D, độ rộng, loại phiên, thống kê theo kỳ) · *Tập trung & loại trừ* (chỉ số loại trừ một họ, CR5, mã dẫn dắt thường xuyên) |
-| | Ra-đa khối ngoại | Tab *Phiên này* (KPI, top 10, diễn biến mua–bán, xếp hạng) · *Ngành & nhóm* · *Theo thời gian* (HHI, chuỗi mua/bán ròng, chiều giá – chiều khối ngoại) |
+| | Chẩn đoán thị trường | Tab *Tổng kết phiên* (điều cần theo dõi + chẩn đoán 5 bước) · *Phân tích kỹ thuật* (MA, RSI, MACD, hỗ trợ/kháng cự) · *Dòng tiền & cấu trúc* · *Kịch bản theo dõi*; kiểm định giai đoạn FTSE thu gọn ở cuối trang |
+| | Dẫn dắt & độ vênh | Tab *Mã kéo chỉ số* (thác nước, bảng đóng góp, họ & ngành) · *Độ vênh qua thời gian* (chuỗi D, độ rộng, loại phiên, thống kê theo kỳ) · *Chỉ số phụ thuộc mã lớn* (chỉ số loại trừ một họ, CR5, mã dẫn dắt thường xuyên) |
+| | Ra-đa khối ngoại | Tab *Mua bán trong phiên* (KPI, top 10, diễn biến mua–bán, xếp hạng) · *Theo ngành & nhóm* · *Diễn biến nhiều phiên* (HHI, chuỗi mua/bán ròng, chiều giá – chiều khối ngoại) |
 | **Danh mục & tiện ích** | Watchlist Impact | Thêm/bớt mã, tab riêng từng mã, phản ứng so với thị trường, phơi nhiễm với 10 mã dẫn dắt toàn sàn |
-| | Báo cáo PDF | Xuất Closing Report / Market Snapshot, danh sách báo cáo đã sinh |
+| | Báo cáo PDF | Trong phiên chỉ xuất **Market Snapshot** (số liệu tạm tính); **Closing Report** mở sau khi có số đóng cửa chính thức; danh sách báo cáo đã sinh |
 | | Bot Telegram | Giới thiệu bot, luồng hoạt động, tin mẫu dựng từ dữ liệu thật, cơ chế cảnh báo, gửi thử |
-| **Nghiên cứu & hệ thống** | Nghiên cứu: nâng hạng FTSE | Bối cảnh nghiên cứu: tab *Bối cảnh* · *Nghiên cứu sự kiện* (CAAR/CAFF) · *Chênh lệch kép & đối chứng* · *Bảng kiểm định đầy đủ* |
+| **Bối cảnh & hệ thống** | Sự kiện nâng hạng FTSE | Bối cảnh của đề tài: tab *Tổng quan sự kiện* · *Biến động quanh các mốc* (CAAR/CAFF) · *So với nhóm đối chứng* (DiD) · *Bảng kiểm định* |
 | | Kiểm chứng & dữ liệu | Backtest cảnh báo và biên dao động, chất lượng dữ liệu, luồng WebSocket đã ghi, kết nối SSI |
 | | Phương pháp & giới hạn | Công thức (1)–(17), tham số từ `settings.yaml`, kết quả kiểm định, giới hạn |
 
@@ -287,7 +289,7 @@ Công thức đầy đủ (1)–(17) trên trang *Phương pháp & giới hạn*
 
 ## 11. Báo cáo PDF và bot Telegram
 
-**Báo cáo PDF** (`src/reports/`, lưu tại `reports_out/`): *Closing Report* (sau phiên, có kiểm tra chất lượng) và *Market Snapshot* (trong phiên).
+**Báo cáo PDF** (`src/reports/`, lưu tại `reports_out/`): *Market Snapshot* (trong phiên – dựng từ số liệu tạm tính của hôm nay, ghi rõ "số liệu trong phiên, chưa hoàn tất") và *Closing Report* (chỉ sau khi phiên kết thúc và đã có số đóng cửa chính thức, có kiểm tra chất lượng).
 Bố cục: bìa + kết luận phiên · mục lục + tóm tắt điều hành (3 câu trả lời) · 1. Tổng quan thị trường · 2. Dẫn dắt và độ vênh · 3. Dòng vốn ngoại · 4. Bối cảnh nâng hạng FTSE · 5. Chẩn đoán thị trường · 6. Tác động lên watchlist · 7. Kết luận và điều cần theo dõi · 8. Phụ lục phương pháp và chất lượng dữ liệu. Mỗi chương bắt đầu trang mới, mở đầu bằng một câu kết luận sinh từ số liệu.
 
 **Bot Telegram** (`src/bot/`):
@@ -361,7 +363,7 @@ Bố cục: bìa + kết luận phiên · mục lục + tóm tắt điều hành
 │   └── common/            config · fmt · timeutil · logging
 ├── tools/                 schedule_windows.py · snapshot.py · publish_data.py
 ├── tests/                 kiểm thử tự động + fixtures
-├── data/                  ffr.duckdb (không đẩy git) · snapshot/ + snapshot_delta/ (Parquet đi kèm)
+├── data/                  ffr.duckdb (không đẩy git) · snapshot/ + snapshot_delta/ + live_snapshot/ (Parquet đi kèm)
 ├── docs/                  api_samples/ (JSON mẫu SSI) · notes/ · robustness_table.csv
 ├── reports_out/           PDF đã xuất
 └── logs/                  app.log · job_recorder.log · job_autoupdate.log
@@ -379,7 +381,8 @@ Bố cục: bìa + kết luận phiên · mục lục + tóm tắt điều hành
 | SSI trả 401/403 | Khóa sai hoặc chưa được cấp quyền Market Data |
 | Bot không trả lời | Thêm chat_id vào `TELEGRAM_CHAT_IDS`; lỗi *Conflict* = đang có tiến trình bot khác dùng cùng token |
 | "Đang có tiến trình cập nhật khác" | Một lần cập nhật đang chạy; khóa quá 3 giờ tự gỡ |
-| Closing Report không xuất | Xem lý do trên trang Báo cáo PDF (chưa có dữ liệu phiên hoặc kiểm tra chất lượng chưa đạt) |
+| Closing Report không xuất | Trong phiên chỉ xuất được Market Snapshot; sau 15:00 chờ SSI công bố số đóng cửa. Lý do cụ thể hiện trên trang Báo cáo PDF |
+| Bản công khai không có số liệu trong phiên | Máy cá nhân phải đang chạy bộ ghi (`python run.py` hoặc Task Scheduler) và không có commit code chưa đẩy |
 
 ---
 

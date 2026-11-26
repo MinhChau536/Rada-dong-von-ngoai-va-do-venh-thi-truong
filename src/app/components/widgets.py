@@ -163,7 +163,7 @@ def _lead_fig(df: pd.DataFrame, h: int = 300) -> go.Figure:
 def w_leaders(D: Dict) -> None:
     lead = D["leaders"]
     title("Nhóm dẫn dắt VN-Index", "Điểm đóng góp của từng mã vào thay đổi chỉ số")
-    t1, t2 = st.tabs(["Phiên này", "20 phiên"])
+    t1, t2 = st.tabs(["Phiên đã chọn", "Cộng dồn 20 phiên"])
     with t1:
         df = pd.concat([lead[lead["side"] == "pos"].head(5), lead[lead["side"] == "neg"].head(5)]).sort_values("C", ascending=False)
         plot(_lead_fig(df), "tc_lead1")

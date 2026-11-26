@@ -61,9 +61,14 @@ def render(session_date=None, show_session: bool = True) -> None:
     if is_live:
         tick = str(li.get("last_tick") or "")[-8:-3]
         live_pill = (f'<span class="ffr-pill" style="border-color:#DC2626;color:#F87171"><b>● TRỰC TIẾP</b>&nbsp;'
-                     f'số liệu tới {tick or "—"} · dựng lúc {pd.Timestamp(li["built_at"]):%H:%M:%S} · '
+                     f'số liệu tới {tick or pd.Timestamp(li["built_at"]).strftime("%H:%M")} · dựng lúc {pd.Timestamp(li["built_at"]):%H:%M:%S} · '
                      f'{int(li["n_traded"])}/{int(li["n_symbols"])} mã có khớp lệnh</span>')
-        comp_pill = '<span class="ffr-pill">Phiên tạm tính – chốt số liệu chính thức sau 15:05</span>'
+        nr, ns = int(li.get("n_room") or 0), int(li.get("n_symbols") or 0)
+        comp_pill = ('<span class="ffr-pill">Phiên tạm tính – chốt số liệu chính thức sau 15:05</span>'
+                     + (f'<span class="ffr-pill" style="border-color:#D97706;color:#F59E0B" title="Luồng WebSocket chỉ gửi số liệu '
+                        f'khối ngoại của một mã khi mã đó có giao dịch khối ngoại sau lúc bộ ghi bật; mã chưa có tin tính là 0 '
+                        f'cho đến khi có tin hoặc đến số liệu cuối ngày">Khối ngoại tạm tính: {nr}/{ns} mã có số liệu</span>'
+                        if ns and nr < 0.9 * ns else ""))
     elif sdate is not None and "SSI-WS" in da.session_sources(sdate):
         live_pill = ('<span class="ffr-pill" style="border-color:#D97706;color:#F59E0B"><b>● ĐÓNG CỬA TẠM TÍNH</b>&nbsp;'
                      'giá chốt ATC từ luồng WebSocket SSI · tự thay bằng số liệu REST chính thức khi SSI công bố</span>')

@@ -209,10 +209,17 @@ table.ffr-t tr:hover td {{ background:{p['soft']}; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] {{ background:{p['accent']} !important; border-color:{p['accent']} !important; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:#fff !important; }}
 div[data-testid="stMetric"] {{ background:{p['card']}; border:1px solid {p['border']}; border-radius:12px; padding:10px 14px; }}
-/* tab cấp trang: chữ rõ, có gạch chân màu nhấn */
-.stTabs [data-testid="stTab"] p {{ font-size:15px; font-weight:600; }}
-.stTabs [role="tablist"] {{ gap:6px; }}
-.stTabs [data-testid="stTab"] {{ padding:8px 14px; }}
+/* tab cấp trang: to, IN HOA, tab đang chọn nổi bật (nền màu nhấn, chữ trắng) */
+.stTabs [role="tablist"] {{ gap:8px; border-bottom:2px solid {p['border']}; padding-bottom:0; flex-wrap:wrap; }}
+.stTabs [data-testid="stTab"] {{ padding:11px 20px !important; border-radius:12px 12px 0 0; background:{p['soft']};
+  border:1px solid {p['border']}; border-bottom:none; height:auto; transition:background .15s; }}
+.stTabs [data-testid="stTab"] p {{ font-size:15px !important; font-weight:700 !important; text-transform:uppercase;
+  letter-spacing:.6px; color:{p['muted']} !important; }}
+.stTabs [data-testid="stTab"]:hover {{ background:{'rgba(45,212,191,.14)' if p['dark'] else '#E6F6F3'}; }}
+.stTabs [data-testid="stTab"]:hover p {{ color:{p['text']} !important; }}
+.stTabs [data-testid="stTab"][aria-selected="true"] {{ background:{p['accent']} !important; border-color:{p['accent']}; }}
+.stTabs [data-testid="stTab"][aria-selected="true"] p {{ color:#FFFFFF !important; }}
+.stTabs [data-baseweb="tab-highlight"], .stTabs .react-aria-SelectionIndicator {{ background:{p['accent']} !important; }}
 /* ── trang Toàn cảnh thị trường: lưới thẻ tiêu đề + thanh tab (phong cách cổng thông tin chứng khoán) ── */
 div[class*="st-key-tcw"] {{ background:{p['card']}; border:1px solid {p['border']} !important; border-radius:10px !important;
   box-shadow:0 1px 3px rgba(15,23,42,.06); padding:10px 12px 14px !important; overflow:hidden; }}
@@ -286,7 +293,9 @@ div[class*="st-key-tcw"] .stTabs [role="tablist"] {{ border-bottom:none !importa
   padding:3px; gap:3px !important; }}
 div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] {{ background:transparent !important; border-radius:8px !important; padding:6px 4px !important; }}
 div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] p {{ font-family:{FONT}; font-size:13px !important; font-weight:600 !important;
-  color:{MUT} !important; }}
+  color:{MUT} !important; text-transform:none !important; letter-spacing:0 !important; }}
+div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] {{ border:none !important; }}
+div[class*="st-key-tcw"] .stTabs [role="tablist"] {{ border-bottom:none !important; }}
 div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:{G} !important; }}
 div[class*="st-key-tcw"] .stTabs [aria-selected="true"] p {{ color:#1A1206 !important; font-weight:700 !important; }}
 /* bảng */

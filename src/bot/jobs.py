@@ -20,7 +20,13 @@ log = get_logger(__name__)
 
 
 def midday_brief() -> Dict:
-    ctx = context.build()
+    ld = snapshot.live_session()                 # trong phiên: dùng số liệu tạm tính của hôm nay
+    if ld is not None:
+        from src.data import live
+        from src.common.config import db_path as main_db
+        ctx = context.build(ld, live.LIVE_DB, watch_path=main_db()) or context.build()
+    else:
+        ctx = context.build()
     txt, kb = M.market(ctx, with_buttons=True)
     pdf = snapshot.build()
     ok = send_message("🕦 <b>BẢN TIN GIỮA PHIÊN</b>\n\n" + txt, html=True, keyboard=kb)

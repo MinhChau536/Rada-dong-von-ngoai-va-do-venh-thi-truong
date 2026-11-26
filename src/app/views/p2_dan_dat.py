@@ -136,7 +136,7 @@ def render() -> None:
     D = W.load(date)
     d = da.daily()
     rng = d[d["trade_date"].between(lo, hi)]
-    t1, t2, t3 = st.tabs(["Phiên này", "Độ vênh & lan tỏa", "Tập trung & loại trừ"])
+    t1, t2, t3 = st.tabs(["Mã kéo chỉ số", "Độ vênh qua thời gian", "Chỉ số phụ thuộc mã lớn"])
 
     with t1:                                                  # ai kéo chỉ số trong phiên đã chọn
         c1, c2 = st.columns([0.85, 1.3], gap="small")

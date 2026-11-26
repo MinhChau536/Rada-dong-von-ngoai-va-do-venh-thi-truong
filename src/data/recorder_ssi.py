@@ -213,7 +213,8 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
                 try:
                     from src.data import live
                     if force or in_session():
-                        live.build(rec.snapshot())
+                        if live.build(rec.snapshot()):
+                            _publish_live()
                 except Exception as exc:  # noqa: BLE001 – lượt sau thử lại
                     log.warning("Dựng phiên tạm tính lỗi: %s", exc)
 
@@ -308,6 +309,17 @@ def close_from_stream(state: Dict) -> Optional[Dict]:
     except Exception as exc:  # noqa: BLE001
         log.warning("Chốt phiên từ luồng lỗi: %s", exc)
     return None
+
+
+def _publish_live() -> None:
+    """Đẩy số liệu tạm tính của hôm nay lên GitHub (mỗi ≥ 2 phút) – lỗi không làm dừng bộ ghi."""
+    try:
+        from tools.publish_data import publish_live
+        r = publish_live()
+        if r.get("state") not in ("wait", "disabled"):
+            log.info("Đẩy số liệu trong phiên: %s", r)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Không đẩy được số liệu trong phiên: %s", exc)
 
 
 def _publish() -> None:

@@ -52,6 +52,24 @@ _STAMP_SEEN = {"v": None}
 
 
 REFRESH_STATUS = {"v": "chưa chạy"}
+_LIVE_SEEN = {"v": None}
+
+
+def _refresh_live(snapshot) -> bool:
+    """Dựng lại data/live.duckdb khi GitHub có bản số liệu trong phiên mới hơn (data/live_snapshot/)."""
+    cur = snapshot.live_stamp()
+    if not cur or _LIVE_SEEN["v"] == cur:
+        return False
+    try:
+        have = snapshot.LIVE_STAMP.read_text(encoding="utf-8") if snapshot.LIVE_STAMP.exists() else ""
+        if have != cur:
+            snapshot.restore_live()
+        _LIVE_SEEN["v"] = cur
+        return have != cur
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Dựng số liệu trong phiên từ ảnh chụp lỗi: %s", exc)
+        _LIVE_SEEN["v"] = cur
+        return False
 
 
 def refresh_from_snapshot() -> bool:
@@ -66,9 +84,10 @@ def refresh_from_snapshot() -> bool:
         REFRESH_STATUS["v"] = f"bỏ qua (cloud={on_cloud}, main={is_main_store()})"
         return False
     from tools import snapshot
+    live_new = _refresh_live(snapshot)                # số liệu trong phiên (nhỏ, đổi mỗi ~2 phút)
     cur = snapshot.stamp()
     if _STAMP_SEEN["v"] == cur:
-        return False
+        return live_new
     try:
         with _RESTORE_LOCK:
             try:

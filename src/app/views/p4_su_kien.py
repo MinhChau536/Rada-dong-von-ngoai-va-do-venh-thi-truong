@@ -1,4 +1,4 @@
-"""Trang Nghiên cứu: nâng hạng FTSE (bước B6.14) – bối cảnh nghiên cứu, trình bày cho người đọc không chuyên:
+"""Trang Sự kiện nâng hạng FTSE (bước B6.14) – bối cảnh nghiên cứu, trình bày cho người đọc không chuyên:
 câu hỏi bằng lời thường → dòng thời gian các mốc → 27 mã chính thức → hiệu suất cộng dồn từ E1 → biểu đồ lợi suất &
 dòng vốn ngoại "vượt bình thường" quanh mốc (có dải tin cậy, tách 6 mã All-World và 21 mã All-Cap) → bảng kết quả gọn có
 kết luận bằng chữ → chênh lệch kép (DiD) → nhóm đối chứng → bảng kiểm định đầy đủ. Mọi phần hiện sẵn, không cần mở."""
@@ -110,7 +110,7 @@ def _cum_groups(p) -> None:
 
 
 def render() -> None:
-    header("Nghiên cứu: nâng hạng FTSE", "Bối cảnh nghiên cứu – 27 mã vào rổ FTSE có tăng giá hoặc được khối ngoại mua nhiều hơn bình thường không?")
+    header("Sự kiện nâng hạng FTSE", "27 mã vào rổ FTSE có tăng giá hoặc được khối ngoại mua nhiều hơn bình thường không?")
     status_bar.render()
     p = pal()
     ev = events().sort_values("event_date")
@@ -118,7 +118,7 @@ def render() -> None:
                "mức dự kiến theo VN-Index (ước lượng từ các phiên trước mốc). Kết quả mô tả, không khẳng định nhân quả.")
     aar = da.table("event_aar")
     stats = da.table("stats_results")
-    t1, t2, t3, t4 = st.tabs(["Bối cảnh", "Nghiên cứu sự kiện", "Chênh lệch kép & đối chứng", "Bảng kiểm định đầy đủ"])
+    t1, t2, t3, t4 = st.tabs(["Tổng quan sự kiện", "Biến động quanh các mốc", "So với nhóm đối chứng", "Bảng kiểm định"])
 
     with t1:
         with W.card("p4_tl"):
@@ -198,7 +198,7 @@ def render() -> None:
 
     with t4:
         with W.card("p4_full"):
-            W.title("Bảng kiểm định đầy đủ", f"Mốc {eid} (đổi ở tab Nghiên cứu sự kiện) · t, BMP, BMP hiệu chỉnh Kolari–Pynnönen, dấu, "
+            W.title("Bảng kiểm định đầy đủ", f"Mốc {eid} (đổi ở tab Biến động quanh các mốc) · t, BMP, BMP hiệu chỉnh Kolari–Pynnönen, dấu, "
                                              "Welch, Mann–Whitney · p Holm")
             s = stats[(stats["event_id"] == eid) & (stats["variant"] == "base")]
             _stats_table(s[s["hypothesis"].isin(["H3a", "H3b"])].sort_values(["hypothesis", "metric", "window", "group", "test"]))

@@ -20,7 +20,7 @@ def latest_date(path: Optional[Path] = None) -> Optional[pd.Timestamp]:
     return None if df.empty or pd.isna(df["d"].iloc[0]) else pd.Timestamp(df["d"].iloc[0])
 
 
-def build(date=None, path: Optional[Path] = None) -> Optional[Dict]:
+def build(date=None, path: Optional[Path] = None, watch_path: Optional[Path] = None) -> Optional[Dict]:
     d = pd.Timestamp(date) if date is not None else latest_date(path)
     if d is None:
         return None
@@ -33,7 +33,7 @@ def build(date=None, path: Optional[Path] = None) -> Optional[Dict]:
     lead = db.query_df("SELECT * FROM leaders_daily WHERE trade_date = ? ORDER BY side, rank", [d], path=path)
     groups = db.query_df("SELECT * FROM indicator_group_daily WHERE trade_date = ?", [d], path=path)
     idx = db.query_df("SELECT * FROM fact_daily_index WHERE trade_date = ?", [d], path=path)
-    syms = wi.get_watchlist(path)
+    syms = wi.get_watchlist(watch_path if watch_path is not None else path)
     wl_hist = db.query_df("SELECT * FROM indicator_stock_daily WHERE symbol IN ({}) AND trade_date <= ?".format(
         ",".join("?" * len(syms))), syms + [d], path=path) if syms else pd.DataFrame()
     intra = db.query_df("SELECT * FROM fact_intraday", path=path)
@@ -56,7 +56,7 @@ def build(date=None, path: Optional[Path] = None) -> Optional[Dict]:
 def diagnosis_ctx(ctx: Dict, path: Optional[Path] = None) -> Dict:
     """Chỉ báo nối (đóng góp có khối ngoại cùng chiều, nhóm FTSE, HHI tỷ trọng…) + 3 câu trả lời của phiên + hàm ý."""
     from src.analytics import diagnosis as dg
-    st = db.query_df("SELECT trade_date, symbol, is_valid, w, C, net_flow, tv FROM indicator_stock_daily "
+    st = db.query_df("SELECT trade_date, symbol, is_valid, w, C, net_flow, tv, nf FROM indicator_stock_daily "
                      "WHERE trade_date <= ? AND trade_date >= ?", [ctx["date"], ctx["date"] - pd.Timedelta(days=400)], path=path)
     ex = dg.daily_extras(st, ctx["hist"])
     today = ex[ex["trade_date"] == ctx["date"]]

@@ -113,7 +113,7 @@ def render() -> None:
     x = d.set_index("trade_date").loc[date]
     D = W.load(date)
     rng = d[d["trade_date"].between(lo, hi)]
-    t1, t2, t3 = st.tabs(["Phiên này", "Ngành & nhóm", "Theo thời gian"])
+    t1, t2, t3 = st.tabs(["Mua bán trong phiên", "Theo ngành & nhóm", "Diễn biến nhiều phiên"])
 
     with t1:
         k = st.columns(4)

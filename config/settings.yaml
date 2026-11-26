@@ -182,4 +182,6 @@ portfolio:
 # Đẩy dữ liệu phiên mới lên GitHub sau khi tải xong số liệu cuối ngày → bản công khai (Streamlit Cloud) tự cập nhật.
 # Chỉ commit thư mục data/snapshot_delta (tools/publish_data.py). Đặt false nếu không muốn máy tự push.
 publish:
-  auto_push: true
+  auto_push: true            # sau khi chốt số liệu cuối ngày: đẩy data/snapshot_delta
+  live_push: true            # trong phiên: đẩy số liệu tạm tính của hôm nay (data/live_snapshot) để bản công khai cập nhật theo phút
+  live_push_sec: 120         # khoảng cách tối thiểu giữa hai lần đẩy (giây)

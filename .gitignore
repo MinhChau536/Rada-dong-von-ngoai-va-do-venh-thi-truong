@@ -13,6 +13,7 @@ data/ui_background.*
 data/.update.lock
 data/.recorder.lock
 data/.snapshot_stamp
+data/.live_stamp
 data/.bot.pid
 data/bot_alerts.json
 logs/

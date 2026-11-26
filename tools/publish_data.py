@@ -36,20 +36,69 @@ def publish(push: bool = True) -> dict:
     try:
         if _git("rev-parse", "--is-inside-work-tree", check=False).returncode != 0:
             return {"state": "no-git", "last_session": last}
-        _git("add", "-A", "--", DELTA_REL)
-        if _git("diff", "--cached", "--quiet", "--", DELTA_REL, check=False).returncode == 0:
-            log.info("Dữ liệu trên GitHub đã mới (tới phiên %s) – không cần đẩy", last)
-            return {"state": "unchanged", "last_session": last}
-        _git("commit", "-m", f"Dữ liệu SSI tới phiên {last}", "--", DELTA_REL)
-        r = _git("push", "origin", "HEAD", check=False)
-        if r.returncode != 0:
-            log.warning("Đẩy dữ liệu lên GitHub lỗi: %s", (r.stderr or r.stdout).strip()[:300])
-            return {"state": "push-failed", "last_session": last}
-        log.info("Đã đẩy dữ liệu tới phiên %s lên GitHub – bản công khai tự cập nhật sau 1–3 phút", last)
-        return {"state": "pushed", "last_session": last}
+        import shutil
+        shutil.rmtree(ROOT / LIVE_REL, ignore_errors=True)        # số chính thức đã có → bỏ số liệu tạm tính
+        state = _commit_push([DELTA_REL, LIVE_REL], f"Dữ liệu SSI tới phiên {last}", log)
+        if state == "pushed":
+            log.info("Đã đẩy dữ liệu tới phiên %s lên GitHub – bản công khai tự cập nhật sau 1–3 phút", last)
+        return {"state": state, "last_session": last}
     except (OSError, subprocess.SubprocessError) as exc:
         log.warning("Không đẩy được dữ liệu lên GitHub: %s", exc)
         return {"state": "error", "last_session": last}
+
+
+LIVE_REL = "data/live_snapshot"
+_LAST_LIVE = {"t": 0.0}
+
+
+def _unpushed_foreign_commits() -> int:
+    """Số commit chưa đẩy KHÔNG phải do bộ đẩy dữ liệu tạo – có thì không tự push (tránh đẩy hộ code đang làm dở)."""
+    r = _git("log", "@{u}..HEAD", "--format=%s", check=False)
+    if r.returncode != 0:
+        return 0
+    return sum(1 for s in r.stdout.splitlines() if s.strip() and not s.startswith(("Dữ liệu SSI", "Số liệu trong phiên")))
+
+
+def _commit_push(paths, message: str, log) -> str:
+    _git("add", "-A", "--", *paths)
+    if _git("diff", "--cached", "--quiet", "--", *paths, check=False).returncode == 0:
+        return "unchanged"
+    if _unpushed_foreign_commits():
+        log.warning("Có commit code chưa đẩy – không tự push dữ liệu để khỏi đẩy hộ; chạy git push thủ công")
+        _git("reset", "-q", "--", *paths, check=False)
+        return "skipped-unpushed"
+    _git("commit", "-m", message, "--", *paths)
+    r = _git("push", "origin", "HEAD", check=False)
+    if r.returncode != 0:
+        log.warning("Đẩy dữ liệu lên GitHub lỗi: %s", (r.stderr or r.stdout).strip()[:300])
+        return "push-failed"
+    return "pushed"
+
+
+def publish_live(min_interval: float = None) -> dict:
+    """Trong phiên: đẩy số liệu tạm tính của hôm nay (data/live_snapshot, vài trăm KB) để bản công khai cập nhật theo phút."""
+    import time as _t
+    sys.path.insert(0, str(ROOT))
+    from src.common.config import get
+    from src.common.logging import get_logger
+    from src.common.timeutil import now_vn
+    from tools import snapshot
+    log = get_logger("ffr.publish")
+    if not get("publish.live_push", False):
+        return {"state": "disabled"}
+    gap = float(get("publish.live_push_sec", 120) if min_interval is None else min_interval)
+    if _t.monotonic() - _LAST_LIVE["t"] < gap:
+        return {"state": "wait"}
+    _LAST_LIVE["t"] = _t.monotonic()
+    man = snapshot.export_live()
+    if not man:
+        return {"state": "no-live"}
+    try:
+        state = _commit_push([LIVE_REL], f"Số liệu trong phiên {man['session_date']} {now_vn():%H:%M}", log)
+    except (OSError, subprocess.SubprocessError) as exc:
+        log.warning("Không đẩy được số liệu trong phiên: %s", exc)
+        state = "error"
+    return {"state": state, "session": man["session_date"]}
 
 
 def auto_publish() -> dict:

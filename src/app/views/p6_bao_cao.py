@@ -20,22 +20,32 @@ def render() -> None:
     header("Báo cáo PDF", "Market Snapshot trong phiên và Closing Report cuối phiên · dựng từ cùng kho chỉ báo với giao diện")
     status_bar.render()
     sess = da.sessions()
-    section("Xuất báo cáo PDF", "Closing Report chỉ xuất khi kiểm tra chất lượng cuối phiên đạt")
+    section("Xuất báo cáo PDF", "Trong phiên: Market Snapshot (số liệu tạm tính) · sau đóng cửa: Closing Report (số liệu chính thức)")
     c1, c2, c3 = st.columns([1.2, 1, 1])
     date = c1.selectbox("Phiên", sess[::-1], format_func=lambda d: f"Phiên {d:%d/%m/%Y}", key="p6_date")
-    if c2.button("📄 Xuất Market Snapshot", type="primary", width="stretch"):
+    ld = snapshot.live_session()
+    is_live = ld is not None and pd.Timestamp(date) == ld
+    ok_closed, why = closing.closed_check(date)
+    if is_live:
+        st.info(f"⏱ Phiên {ld:%d/%m/%Y} đang giao dịch – chỉ xuất được **Market Snapshot** từ số liệu tạm tính (cập nhật ~2 phút/lần). "
+                "Closing Report mở sau khi SSI công bố số liệu đóng cửa chính thức (thường 15:05–15:30).")
+    if c2.button("📄 Xuất Market Snapshot", type="primary", width="stretch",
+                 help="Ảnh chụp thị trường – trong phiên dùng số liệu tạm tính của hôm nay"):
         with st.spinner("Đang dựng PDF…"):
             p = snapshot.build(date)
         st.success(f"Đã xuất {p.name}") if p else st.error("Không xuất được – không có dữ liệu phiên.")
         da.clear_cache()
-    if c3.button("📑 Xuất Closing Report", width="stretch"):
+    if c3.button("📑 Xuất Closing Report", width="stretch", disabled=not ok_closed,
+                 help=why or "Báo cáo cuối phiên – chỉ xuất khi kiểm tra chất lượng cuối phiên đạt"):
         with st.spinner("Đang kiểm tra chất lượng và dựng PDF…"):
             p, reason = closing.build(date)
         if p:
             st.success(f"Đã xuất {p.name}" + ("" if reason == "ok" else f" · Lưu ý: {reason.removeprefix('đạt – ')}"))
         else:
-            st.error(f"Không xuất Closing Report: {reason} (chỉ xuất khi kiểm tra chất lượng cuối phiên đạt).")
+            st.error(f"Không xuất Closing Report: {reason}.")
         da.clear_cache()
+    if not ok_closed and not is_live:
+        st.caption(f"Closing Report chưa mở: {why}.")
 
     rl = da.table("reports_log")
     section("Báo cáo đã sinh", "Mỗi file hiện một lần (lần xuất mới nhất) · bản ghi trong bảng reports_log")

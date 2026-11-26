@@ -56,8 +56,8 @@ PAGES = {
         st.Page(p6_bao_cao.render, title="Báo cáo PDF", icon=":material/description:", url_path="bao-cao"),
         st.Page(p9_telegram.render, title="Bot Telegram", icon=":material/send:", url_path="telegram"),
     ],
-    "Nghiên cứu & hệ thống": [               # FTSE là bối cảnh nghiên cứu, không phải trục chính của sản phẩm
-        st.Page(p4_su_kien.render, title="Nghiên cứu: nâng hạng FTSE", icon=":material/event:", url_path="su-kien-ftse"),
+    "Bối cảnh & hệ thống": [               # FTSE là bối cảnh nghiên cứu, không phải trục chính của sản phẩm
+        st.Page(p4_su_kien.render, title="Sự kiện nâng hạng FTSE", icon=":material/event:", url_path="su-kien-ftse"),
         st.Page(p_kiem_chung.render, title="Kiểm chứng & dữ liệu", icon=":material/fact_check:", url_path="kiem-chung"),
         st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
     ],
@@ -82,7 +82,7 @@ if not da.ready():
     keep = {"phuong-phap"}
     PAGES = {g: [pg if pg.url_path in keep else _waiting(pg) for pg in grp]
              for g, grp in PAGES.items()}
-    PAGES["Nghiên cứu & hệ thống"].insert(0, st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:",
+    PAGES["Bối cảnh & hệ thống"].insert(0, st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:",
                                         url_path="ket-noi", default=True))
 st.session_state["_pages"] = {pg.url_path: pg for grp in PAGES.values() for pg in grp}
 

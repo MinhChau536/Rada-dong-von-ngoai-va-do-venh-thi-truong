@@ -51,7 +51,28 @@ def quality_gate(date, db_path=None) -> Tuple[bool, str]:
     return True, "đạt" + note
 
 
+def closed_check(date=None, db_path=None) -> Tuple[bool, str]:
+    """Closing Report chỉ dành cho phiên ĐÃ ĐÓNG CỬA và đã có số chính thức trong kho chính."""
+    from src.common.timeutil import in_session
+    today = now_vn().date()
+    d = pd.Timestamp(date).date() if date is not None else None
+    if d == today and in_session():
+        return False, "phiên hôm nay chưa kết thúc – trong phiên chỉ xuất được Market Snapshot"
+    last = context.latest_date(db_path)
+    if d == today and (last is None or last.date() < today):
+        return False, "chưa có số liệu đóng cửa chính thức của hôm nay (SSI công bố sau 15:00) – xuất Market Snapshot"
+    if d is None:                                   # "báo cáo mới nhất": hôm nay đang/vừa giao dịch mà chưa có số chính thức
+        from src.data import live
+        if live.meta() is not None:
+            return False, "phiên hôm nay chưa có số liệu đóng cửa chính thức – trong phiên chỉ xuất được Market Snapshot"
+    return True, ""
+
+
 def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path], str]:
+    ok_closed, why = closed_check(date, db_path) if db_path is None else (True, "")
+    if not ok_closed:
+        log_report("closing", date, None, "blocked", why, db_path)
+        return None, why
     ctx = context.build(date, db_path)
     if ctx is None:
         log_report("closing", date, None, "failed", "Không có dữ liệu", db_path)

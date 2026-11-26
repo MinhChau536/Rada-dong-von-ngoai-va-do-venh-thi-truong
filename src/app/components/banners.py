@@ -139,7 +139,7 @@ def _rewind() -> str:
 ART = {"chan-doan": _shield, "kiem-chung": _rewind, "tong-quan": _candles, "dan-dat": _waterfall, "khoi-ngoai": _radar, "su-kien-ftse": _calendar,
        "watchlist": _eye_pie, "bao-cao": _report, "chat-luong": _shield, "phuong-phap": _book, "ket-noi": _plug, "telegram": _plane, "backtest": _rewind}
 TITLE_TO_SLUG = {"Tổng quan thị trường": "tong-quan", "Dẫn dắt & độ vênh": "dan-dat", "Ra-đa khối ngoại": "khoi-ngoai",
-                 "Sự kiện FTSE": "su-kien-ftse", "Nghiên cứu: nâng hạng FTSE": "su-kien-ftse", "Watchlist Impact": "watchlist", "Báo cáo PDF": "bao-cao", "Bot Telegram": "telegram", "Backtest": "backtest",
+                 "Sự kiện FTSE": "su-kien-ftse", "Sự kiện nâng hạng FTSE": "su-kien-ftse", "Watchlist Impact": "watchlist", "Báo cáo PDF": "bao-cao", "Bot Telegram": "telegram", "Backtest": "backtest",
                  "Chất lượng dữ liệu": "chat-luong", "Chẩn đoán thị trường": "chan-doan", "Kiểm chứng & dữ liệu": "kiem-chung", "Phương pháp & giới hạn": "phuong-phap", "Kết nối dữ liệu": "ket-noi"}
 GRADIENTS = {"chan-doan": ("#B45309", "#1E3A8A"), "kiem-chung": ("#15803D", "#0F172A"), "tong-quan": ("#0F766E", "#1E3A8A"), "dan-dat": ("#7C3AED", "#1E40AF"), "khoi-ngoai": ("#0E7490", "#134E4A"),
              "su-kien-ftse": ("#B45309", "#7C2D12"), "watchlist": ("#BE185D", "#5B21B6"), "bao-cao": ("#1D4ED8", "#0F766E"),
@@ -175,7 +175,7 @@ MODULES = {"tong-quan": ("01", "Thị trường"), "dan-dat": ("02", "Thị trư
 HIGHLIGHT = {"Chẩn đoán thị trường": ("Chẩn đoán", "thị trường"), "Kiểm chứng & dữ liệu": ("Kiểm chứng &", "dữ liệu"),
              "Tổng quan thị trường": ("Tổng quan", "thị trường"), "Dẫn dắt & độ vênh": ("Dẫn dắt &", "độ vênh"),
              "Ra-đa khối ngoại": ("Ra-đa", "khối ngoại"), "Sự kiện FTSE": ("Sự kiện", "FTSE"),
-             "Nghiên cứu: nâng hạng FTSE": ("Nghiên cứu:", "nâng hạng FTSE"),
+             "Sự kiện nâng hạng FTSE": ("Sự kiện", "nâng hạng FTSE"),
              "Watchlist Impact": ("Watchlist", "Impact"), "Báo cáo PDF": ("Báo cáo", "PDF"), "Bot Telegram": ("Bot", "Telegram"),
              "Chất lượng dữ liệu": ("Chất lượng", "dữ liệu"), "Backtest": ("", "Backtest"),
              "Phương pháp & giới hạn": ("Phương pháp &", "giới hạn"), "Kết nối dữ liệu": ("Kết nối", "dữ liệu")}

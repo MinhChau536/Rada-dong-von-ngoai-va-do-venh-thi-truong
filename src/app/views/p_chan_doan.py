@@ -33,7 +33,7 @@ def _extras(date) -> pd.DataFrame:
 @st.cache_data(ttl=600, show_spinner=False)
 def _extras_v(date, v: str) -> pd.DataFrame:
     from src.data import database as db
-    cols = ["trade_date", "symbol", "is_valid", "w", "C", "net_flow", "tv"]
+    cols = ["trade_date", "symbol", "is_valid", "w", "C", "net_flow", "tv", "nf"]
     st_ = db.query_df(f"SELECT {', '.join(cols)} FROM indicator_stock_daily WHERE trade_date <= ?", [date])
     ld = da._live_date()
     if ld is not None and ld <= date:                    # phiên tạm tính hôm nay (kho phụ)
@@ -306,7 +306,7 @@ def render() -> None:
     sess = da.sessions()
     date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"📅 Phiên {d:%d/%m/%Y}", key="dx_date")
     ctx = _diag_ctx(date)
-    t1, t2, t3, t4 = st.tabs(["Kết luận phiên", "Phân tích kỹ thuật", "Cấu trúc & dòng vốn", "Kịch bản theo dõi"])
+    t1, t2, t3, t4 = st.tabs(["Tổng kết phiên", "Phân tích kỹ thuật", "Dòng tiền & cấu trúc", "Kịch bản theo dõi"])
     with t1:
         with W.card("dx_sum"):
             W.title("Kết luận và điều cần theo dõi", f"Phiên {date:%d/%m/%Y} · tổng hợp từ các tab bên cạnh")
@@ -332,5 +332,5 @@ def render() -> None:
             scenario_block(ctx)
     with st.expander("Kiểm định giai đoạn FTSE – bảng thống kê cho người cần kiểm tra", expanded=False):
         st.caption("Mỗi dòng một câu hỏi · Kết luận: Có bằng chứng (p < 0,05) / Bằng chứng yếu (p < 0,10) / Chưa đủ bằng chứng. "
-                   "Chi tiết nghiên cứu sự kiện ở trang Nghiên cứu: nâng hạng FTSE.")
+                   "Chi tiết ở trang Sự kiện nâng hạng FTSE.")
         research_block(date)

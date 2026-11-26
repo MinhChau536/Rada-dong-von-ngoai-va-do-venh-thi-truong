@@ -67,9 +67,24 @@ def front_matter(pdf: FFRPdf, ctx: Dict, kind: str, stamp: str, contents: List[s
     ], answers=ctx.get("answers", []))
 
 
+def live_session() -> Optional[pd.Timestamp]:
+    """Phiên hôm nay đang có số liệu tạm tính (bộ ghi WebSocket) – None nếu ngoài phiên hoặc đã có số chính thức."""
+    from src.data import live
+    m = live.meta()
+    return pd.Timestamp(m["session_date"]) if m else None
+
+
 def build(date=None, db_path=None) -> Optional[Path]:
+    """Market Snapshot. Trong giờ giao dịch, nếu chọn phiên hôm nay (hoặc không chọn) → dựng từ số liệu TẠM TÍNH trong phiên
+    (data/live.duckdb); bảng kiểm định, danh mục theo dõi vẫn đọc từ kho chính."""
     from src.reports import chapters as C
-    ctx = context.build(date, db_path)
+    ld = live_session() if db_path is None else None
+    if ld is not None and (date is None or pd.Timestamp(date) == ld):
+        from src.data import live
+        from src.common.config import db_path as main_db
+        ctx = context.build(ld, live.LIVE_DB, watch_path=db_path or main_db())
+    else:
+        ctx = context.build(date, db_path)
     if ctx is None:
         log_report("snapshot", date, None, "failed", "Không có dữ liệu", db_path)
         return None

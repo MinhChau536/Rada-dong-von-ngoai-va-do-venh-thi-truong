@@ -333,7 +333,7 @@ def render() -> None:
     render_index_cards(data)
     with W.card("p1_chart"):
         W.title("Diễn biến chỉ số", "Chọn chỉ số, kỳ và kiểu biểu đồ · tab thứ hai so sánh hiệu suất 4 chỉ số")
-        t1, t2 = st.tabs(["Biểu đồ", "So sánh hiệu suất"])
+        t1, t2 = st.tabs(["Biểu đồ chỉ số", "So sánh hiệu suất"])
         with t1:
             render_index_chart(data)
         with t2:

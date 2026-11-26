@@ -26,6 +26,8 @@ import duckdb
 ROOT = Path(__file__).resolve().parents[1]
 SNAP = ROOT / "data" / "snapshot"
 DELTA = ROOT / "data" / "snapshot_delta"
+LIVE_SNAP = ROOT / "data" / "live_snapshot"          # số liệu TRONG PHIÊN của hôm nay (vài trăm KB, đẩy mỗi ~2 phút)
+LIVE_STAMP = ROOT / "data" / ".live_stamp"
 STAMP = ROOT / "data" / ".snapshot_stamp"
 BIG_ROWS = 20000
 CHUNK = "45MB"
@@ -151,6 +153,72 @@ def stamp() -> str:
         except (OSError, ValueError):
             parts.append("")
     return "|".join(parts)
+
+
+def export_live(live_db: Optional[Path] = None) -> Optional[Dict]:
+    """Xuất các dòng của phiên hôm nay từ data/live.duckdb → data/live_snapshot/ (để bản công khai có số liệu trong phiên)."""
+    from src.data import live
+    src_db = Path(live_db or live.LIVE_DB)
+    if not src_db.exists():
+        return None
+    con = duckdb.connect(str(src_db), read_only=True)
+    try:
+        m = con.execute("SELECT * FROM live_meta").df()
+        if m.empty:
+            return None
+        sess = str(m["session_date"].iloc[0])[:10]
+        tmp = LIVE_SNAP.with_name(LIVE_SNAP.name + "_tmp")
+        shutil.rmtree(tmp, ignore_errors=True)
+        tmp.mkdir(parents=True)
+        dated = {r[0] for r in con.execute("SELECT table_name FROM information_schema.columns WHERE table_schema = 'main' "
+                                           "AND column_name = 'trade_date'").fetchall()}
+        man = {"created": time.strftime("%Y-%m-%d %H:%M:%S"), "session_date": sess,
+               "built_at": str(m["built_at"].iloc[0]) if "built_at" in m else "", "tables": {}}
+        for t in sorted(dated | {"live_meta", "pipeline_meta"}):
+            sel = (f"SELECT * FROM {_q(t)} WHERE CAST(trade_date AS DATE) = DATE '{sess}'" if t in dated
+                   else f"SELECT * FROM {_q(t)}")
+            n = int(con.execute(f"SELECT COUNT(*) FROM ({sel})").fetchall()[0][0])
+            if not n:
+                continue
+            f = tmp / f"{t}.parquet"
+            con.execute(f"COPY ({sel}) TO '{f.as_posix()}' (FORMAT parquet, COMPRESSION zstd)")
+            man["tables"][t] = {"rows": n, "file": f.name}
+    finally:
+        con.close()
+    (tmp / "manifest.json").write_text(json.dumps(man, ensure_ascii=False, indent=1), encoding="utf-8")
+    shutil.rmtree(LIVE_SNAP, ignore_errors=True)
+    tmp.rename(LIVE_SNAP)
+    return man
+
+
+def live_stamp() -> str:
+    try:
+        return json.loads((LIVE_SNAP / "manifest.json").read_text(encoding="utf-8")).get("created", "")
+    except (OSError, ValueError):
+        return ""
+
+
+def restore_live(out: Optional[Path] = None) -> bool:
+    """Bản công khai: dựng data/live.duckdb từ data/live_snapshot/ (giao diện ghép phiên này sau dữ liệu lịch sử)."""
+    from src.data import live
+    man_f = LIVE_SNAP / "manifest.json"
+    out = Path(out or live.LIVE_DB)
+    if not man_f.exists():
+        return False
+    man = json.loads(man_f.read_text(encoding="utf-8"))
+    tmp = out.with_name(out.stem + "_restoring.duckdb")
+    tmp.unlink(missing_ok=True)
+    con = duckdb.connect(str(tmp))
+    for t, i in man["tables"].items():
+        con.execute(f"CREATE TABLE {_q(t)} AS SELECT * FROM read_parquet('{(LIVE_SNAP / i['file']).as_posix()}')")
+    con.close()
+    import os
+    os.replace(tmp, out)
+    try:
+        LIVE_STAMP.write_text(man.get("created", ""), encoding="utf-8")
+    except OSError:
+        pass
+    return True
 
 
 def export_delta(db: Optional[Path] = None) -> Dict:

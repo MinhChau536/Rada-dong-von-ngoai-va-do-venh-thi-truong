@@ -36,7 +36,7 @@ LIVE_DB = abs_path("data/live.duckdb")
 TMP_DB = abs_path("data/live_build.duckdb")
 HIST_SESSIONS = 320          # đủ cho phân vị 250 phiên, z 60 phiên, MA50
 BOOT_PER_BUILD = 400         # khởi động giữa phiên: bù mọi mã thiếu bằng nến 1 phút
-BOOT_WORKERS = 6             # tải song song (≈ 400 mã trong ~25 giây thay vì ~100 giây)
+BOOT_WORKERS = 3             # tải song song vừa phải – 6 luồng bị SSI trả 429 (quá tần suất)
 PROBE_SYMBOLS = ("VCB", "FPT", "HPG", "SSI", "MWG")
 INDEX_MAP = {"VNINDEX": "VNINDEX", "VN30": "VN30", "HNXINDEX": "HNXINDEX", "HNXUPCOMINDEX": "UPCOMINDEX",
              "UPCOMINDEX": "UPCOMINDEX"}

@@ -220,7 +220,7 @@ def ch_ftse_context(pdf: FFRPdf, ctx: Dict, db_path=None) -> None:
     sr = _stats(db_path)
     rows = dg.research_rows(sr)
     if ctx.get("extras_full") is None:
-        st_ = db.query_df("SELECT trade_date, symbol, is_valid, w, C, net_flow, tv FROM indicator_stock_daily WHERE trade_date <= ?",
+        st_ = db.query_df("SELECT trade_date, symbol, is_valid, w, C, net_flow, tv, nf FROM indicator_stock_daily WHERE trade_date <= ?",
                           [ctx["date"]], path=db_path)
         ctx["extras_full"] = dg.daily_extras(st_, ctx["hist"])
     reg = dg.d_regression(ctx["hist"], ctx["extras_full"])

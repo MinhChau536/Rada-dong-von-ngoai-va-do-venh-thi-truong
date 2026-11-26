@@ -230,10 +230,10 @@ def exposure_block(wl, data, date) -> None:
     if not wl:
         return
     hist = pd.concat([da.stock_hist(s) for s in wl], ignore_index=True)
-    e = dg.watch_exposure(wl, date, hist, da.daily(), data["profile"])
+    e = dg.watch_exposure(wl, date, hist, da.daily(), data["profile"], market=da.stock_day(date))
     section("Mức phơi nhiễm của watchlist", "Watchlist chịu tác động của nhóm dẫn dắt và độ vênh chỉ số đến đâu")
     cols = st.columns(4)
-    items = [kpi("Mã trong nhóm dẫn dắt", f"{len(e['lead'])}/{e['n']}", None, ", ".join(e["lead"]) or "không mã nào trong top 10 |C|"),
+    items = [kpi("Mã trong nhóm dẫn dắt", f"{len(e['lead'])}/{e['n']}", None, ", ".join(e["lead"]) or "không mã nào trong 10 mã |C| lớn nhất toàn sàn"),
              kpi("Mã thuộc họ Vingroup", f"{len(e['vin'])}/{e['n']}", None, ", ".join(e["vin"]) or "—"),
              kpi("β Dimson bình quân", fmt.num(e["beta"], 2), None, ">1: biến động mạnh hơn thị trường"),
              kpi("Thua trung vị khi D cao", fmt.frac_pct(e["lose_hiD"], 0),

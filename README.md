@@ -47,9 +47,9 @@
 |---|---|---|
 | RQ1 – Chỉ số có lan tỏa tới số đông cổ phiếu? Bao nhiêu mã tạo phần lớn biến động? | D, AD, IQR, loại phiên, đóng góp C, CR5, ε | Tổng quan · Dẫn dắt & độ vênh |
 | RQ2 – Dòng vốn ngoại tập trung ở đâu, có cùng chiều giá không? | NF, nf, FPR, HHI, z60, chiều giá – ngoại | Ra-đa khối ngoại |
-| RQ3 – Quanh các mốc FTSE, nhóm 27 mã có lợi suất bất thường so với nhóm đối chứng? | AR, CAR, CAAR, DiD | Nâng hạng FTSE |
+| RQ3 – Quanh các mốc FTSE, nhóm 27 mã có lợi suất bất thường so với nhóm đối chứng? | AR, CAR, CAAR, DiD | Nghiên cứu: nâng hạng FTSE |
 | RQ4 – Các mã trong danh mục theo dõi phản ứng thế nào? | ERᴹ, β Dimson, phơi nhiễm với nhóm dẫn dắt | Watchlist Impact |
-| RQ5 – Cấu trúc thị trường có thay đổi sau công bố FTSE? | Kiểm định H4 (OLS HAC, Holm), hồi quy gộp D | Nâng hạng FTSE · Chẩn đoán thị trường |
+| RQ5 – Cấu trúc thị trường có thay đổi sau công bố FTSE? | Kiểm định H4 (OLS HAC, Holm), hồi quy gộp D | Nghiên cứu: nâng hạng FTSE · Chẩn đoán thị trường |
 
 **Giá trị kỳ vọng.** Một câu trả lời bằng số liệu cho mỗi phiên, cập nhật theo phút trong giờ giao dịch, đồng bộ giữa web – PDF – Telegram.
 
@@ -180,7 +180,9 @@ Máy tắt nhiều ngày: lần chạy sau tự lấp mọi phiên còn thiếu 
 2. Repository `MinhChau536/Rada-dong-von-ngoai-va-do-venh-thi-truong`, branch `main`, main file `src/app/main.py`; *Advanced settings* → Python **3.12**. Không cần nhập secrets.
 3. Bấm **Deploy** – lần đầu khoảng 5–10 phút (cài thư viện + dựng kho từ `data/snapshot/`).
 
-Bản công khai tự bật **chế độ chỉ xem**: khóa sửa watchlist, gửi Telegram và các tác vụ tải dữ liệu; dữ liệu là gói `data/snapshot/` trên GitHub. Mỗi lần `git push`, Streamlit Cloud **tự cập nhật** – không phải deploy lại. Muốn đưa dữ liệu mới lên bản công khai: `python -m tools.snapshot export` rồi commit và push (mỗi lần thêm ~270 MB vào lịch sử git, nên chỉ làm khi cần, ví dụ trước khi nộp bài). Số liệu trực tiếp trong phiên và bot Telegram chỉ chạy trên máy cá nhân.
+Bản công khai tự bật **chế độ chỉ xem**: khóa sửa watchlist, gửi Telegram và các tác vụ tải dữ liệu. Mỗi lần `git push`, Streamlit Cloud **tự cập nhật** – không phải deploy lại.
+
+**Dữ liệu phiên mới tự lên bản công khai.** SSI FastConnect chỉ cho gọi từ IP đã đăng ký, nên máy chủ đám mây không tự tải được; thay vào đó, sau khi máy cá nhân tải xong số liệu cuối ngày (bộ ghi `recorder_ssi` hoặc `run.py`), `tools/publish_data.py` xuất **gói bổ sung** `data/snapshot_delta/` (chỉ các phiên mới, vài MB) rồi commit + push **đúng thư mục đó** (không bao giờ đụng `.env` hay báo cáo). Streamlit Cloud thấy commit mới → tự dựng lại kho từ `data/snapshot/` + `data/snapshot_delta/` trong vài chục giây. Tắt bằng `publish.auto_push: false` trong `config/settings.yaml`; chạy tay: `python -m tools.publish_data`. Gói gốc `data/snapshot/` (~280 MB) chỉ cần xuất lại khi định nghĩa chỉ báo thay đổi.
 
 ---
 
@@ -251,7 +253,7 @@ Công thức đầy đủ (1)–(17) trên trang *Phương pháp & giới hạn*
 | Lan tỏa | Độ vênh **D** | r VN-Index − trung vị lợi suất cổ phiếu | Trung vị đại diện cổ phiếu điển hình, không bị mã lớn chi phối |
 | Dẫn dắt | Đóng góp **C**, **CR5**, ε | C = I(t−1)·w·r; CR5 = Σ\|C\| top 5 / Σ\|C\|; ε = ΔI − ΣC | Biết chính xác mã nào tạo ra bao nhiêu điểm; ε kiểm tra độ chính xác |
 | Dẫn dắt | HHI tỷ trọng | Σw², 1/HHI = số mã hiệu dụng | Kiểm soát việc tỷ trọng chỉ số tự phình to |
-| Khối ngoại | NF, nf, FPR, HHI, z60 | Mua − bán; NF/GTGD; (mua+bán)/2GTGD; z theo 60 phiên trước | Chuẩn hóa để so sánh giữa mã và giữa phiên |
+| Khối ngoại | NF, nf, FPR, HHI, z60 | Mua − bán; NF / G; (mua+bán) / 2G với G = max(khớp + thỏa thuận, mua NN, bán NN) vì SSI gộp thỏa thuận vào số liệu khối ngoại; z theo 60 phiên trước | Chuẩn hóa để so sánh giữa mã và giữa phiên |
 | Khối ngoại | Chiều giá – ngoại | Dấu NF × dấu giá khi \|nf\| ≥ 5%, \|r\| ≥ 0,5% | Nhận diện khối ngoại đứng sau hay ngược chiều giá |
 | FTSE | CAR/CAAR, BMP, Kolari–Pynnönen, Welch | Mô hình thị trường, cửa sổ ước lượng [−130; −11]; FTSE − đối chứng | Chuẩn mực nghiên cứu sự kiện, chịu được tương quan chéo |
 | FTSE | DiD, H4 | Hiệu ứng cố định mã và phiên; OLS Newey–West 5 trễ; p hiệu chỉnh Holm | Tách tác động giai đoạn khỏi xu hướng chung |
@@ -266,17 +268,17 @@ Công thức đầy đủ (1)–(17) trên trang *Phương pháp & giới hạn*
 
 ## 10. Giao diện sản phẩm
 
-| Nhóm | Trang | Nội dung chính |
+| Nhóm | Trang | Nội dung chính (các tab con) |
 |---|---|---|
-| **Diễn biến thị trường** | Tổng quan thị trường | 4 thẻ chỉ số, chất lượng xu hướng + kết luận phiên, nến + MA + mốc FTSE, thanh khoản, độ rộng, ngành, bản đồ nhiệt, Top 10, cổ phiếu nổi bật (GTGD ≥ 10 tỷ), hiệu suất, watchlist |
-| | Dẫn dắt & độ vênh | Thác nước đóng góp theo mã/ngành, bảng chi tiết, họ cổ phiếu, chuỗi D có dải phân vị, CR5, HHI tỷ trọng |
-| | Ra-đa khối ngoại | NF, z60, HHI, FPR, xếp hạng mua/bán ròng/room, khối ngoại theo ngành và nhóm, chuỗi lũy kế |
-| **Phân tích chuyên sâu** | Nâng hạng FTSE | Dòng thời gian mốc, 27 mã, lợi suất lũy kế các nhóm, CAAR/CAFF, DiD, bảng kiểm định đầy đủ, cân bằng nhóm đối chứng |
-| | Chẩn đoán thị trường | Kết luận + khuyến nghị cấp thị trường, phân tích kỹ thuật (bảng + biểu đồ giá/RSI/MACD), cấu trúc dòng vốn, kịch bản hỗ trợ/kháng cự, chẩn đoán phiên 5 bước, kết luận nghiên cứu FTSE |
-| **Danh mục & tiện ích** | Watchlist Impact | Thêm/bớt mã, tab riêng từng mã, phản ứng so với thị trường, phơi nhiễm |
+| **Diễn biến thị trường** | Tổng quan thị trường | Chỉ phần cốt lõi, từ tổng quát đến chi tiết: 4 thẻ chỉ số → [biểu đồ chỉ số \| so sánh hiệu suất] → tóm tắt phiên HOSE + một câu kết luận → [nhóm dẫn dắt \| top 10 khối ngoại mua/bán ròng] → cổ phiếu nổi bật → [thanh khoản \| ngành] → bản đồ thị trường → watchlist |
+| | Chẩn đoán thị trường | Tab *Kết luận phiên* (điều cần theo dõi + chẩn đoán 5 bước) · *Phân tích kỹ thuật* (MA, RSI, MACD, hỗ trợ/kháng cự) · *Cấu trúc & dòng vốn* · *Kịch bản theo dõi*; kiểm định giai đoạn FTSE thu gọn ở cuối trang |
+| | Dẫn dắt & độ vênh | Tab *Phiên này* (thác nước, bảng đóng góp, họ & ngành) · *Độ vênh & lan tỏa* (chuỗi D, độ rộng, loại phiên, thống kê theo kỳ) · *Tập trung & loại trừ* (chỉ số loại trừ một họ, CR5, mã dẫn dắt thường xuyên) |
+| | Ra-đa khối ngoại | Tab *Phiên này* (KPI, top 10, diễn biến mua–bán, xếp hạng) · *Ngành & nhóm* · *Theo thời gian* (HHI, chuỗi mua/bán ròng, chiều giá – chiều khối ngoại) |
+| **Danh mục & tiện ích** | Watchlist Impact | Thêm/bớt mã, tab riêng từng mã, phản ứng so với thị trường, phơi nhiễm với 10 mã dẫn dắt toàn sàn |
 | | Báo cáo PDF | Xuất Closing Report / Market Snapshot, danh sách báo cáo đã sinh |
 | | Bot Telegram | Giới thiệu bot, luồng hoạt động, tin mẫu dựng từ dữ liệu thật, cơ chế cảnh báo, gửi thử |
-| **Hệ thống** | Kiểm chứng & dữ liệu | Backtest cảnh báo và biên dao động, chất lượng dữ liệu, luồng WebSocket đã ghi, kết nối SSI |
+| **Nghiên cứu & hệ thống** | Nghiên cứu: nâng hạng FTSE | Bối cảnh nghiên cứu: tab *Bối cảnh* · *Nghiên cứu sự kiện* (CAAR/CAFF) · *Chênh lệch kép & đối chứng* · *Bảng kiểm định đầy đủ* |
+| | Kiểm chứng & dữ liệu | Backtest cảnh báo và biên dao động, chất lượng dữ liệu, luồng WebSocket đã ghi, kết nối SSI |
 | | Phương pháp & giới hạn | Công thức (1)–(17), tham số từ `settings.yaml`, kết quả kiểm định, giới hạn |
 
 **Đáp ứng yêu cầu giao diện của đề:** tên sản phẩm, mục tiêu và người dùng ở đầu mỗi trang · **thanh trạng thái** gồm giờ cập nhật, nguồn, trạng thái kết nối SSI, độ đầy đủ, nhãn TRỰC TIẾP / ĐÓNG CỬA TẠM TÍNH · nhiều chỉ số tổng hợp (D, CR5, NF, HHI…) · biểu đồ nến, thác nước, bản đồ nhiệt, phân phối, chuỗi thời gian, bảng xếp hạng · bộ chọn phiên, mã, kỳ, nhóm · khu vực phân tích, cảnh báo, giải thích · trang phương pháp và giới hạn · trạng thái không có dữ liệu / mất kết nối / lỗi API được hiển thị rõ, mỗi khối lỗi độc lập không làm treo trang.
@@ -286,7 +288,7 @@ Công thức đầy đủ (1)–(17) trên trang *Phương pháp & giới hạn*
 ## 11. Báo cáo PDF và bot Telegram
 
 **Báo cáo PDF** (`src/reports/`, lưu tại `reports_out/`): *Closing Report* (sau phiên, có kiểm tra chất lượng) và *Market Snapshot* (trong phiên).
-Bố cục: bìa + kết luận phiên · mục lục + tóm tắt điều hành (3 câu trả lời) · 1. Tổng quan thị trường · 2. Dẫn dắt và độ vênh · 3. Dòng vốn ngoại · 4. Bối cảnh nâng hạng FTSE · 5. Chẩn đoán thị trường · 6. Tác động lên watchlist · 7. Kết luận, hàm ý và khuyến nghị · 8. Phụ lục phương pháp và chất lượng dữ liệu. Mỗi chương bắt đầu trang mới, mở đầu bằng một câu kết luận sinh từ số liệu.
+Bố cục: bìa + kết luận phiên · mục lục + tóm tắt điều hành (3 câu trả lời) · 1. Tổng quan thị trường · 2. Dẫn dắt và độ vênh · 3. Dòng vốn ngoại · 4. Bối cảnh nâng hạng FTSE · 5. Chẩn đoán thị trường · 6. Tác động lên watchlist · 7. Kết luận và điều cần theo dõi · 8. Phụ lục phương pháp và chất lượng dữ liệu. Mỗi chương bắt đầu trang mới, mở đầu bằng một câu kết luận sinh từ số liệu.
 
 **Bot Telegram** (`src/bot/`):
 
@@ -357,9 +359,9 @@ Bố cục: bìa + kết luận phiên · mục lục + tóm tắt điều hành
 │   ├── reports/           closing · snapshot · chapters · charts · pdf_base · context
 │   ├── bot/               bot · messages · monitor (cảnh báo tự động) · jobs · intraday
 │   └── common/            config · fmt · timeutil · logging
-├── tools/                 schedule_windows.py · snapshot.py
+├── tools/                 schedule_windows.py · snapshot.py · publish_data.py
 ├── tests/                 kiểm thử tự động + fixtures
-├── data/                  ffr.duckdb (không đẩy git) · snapshot/ (Parquet đi kèm)
+├── data/                  ffr.duckdb (không đẩy git) · snapshot/ + snapshot_delta/ (Parquet đi kèm)
 ├── docs/                  api_samples/ (JSON mẫu SSI) · notes/ · robustness_table.csv
 ├── reports_out/           PDF đã xuất
 └── logs/                  app.log · job_recorder.log · job_autoupdate.log

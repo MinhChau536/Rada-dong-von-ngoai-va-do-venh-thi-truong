@@ -1,7 +1,7 @@
 """
 Trang "Chẩn đoán thị trường" – chẩn đoán VN-Index từ dữ liệu SSI FastConnect V3:
 
-  Kết luận + khuyến nghị cấp thị trường (quy tắc cố định, src/reports/chapters.market_recommendations)
+  Kết luận + điều cần theo dõi ở cấp thị trường (quy tắc cố định, src/reports/chapters.market_recommendations)
   1 · Phân tích kỹ thuật: MA20/50/200, cấu trúc đỉnh – đáy (Dow), RSI(14), MACD, khối lượng xác nhận (src/analytics/technical.py)
   2 · Cấu trúc thị trường & dòng vốn: lan tỏa, CR5, khối ngoại 5 phiên, σ EWMA + chuỗi % biến động có ngoại cùng chiều
   3 · Kịch bản theo dõi (hỗ trợ/kháng cự, biên dao động EWMA) · 4 · Góc nhìn phiên 5 bước · kết luận nghiên cứu giai đoạn FTSE
@@ -22,7 +22,7 @@ from src.app.components.states import empty, safe_block
 from src.app.components.ui import colored, esc, header, md, pal, plot, table_html
 from src.app.theme import color_for
 from src.common import fmt
-from src.finance.breadth import session_type_label
+from src.finance.breadth import session_label, session_type_label  # noqa: F401
 from src.finance.domestic import ABSORB_LABELS
 
 
@@ -66,8 +66,8 @@ DX_CSS = """<style>
 .dx-v b { font-size:18px; font-variant-numeric:tabular-nums; }
 .dx-a { font-size:13.5px; line-height:1.55; }
 .dx-ev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
-.dx-concl { border:1px solid rgba(245,179,65,.45); border-left:4px solid #F5B341; border-radius:12px; padding:12px 16px;
-  font-size:14.5px; line-height:1.6; margin:6px 0 12px; background:rgba(245,179,65,.07); }
+.dx-concl { border:none; border-left:3px solid var(--ffr-accent); border-radius:0; padding:4px 0 4px 14px;
+  font-size:15px; line-height:1.6; margin:4px 0 12px; background:transparent; }
 </style>"""
 
 EV_COLORS = {"Có bằng chứng": "#16A34A", "Bằng chứng yếu": "#D97706", "Chưa đủ bằng chứng": "#64748B", "Chưa đủ dữ liệu": "#64748B"}
@@ -91,11 +91,10 @@ def session_block(date) -> None:
     vin = g[(g["group_type"] == "family") & (g["group_name"] == "VINGROUP")]
     # bước 1
     pct = x.get("D_pct250")
-    s1 = ("VN-Index phản ánh khá sát số đông cổ phiếu." if abs(x["D"]) < 0.3 else
-          f"VN-Index {'tăng' if x['D'] > 0 else 'giảm'} mạnh hơn cổ phiếu điển hình {fmt.num(abs(x['D']), 2)} điểm % – "
-          "biến động chỉ số không đại diện cho số đông.")
+    s1 = (f"VN-Index {fmt.pct(x['r_vni_pct'])}, cổ phiếu trung vị {fmt.pct(x['median_ret_pct'])} – "
+          f"{dg.representative(x)}.")
     v1 = (f"<span>D <b style='color:{color_for(x['D'], p)}'>{fmt.num(x['D'], 2, True)}</b> đ.%</span>"
-          f"<span>Phân vị 250 phiên <b>{fmt.num(pct, 0)}%</b></span><span>Loại phiên <b>{session_type_label(x['session_type'])}</b></span>")
+          f"<span>Phân vị 250 phiên <b>{fmt.num(pct, 0)}%</b></span><span>Loại phiên <b>{session_label(x)}</b></span>")
     # bước 2
     main = lead[lead["side"] == ("neg" if x["dI"] < 0 else "pos")].head(3)
     ex_vin = vin["index_ex_group_ret_pct"].iloc[0] if not vin.empty else np.nan
@@ -106,12 +105,10 @@ def session_block(date) -> None:
     # bước 3
     rho = v[["C", "net_flow"]].dropna().corr(method="spearman").iloc[0, 1] if len(v) > 10 else np.nan
     cod = et["codir"]
-    s3 = (f"{fmt.frac_pct(cod, 0)} biến động điểm đến từ các mã khối ngoại giao dịch <b>cùng chiều</b> giá; tương quan hạng "
-          f"giữa đóng góp điểm và khối ngoại ròng ρ = {fmt.num(rho, 2, True)}. "
-          + ("Khối ngoại đứng sau phần lớn biến động hôm nay." if cod >= 0.6 else
-             "Khối ngoại chỉ đứng sau một phần biến động – phần còn lại do khối nội." if cod >= 0.4 else
-             "Biến động chủ yếu không đến từ khối ngoại."))
-    v3 = (f"<span>Đóng góp có ngoại cùng chiều <b>{fmt.frac_pct(cod, 0)}</b></span><span>ρ(C, NF) <b>{fmt.num(rho, 2, True)}</b></span>"
+    s3 = (dg.codir_sentence(cod, et.get("codir_base"))
+          + f" Tương quan hạng giữa đóng góp điểm và khối ngoại ròng ρ = {fmt.num(rho, 2, True)}.")
+    v3 = (f"<span>Cùng chiều, ròng ≥ 5% GTGD <b>{fmt.frac_pct(cod, 0)}</b></span>"
+          f"<span>Thường lệ <b>{fmt.frac_pct(et.get('codir_base'), 0)}</b></span><span>ρ(C, NF) <b>{fmt.num(rho, 2, True)}</b></span>"
           f"<span>NN ròng <b style='color:{color_for(x['NF_total'], p)}'>{fmt.bn(x['NF_total'])}</b></span>")
     # bước 4
     top10 = set(lead["symbol"])
@@ -123,7 +120,7 @@ def session_block(date) -> None:
     wl = get_watchlist()
     if wl:
         hist = pd.concat([da.stock_hist(s) for s in wl], ignore_index=True)
-        e = dg.watch_exposure(wl, date, hist, da.daily())
+        e = dg.watch_exposure(wl, date, hist, da.daily(), market=da.stock_day(date))
         tw = v[v["symbol"].isin(wl)]
         er = float(tw["ER_M"].mean() * 100) if not tw.empty else np.nan
         s5 = (f"{len(e['lead'])}/{e['n']} mã watchlist nằm trong nhóm dẫn dắt"
@@ -135,7 +132,7 @@ def session_block(date) -> None:
     else:
         s5, v5 = "Danh mục theo dõi trống.", ""
     md(_step(1, "Chỉ số có lan tỏa không?", v1, s1) + _step(2, "Ai tạo ra biến động?", v2, s2)
-       + _step(3, "Khối ngoại có đứng sau không?", v3, s3) + _step(4, "Phần còn lại của thị trường phản ứng ra sao?", v4, s4)
+       + _step(3, "Khối ngoại đi cùng chiều đến đâu?", v3, s3) + _step(4, "Phần còn lại của thị trường phản ứng ra sao?", v4, s4)
        + _step(5, "Watchlist bị ảnh hưởng thế nào?", v5, s5))
 
 
@@ -145,14 +142,15 @@ def link_series(date) -> None:
     ex = _extras(date).tail(120)
     c1, c2 = st.columns(2, gap="small")
     with c1, W.card("dx_cod"):
-        W.title("Khối ngoại có đứng sau biến động chỉ số không?",
-                "Mỗi cột = % điểm biến động VN-Index đến từ các mã mà khối ngoại MUA khi giá tăng hoặc BÁN khi giá giảm · "
-                "trên vạch 50% = khối ngoại đi cùng chiều phần lớn biến động · 120 phiên")
+        W.title("Khối ngoại đi cùng chiều biến động chỉ số đến đâu?",
+                "Mỗi cột = % điểm biến động VN-Index đến từ các mã khối ngoại mua/bán ròng ≥ 5% GTGD cùng chiều giá · "
+                "đường chấm = mức thường lệ (trung vị 250 phiên) · quan hệ cùng phiên, không phải nhân quả")
         fig = go.Figure()
         fig.add_bar(x=ex["trade_date"], y=ex["codir"] * 100, marker_color="rgba(56,189,248,.45)", name="% biến động có khối ngoại cùng chiều")
         fig.add_scatter(x=ex["trade_date"], y=(ex["codir"] * 100).rolling(10).mean(), name="Trung bình 10 phiên",
                         line=dict(color="#F5B341", width=2))
-        fig.add_hline(y=50, line=dict(color=p["muted"], dash="dot"))
+        fig.add_scatter(x=ex["trade_date"], y=ex["codir_base"] * 100, name="Thường lệ (trung vị 250 phiên)",
+                        line=dict(color=p["muted"], dash="dot", width=1.5))
         plot(charts._lay(fig, p, 300, legend=dict(orientation="h", y=-0.18, x=0), margin=dict(l=8, r=8, t=8, b=8)), "dx_cod_fig")
     with c2, W.card("dx_ftse"):
         W.title("27 mã FTSE đóng góp bao nhiêu điểm vào VN-Index mỗi phiên?",
@@ -171,13 +169,7 @@ def research_block(date) -> None:
     rows, concl = [], {}
     if not sr.empty:
         h4 = sr[(sr["hypothesis"] == "H4") & sr["test"].str.startswith("OLS")]
-        want = [("CR5 – tập trung đóng góp", "Tập trung đóng góp (CR5) tăng sau công bố FTSE?", "base"),
-                ("CR5 – tập trung đóng góp · kiểm soát HHI tỷ trọng", "… vẫn tăng khi đã kiểm soát tỷ trọng phình to?", "control_hhi_w"),
-                ("Tỷ lệ phiên thiếu lan tỏa", "Phiên thiếu lan tỏa nhiều hơn sau công bố?", "base"),
-                ("FPR – tỷ trọng GD khối ngoại", "Khối ngoại tham gia giao dịch nhiều hơn?", "base"),
-                ("nf toàn sàn – cường độ ròng", "Khối ngoại mua ròng mạnh hơn?", "base"),
-                ("D – độ vênh (điểm %)", "Độ vênh bình quân thay đổi?", "base")]
-        for metric, q, var in want:
+        for metric, q, var in dg.RESEARCH_QUESTIONS:          # cùng danh sách với PDF (có dòng kiểm soát HHI)
             r = h4[(h4["metric"] == metric) & (h4["window"] == "E1 → hiệu lực") & (h4["variant"] == var)]
             if r.empty:
                 continue
@@ -215,6 +207,10 @@ def research_block(date) -> None:
            + ("Sau công bố FTSE, mức tập trung đóng góp (CR5) tăng và vẫn có ý nghĩa khi đã kiểm soát độ tập trung tỷ trọng chỉ số. "
               if concl.get("CR5 – tập trung đóng góp · kiểm soát HHI tỷ trọng", ("",))[0] == "Có bằng chứng" else
               "Mức tập trung đóng góp sau công bố FTSE chưa có bằng chứng tăng khi đã kiểm soát độ tập trung tỷ trọng. ")
+           + ("Tỷ lệ phiên thiếu lan tỏa tăng, nhưng khi kiểm soát độ tập trung tỷ trọng thì mức tăng này không còn ý nghĩa thống kê "
+              "– phần lớn đến từ việc vài mã phình tỷ trọng. "
+              if concl.get("Tỷ lệ phiên thiếu lan tỏa · kiểm soát HHI tỷ trọng", ("",))[0] in ("Chưa đủ bằng chứng", "Bằng chứng yếu")
+              and concl.get("Tỷ lệ phiên thiếu lan tỏa", ("",))[0] == "Có bằng chứng" else "")
            + "Mô tả thống kê, không khẳng định quan hệ nhân quả.</div>")
 
 
@@ -255,8 +251,8 @@ def summary_block(ctx) -> None:
     rec = market_recommendations(ctx)
     md(f'<div class="dx-concl"><b>{esc(rec[0])}</b></div>')
     md("".join(f'<div style="font-size:14px;margin:6px 0;line-height:1.55">• {esc(t)}</div>' for t in rec[1:]))
-    st.caption("Khuyến nghị ở cấp THỊ TRƯỜNG, suy ra từ chỉ báo theo quy tắc cố định (xem trang Phương pháp) – không chọn cổ phiếu, "
-               "không phải khuyến nghị mua/bán.")
+    st.caption("Nhận định ở cấp thị trường, suy ra từ chỉ báo theo quy tắc cố định (xem trang Phương pháp) – mô tả trạng thái, "
+               "không phải lời khuyên mua/bán.")
 
 
 @safe_block("phân tích kỹ thuật")
@@ -304,36 +300,37 @@ def scenario_block(ctx) -> None:
 
 
 def render() -> None:
-    header("Chẩn đoán thị trường", "Phân tích kỹ thuật, cấu trúc dòng vốn và kịch bản theo dõi cho VN-Index")
+    header("Chẩn đoán thị trường", "Kết luận phiên, phân tích kỹ thuật, cấu trúc dòng vốn và kịch bản theo dõi cho VN-Index")
     status_bar.render()
     st.markdown(DX_CSS, unsafe_allow_html=True)
-    md('<div class="ffr-insight"><b>Chẩn đoán thị trường là gì?</b> Đánh giá sức khỏe, xu hướng và dòng tiền của thị trường. Trang '
-       'đi theo thứ tự: <b>(1) phân tích kỹ thuật</b> – xu hướng, cấu trúc đỉnh/đáy, RSI, MACD, khối lượng; <b>(2) cấu trúc thị '
-       'trường và dòng vốn</b> – lan tỏa, mức tập trung, khối ngoại; <b>(3) kịch bản theo dõi</b> với ngưỡng hỗ trợ/kháng cự; '
-       'cuối trang là <b>góc nhìn phiên</b> chi tiết 5 bước. Toàn bộ tính từ dữ liệu SSI FastConnect V3.</div>')
     sess = da.sessions()
     date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"📅 Phiên {d:%d/%m/%Y}", key="dx_date")
     ctx = _diag_ctx(date)
-    with W.card("dx_sum"):
-        W.title("Kết luận chẩn đoán và khuyến nghị cho thị trường", f"Phiên {date:%d/%m/%Y} · tổng hợp từ các khối bên dưới")
-        summary_block(ctx)
-    with W.card("dx_tech"):
-        W.title("1 · Phân tích kỹ thuật", "Xu hướng (MA, cấu trúc đỉnh – đáy kiểu Dow) · động lượng (RSI, MACD) · khối lượng xác nhận")
-        technical_block(ctx)
-    with W.card("dx_struct"):
-        W.title("2 · Cấu trúc thị trường và dòng vốn", "Lan tỏa · tập trung đóng góp · khối ngoại · biến động")
-        md(_rows_table([r for r in ctx["regime"] if r.get("group") != "Kỹ thuật"]))
-    link_series(date)
-    with W.card("dx_sc"):
-        W.title("3 · Kịch bản theo dõi", "Ngưỡng hỗ trợ/kháng cự từ đỉnh/đáy 20–250 phiên, MA và biên dao động EWMA")
-        scenario_block(ctx)
-    with W.card("dx_s"):
-        W.title("4 · Góc nhìn phiên – chẩn đoán 5 bước",
-                f"Phiên {date:%d/%m/%Y}: lan tỏa → ai tạo biến động → khối ngoại → phản ứng giá → watchlist")
-        session_block(date)
-        x = da.daily().set_index("trade_date").loc[date]
-        md("".join(f'<div style="font-size:14px;margin:6px 0">• {esc(t)}</div>' for t in dg.implications(x)))
-    with W.card("dx_r"):
-        W.title("Giai đoạn FTSE đã thay đổi thị trường thế nào?",
-                "Mỗi dòng một câu hỏi · Kết luận: Có bằng chứng (p < 0,05) / Bằng chứng yếu (p < 0,10) / Chưa đủ bằng chứng")
+    t1, t2, t3, t4 = st.tabs(["Kết luận phiên", "Phân tích kỹ thuật", "Cấu trúc & dòng vốn", "Kịch bản theo dõi"])
+    with t1:
+        with W.card("dx_sum"):
+            W.title("Kết luận và điều cần theo dõi", f"Phiên {date:%d/%m/%Y} · tổng hợp từ các tab bên cạnh")
+            summary_block(ctx)
+        with W.card("dx_s"):
+            W.title("Chẩn đoán phiên 5 bước",
+                    f"Phiên {date:%d/%m/%Y}: lan tỏa → ai tạo biến động → khối ngoại → phản ứng giá → watchlist")
+            session_block(date)
+            x = da.daily().set_index("trade_date").loc[date]
+            md("".join(f'<div style="font-size:14px;margin:6px 0">• {esc(t)}</div>' for t in dg.implications(x)))
+    with t2:
+        with W.card("dx_tech"):
+            W.title("Phân tích kỹ thuật", "Xu hướng (MA, cấu trúc đỉnh – đáy kiểu Dow) · động lượng (RSI, MACD) · khối lượng xác nhận")
+            technical_block(ctx)
+    with t3:
+        with W.card("dx_struct"):
+            W.title("Cấu trúc thị trường và dòng vốn", "Lan tỏa · tập trung đóng góp · khối ngoại · biến động")
+            md(_rows_table([r for r in ctx["regime"] if r.get("group") != "Kỹ thuật"]))
+        link_series(date)
+    with t4:
+        with W.card("dx_sc"):
+            W.title("Kịch bản theo dõi", "Ngưỡng hỗ trợ/kháng cự từ đỉnh/đáy 20–250 phiên, MA và biên dao động EWMA")
+            scenario_block(ctx)
+    with st.expander("Kiểm định giai đoạn FTSE – bảng thống kê cho người cần kiểm tra", expanded=False):
+        st.caption("Mỗi dòng một câu hỏi · Kết luận: Có bằng chứng (p < 0,05) / Bằng chứng yếu (p < 0,10) / Chưa đủ bằng chứng. "
+                   "Chi tiết nghiên cứu sự kiện ở trang Nghiên cứu: nâng hạng FTSE.")
         research_block(date)

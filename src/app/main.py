@@ -37,29 +37,23 @@ from src.app.views import (p_chan_doan, p_kiem_chung, p0_ket_noi, p1_tong_quan, 
                            p6_bao_cao, p7_chat_luong, p8_phuong_phap, p9_telegram, p10_backtest)
 
 PAGES = {
-    "Diễn biến thị trường": [                 # cùng thứ tự với báo cáo PDF: toàn cảnh → dẫn dắt → dòng vốn ngoại
+    "Diễn biến thị trường": [                 # tổng quan → chẩn đoán → hai góc chi tiết: dẫn dắt, khối ngoại
         st.Page(p1_tong_quan.render, title="Tổng quan thị trường", icon=":material/dashboard:", url_path="tong-quan", default=True),
+        st.Page(p_chan_doan.render, title="Chẩn đoán thị trường", icon=":material/insights:", url_path="chan-doan"),
         st.Page(p2_dan_dat.render, title="Dẫn dắt & độ vênh", icon=":material/stacked_bar_chart:", url_path="dan-dat"),
         st.Page(p3_khoi_ngoai.render, title="Ra-đa khối ngoại", icon=":material/radar:", url_path="khoi-ngoai"),
-    ],
-    "Phân tích chuyên sâu": [
-        st.Page(p4_su_kien.render, title="Nâng hạng FTSE", icon=":material/event:", url_path="su-kien-ftse"),
-        st.Page(p_chan_doan.render, title="Chẩn đoán thị trường", icon=":material/insights:", url_path="chan-doan"),
     ],
     "Danh mục & tiện ích": [
         st.Page(p5_watchlist.render, title="Watchlist Impact", icon=":material/visibility:", url_path="watchlist"),
         st.Page(p6_bao_cao.render, title="Báo cáo PDF", icon=":material/description:", url_path="bao-cao"),
         st.Page(p9_telegram.render, title="Bot Telegram", icon=":material/send:", url_path="telegram"),
     ],
-    "Hệ thống": [
+    "Nghiên cứu & hệ thống": [               # FTSE là bối cảnh nghiên cứu, không phải trục chính của sản phẩm
+        st.Page(p4_su_kien.render, title="Nghiên cứu: nâng hạng FTSE", icon=":material/event:", url_path="su-kien-ftse"),
         st.Page(p_kiem_chung.render, title="Kiểm chứng & dữ liệu", icon=":material/fact_check:", url_path="kiem-chung"),
         st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
     ],
 }
-from src.data.database import refresh_from_snapshot  # noqa: E402
-
-if refresh_from_snapshot():                              # bản công khai: GitHub vừa có dữ liệu phiên mới
-    st.cache_data.clear()
 if not da.ready():
     # Kho chỉ báo trống: vẫn hiện đủ menu, mỗi trang phân tích hiện nội dung sẽ có + lối tới "Kết nối dữ liệu";
     # trang Kết nối dữ liệu là trang mặc định. KHÔNG sinh dữ liệu giả.
@@ -76,7 +70,7 @@ if not da.ready():
     keep = {"phuong-phap"}
     PAGES = {g: [pg if pg.url_path in keep else _waiting(pg) for pg in grp]
              for g, grp in PAGES.items()}
-    PAGES["Hệ thống"].insert(0, st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:",
+    PAGES["Nghiên cứu & hệ thống"].insert(0, st.Page(p0_ket_noi.render, title="Kết nối dữ liệu", icon=":material/cable:",
                                         url_path="ket-noi", default=True))
 st.session_state["_pages"] = {pg.url_path: pg for grp in PAGES.values() for pg in grp}
 
@@ -127,14 +121,13 @@ def _autoupdate_notice() -> None:
 
 
 
-md('<div class="ffr-acad">🎓 <span><b class="ffr-gold">Đề tài nghiên cứu học thuật</b> – mọi số liệu, biểu đồ và nhận định trên trang chỉ '
-   'phục vụ học tập, nghiên cứu; <b class="ffr-gold">không mang tính chất khuyến nghị đầu tư</b>.</span></div>')   # nhắc trên MỌI trang
+md('<div class="ffr-acad">🎓 <span><b>Đề tài nghiên cứu học thuật</b> – số liệu và nhận định chỉ phục vụ học tập, nghiên cứu; '
+   '<b>không mang tính chất khuyến nghị đầu tư</b>.</span></div>')   # nhắc trên MỌI trang
 from src.common.config import public_mode  # noqa: E402
 if public_mode():
     _last = da.sessions()[-1] if da.ready() and da.sessions() else None
-    md('<div class="ffr-note">🌐 <span><b>Bản công khai (chỉ xem)</b> – dữ liệu SSI FastConnect tới phiên '
-       f'<b>{_last:%d/%m/%Y}</b>. Bản này chỉ hiển thị dữ liệu đã lưu; số liệu trực tiếp trong phiên, bot Telegram và '
-       'các tác vụ tải dữ liệu chạy khi cài đặt dự án trên máy (xem README).</span></div>' if _last is not None else
+    md('<div class="ffr-note">🌐 <span><b>Bản công khai chỉ xem</b> · dữ liệu SSI FastConnect tới phiên '
+       f'<b>{_last:%d/%m/%Y}</b> · tự cập nhật sau khi SSI công bố số liệu cuối ngày.</span></div>' if _last is not None else
        '<div class="ffr-note">🌐 <span><b>Bản công khai (chỉ xem)</b></span></div>')
 else:
     _autoupdate_notice()

@@ -18,7 +18,7 @@ FORMULAS = [
     ("(3) Độ rộng, phân tán", r"AD_t = \frac{N^+_t - N^-_t}{N^+_t+N^-_t+N^0_t},\quad IQR_t = Q_{75}(r_{\cdot,t}) - Q_{25}(r_{\cdot,t})"),
     ("(4) Đóng góp điểm", r"w_{i,t} = \frac{S_i P^{ref}_{i,t}}{\sum_j S_j P^{ref}_{j,t}},\quad C_{i,t} = I_{t-1}\, w_{i,t}\, r_{i,t}"),
     ("(5) Sai số tái lập, CR5", r"\varepsilon_t = (I_t - I_{t-1}) - \sum_i C_{i,t},\quad CR5_t = \frac{\sum_{i\in Top5}|C_{i,t}|}{\sum_i |C_{i,t}|}"),
-    ("(6) Dòng vốn ngoại", r"NF = FB - FS,\quad nf = \frac{NF}{TV},\quad FPR = \frac{FB+FS}{2\,TV}"),
+    ("(6) Dòng vốn ngoại", r"NF = FB - FS,\quad nf = \frac{NF}{G},\quad FPR = \frac{FB+FS}{2\,G},\quad G = \max(TV + TV_{pt},\, FB,\, FS)"),
     ("(7) Tập trung, room", r"HHI_t = \sum_i\Big(\frac{|NF_{i,t}|}{\sum_j|NF_{j,t}|}\Big)^2,\quad U_{i,t} = 1-\frac{Remain_{i,t}}{Room_{i,t}}"),
     ("(8) Bất thường (không nhìn trước)", r"z_{i,t} = \frac{nf_{i,t} - \overline{nf}_{i,[t-60,t-1]}}{s_{i,[t-60,t-1]}}"),
     ("(9) Nghiên cứu sự kiện", r"AR_{i,\tau} = r_{i,\tau} - (\hat\alpha_i + \hat\beta_i r_{m,\tau}),\ CAR_i = \sum_{\tau_1}^{\tau_2} AR_{i,\tau},\ CAAR = \tfrac1N\sum_i CAR_i"),

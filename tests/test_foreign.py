@@ -60,7 +60,10 @@ def test_streak_and_reversal():
     assert s["reversal"].tolist() == [False, False, False, True, False, False]
 
 
-def test_denominator_decision():
+def test_denominator_decision(monkeypatch):
+    import src.finance.foreign_flow as ffm
+    real_get = ffm.get
+    monkeypatch.setattr(ffm, "get", lambda k, d=None: "auto" if k == "foreign.denominator" else real_get(k, d))
     d = _df(10)
     assert decide_denominator(d)["chosen"] == "match"
     d2 = d.copy()
@@ -82,3 +85,13 @@ def test_absorption_rate_and_imbalance():
     assert absorption_rate(pd.Series(["absorb", "joint_sell", "absorb", "neutral"])) == pytest.approx(2 / 3)
     t = pd.DataFrame({"symbol": ["A", "A", "A"], "side": ["BU", "SD", "BU"], "vol": [300, 100, 100]})
     assert active_imbalance(t).iloc[0]["imbalance"] == pytest.approx((400 - 100) / 500)
+
+
+def test_foreign_ratios_bounded_with_put_through():
+    """SSI gộp thỏa thuận vào FB/FS (VIC 25/11/2026): mẫu số = max(TV + TV_pt, FB, FS) → |nf| ≤ 1 và FPR ≤ 1."""
+    d = pd.DataFrame({"trade_date": pd.bdate_range("2026-11-24", periods=2), "symbol": "VIC",
+                      "fb": [55e9, 42.7e9], "fs": [54e9, 4744e9], "tv": [241e9, 333e9], "tv_pt": [0.0, 0.0],
+                      "remain": 1.0, "room": 2.0})
+    s = stock_flows(d, "match_plus_deal")
+    assert (s["nf"].abs() <= 1 + 1e-12).all() and (s["FPR"] <= 1 + 1e-12).all()
+    assert s["tv_f"].iloc[1] == 4744e9          # TV_pt SSI ghi 0 nhưng khối ngoại bán 4.744 tỷ → mẫu số không nhỏ hơn

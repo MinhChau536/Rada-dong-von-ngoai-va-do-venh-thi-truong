@@ -1,11 +1,12 @@
 """
-Trang 1 – Tổng quan thị trường (bước B4.5, bảng 11.4, Hình 2a–2d).
+Trang 1 – Tổng quan thị trường: chỉ những gì cốt lõi, đi từ tổng quát đến chi tiết.
 
-Bố cục lưới thẻ (src/app/components/widgets.py, phong cách cổng thông tin chứng khoán):
-thanh trạng thái → giới thiệu → 4 thẻ chỉ số (HOSE, VN30, HNX, UPCoM) → chất lượng xu hướng → [top 10 | nhóm dẫn dắt] →
-danh mục theo dõi → diễn biến chỉ số + sức khỏe → [khối ngoại top/nhóm | diễn biến mua–bán–ròng + nhận định] →
-[thanh khoản | độ rộng | ngành] → độ rộng theo rổ → bản đồ thị trường → cổ phiếu nổi bật chi tiết → so sánh hiệu suất.
-Mỗi khối là một hàm render_x(data); dữ liệu đọc một lần qua load_overview(session_date).
+  Toàn thị trường : 4 thẻ chỉ số (HOSE, VN30, HNX, UPCoM) → [biểu đồ chỉ số | so sánh hiệu suất] (tab)
+  Phiên này – HOSE: tóm tắt phiên (độ vênh, CR5, khối ngoại, loại phiên + một câu kết luận)
+                    → [nhóm dẫn dắt VN-Index | top khối ngoại mua/bán ròng] → cổ phiếu nổi bật
+                    → [thanh khoản | biến động ngành] → bản đồ thị trường
+  Danh mục        : dải mã watchlist.
+Phân tích sâu nằm ở trang riêng (Chẩn đoán, Dẫn dắt & độ vênh, Ra-đa khối ngoại) – trang này không lặp lại.
 """
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ from src.app.components.ui import (colored, esc, header, kpi, md, pal, plot, sec
 from src.app.theme import ABSORB_COLORS, SESSION_COLORS, color_for
 from src.common import fmt
 from src.common.config import events, get
-from src.finance.breadth import breadth_summary, session_type_label
+from src.finance.breadth import breadth_summary, session_label, session_type_label  # noqa: F401
 from src.finance.domestic import ABSORB_LABELS
 
 INDEX_ORDER = [("VNINDEX", "VN-Index"), ("VN30", "VN30"), ("HNXINDEX", "HNX-Index"), ("UPCOMINDEX", "UPCoM-Index")]
@@ -83,16 +84,16 @@ def render_trend_quality(data: Dict) -> None:
         ("Độ vênh D", fmt.num(x["D"], 2, True, " đ.%"), p["accent"] if x["D"] >= 0 else p["down"],
          f'Phân vị {fmt.num(x.get("D_pct250"), 0)}% · 250 phiên trước', "(2) D = r_VNI − median(r_i); phân vị chỉ dùng dữ liệu đến t−1"),
         ("Top 5 đóng góp (CR5)", fmt.frac_pct(x["CR5"], 0), p["text"],
-         f'của tổng |đóng góp| · ε = {fmt.num(x["eps"], 2, True)} đ', "(5) CR5 = Σ|C| top5 / Σ|C|"),
+         f'phân vị {fmt.num(x.get("CR5_pct250"), 0)}% · 250 phiên', "(5) CR5 = Σ|C| top5 / Σ|C|"),
         ("Khối ngoại ròng HOSE", fmt.bn(x["NF_total"]), color_for(x["NF_total"], p),
-         f'z60 = {fmt.num(x["z_NF_total"], 2, True)} · HHI {fmt.num(x["HHI"], 3)}', "(6) NF = FB − FS; (7) HHI; (8) z theo 60 phiên trước"),
+         f'z = {fmt.num(x["z_NF_total"], 2, True)} so với 60 phiên', "(6) NF = FB − FS; (8) z theo 60 phiên trước"),
     ]
     cols = st.columns(5)
     for c, (lbl, val, clr, sub, tip) in zip(cols, items):
         with c:
             md(kpi(lbl, val, clr, sub, tip))
     with cols[4]:
-        md(kpi("Loại phiên", soft_chip(session_type_label(stype), sc), None,
+        md(kpi("Loại phiên", soft_chip(session_label(x), sc), None,
                f'{int(x["n_sessions_same_type_5"])}/5 phiên gần nhất cùng loại' + (" · ⚠ độ vênh cao" if x["high_divergence"] else ""),
                "Quy tắc mục 8.2: dấu r_VNI × dấu AD; |r_VNI| < 0,1% = đi ngang"))
 
@@ -294,17 +295,14 @@ def render_conclusion(data: Dict) -> None:
     x, lead = data["day"], data["leaders"]
     v = data["stock"][data["stock"]["is_valid"]]
     main = lead[lead["side"] == ("neg" if x["dI"] < 0 else "pos")].head(2)
-    nf = v["net_flow"].fillna(0)
-    same = ((np.sign(nf) == np.sign(v["C"])) & (nf != 0)).astype(float)
-    cod = float((v["C"].abs() * same).sum() / max(v["C"].abs().sum(), 1e-9))
     top = v[v["symbol"].isin(main["symbol"])]
     fx = ("Khối ngoại " + ("bán" if top["net_flow"].sum() < 0 else "mua") + " ròng ở chính các mã này"
           if len(top) and np.sign(top["net_flow"].sum()) == np.sign(top["C"].sum()) else "Khối ngoại không giao dịch cùng chiều ở các mã này")
-    md(f'<div class="ffr-insight" style="margin-top:10px"><b>Kết luận phiên:</b> Phiên {session_type_label(x["session_type"]).lower()}. '
-       f'Năm mã tạo {fmt.frac_pct(x["CR5"], 0)} biến động, dẫn đầu {", ".join(main["symbol"])}. {fx}; '
-       f'{fmt.frac_pct(cod, 0)} biến động điểm đến từ các mã khối ngoại giao dịch cùng chiều giá.</div>')
+    from src.analytics.diagnosis import representative
+    md(f'<div class="ffr-lead"><b>Phiên {session_label(x).lower()}.</b> {representative(x)[:1].upper() + representative(x)[1:]}. '
+       f'Năm mã tạo {fmt.frac_pct(x["CR5"], 0)} biến động, dẫn đầu {", ".join(main["symbol"])}; {fx[:1].lower() + fx[1:]}.</div>')
     if "chan-doan" in st.session_state.get("_pages", {}):
-        st.page_link(st.session_state["_pages"]["chan-doan"], label="Xem chẩn đoán đầy đủ 5 bước →", icon=":material/insights:")
+        st.page_link(st.session_state["_pages"]["chan-doan"], label="Xem chẩn đoán đầy đủ →", icon=":material/insights:")
 
 
 def render_footer() -> None:
@@ -315,41 +313,37 @@ def render_footer() -> None:
 
 def _scope(name: str, sub: str) -> None:
     """Nhãn phạm vi dữ liệu giữa các khối (toàn thị trường / riêng HOSE)."""
-    md(f'<div style="display:flex;align-items:baseline;gap:10px;margin:18px 2px 6px;border-bottom:1px solid var(--ffr-border);'
-       f'padding-bottom:4px"><span style="font-weight:800;font-size:15px;letter-spacing:.06em;text-transform:uppercase;'
-       f'color:var(--ffr-accent)">{name}</span><span style="font-size:12.5px;color:var(--ffr-muted)">{sub}</span></div>')
+    md(f'<div style="display:flex;align-items:baseline;gap:10px;margin:20px 2px 8px">'
+       f'<span style="font-weight:700;font-size:16px;color:var(--ffr-text)">{name}</span>'
+       f'<span style="font-size:12.5px;color:var(--ffr-muted)">{sub}</span></div>')
 
 
 def render() -> None:
     sess = da.sessions()
-    header("Tổng quan thị trường", "Chỉ số, độ vênh, mã dẫn dắt, dòng vốn khối ngoại và tác động lên danh mục theo dõi")
+    header("Tổng quan thị trường", "Bức tranh phiên trong một trang – chi tiết ở các trang phân tích")
     c1, c2 = st.columns([1.35, 4], vertical_alignment="center", gap="small")   # chọn phiên ngay dưới banner, cạnh thanh trạng thái
     with c1:
         date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"📅 Phiên {d:%d/%m/%Y}", key="p1_date",
                             label_visibility="collapsed", help="Xem lại một phiên bất kỳ trong lịch sử")
     with c2:
         status_bar.render(date, show_session=False)        # ô chọn phiên bên trái đã hiện phiên
-    about.render_intro()
     data, D = load_overview(date), W.load(date)
-    # ── A. TOÀN THỊ TRƯỜNG (4 chỉ số: HOSE, HNX, UPCoM) ──
+    # ── A. Toàn thị trường ──
     _scope("Toàn thị trường", "VN-Index · VN30 · HNX-Index · UPCoM-Index")
     render_index_cards(data)
     with W.card("p1_chart"):
-        W.title("Diễn biến chỉ số", "Nến ngày · MA20 · MA50 · khối lượng · mốc FTSE · chọn chỉ số bên dưới")
-        render_index_chart(data)
-    with W.card("p1_perf"):
-        W.title("So sánh hiệu suất", "Chuẩn hóa = 100 · 4 chỉ số và mã đang chọn · 1 tuần đến 1 năm")
-        render_performance(data)
-    # ── B. SÀN HOSE: tổng quát → chi tiết ──
-    _scope("Sàn HOSE – từ tổng quát đến chi tiết", "Các bảng dưới đây tính trên cổ phiếu niêm yết HOSE")
+        W.title("Diễn biến chỉ số", "Chọn chỉ số, kỳ và kiểu biểu đồ · tab thứ hai so sánh hiệu suất 4 chỉ số")
+        t1, t2 = st.tabs(["Biểu đồ", "So sánh hiệu suất"])
+        with t1:
+            render_index_chart(data)
+        with t2:
+            render_performance(data)
+    # ── B. Phiên này trên HOSE: tóm tắt → ai dẫn dắt → khối ngoại → chi tiết ──
+    _scope("Phiên này trên HOSE", "Tóm tắt → mã dẫn dắt và khối ngoại → cổ phiếu nổi bật → ngành")
     with W.card("p1_trend"):
-        W.title("Chất lượng xu hướng hôm nay", "HOSE · chỉ số có phản ánh số đông cổ phiếu không")
+        W.title("Tóm tắt phiên", "Chỉ số có phản ánh số đông cổ phiếu không, ai dẫn dắt, khối ngoại làm gì")
         render_trend_quality(data)
         render_conclusion(data)
-    for i, (col, fn) in enumerate(zip(st.columns(3, gap="small"), (W.w_liquidity, W.w_breadth, W.w_sectors))):
-        with col, W.card(f"p1_r3{i}"):
-            fn(D)
-    # Ai kéo chỉ số · ai mua bán ròng – đặt cạnh nhau
     c1, c2 = st.columns(2, gap="small")
     with c1, W.card("p1_lead"):
         W.w_leaders(D)
@@ -362,13 +356,15 @@ def render() -> None:
     with W.card("p1_movers"):
         W.title("Cổ phiếu nổi bật phiên", "HOSE · GTGD ≥ 10 tỷ · tăng/giảm mạnh, GTGD lớn, đột biến khối lượng, đóng góp điểm")
         render_movers(data)
+    c1, c2 = st.columns(2, gap="small")
+    with c1, W.card("p1_liq"):
+        W.w_liquidity(D)
+    with c2, W.card("p1_sec"):
+        W.w_sectors(D)
     with W.card("p1_map"):
         W.w_map(D)
-    with W.card("p1_basket"):
-        W.title("Độ rộng theo rổ cổ phiếu", "HOSE toàn sàn · VN30 · nhóm FTSE · đối chứng · watchlist")
-        render_breadth(data)
-    # ── C. Danh mục của người dùng ──
+    # ── C. Danh mục theo dõi ──
     with W.card("p1_wl"):
-        W.title("Danh mục theo dõi hôm nay", "Kết nối trang Watchlist Impact · bấm để xem hồ sơ")
+        W.title("Danh mục theo dõi hôm nay", "Bấm để mở hồ sơ mã trong Watchlist Impact")
         render_watchlist_strip(data)
     render_footer()

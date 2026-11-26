@@ -1,5 +1,8 @@
-"""Trang 2 – Dẫn dắt & độ vênh (bước B4.6): thác nước C theo mã và ngành, chuỗi D có dải phân vị,
-chỉ số loại trừ họ cổ phiếu, phân phối CR5, lịch loại phiên. Bộ lọc khoảng phiên."""
+"""Trang 2 – Dẫn dắt & độ vênh. Ba tab để người đọc tìm đúng câu hỏi của mình:
+  Phiên này          : thác nước đóng góp điểm · bảng đóng góp chi tiết · theo họ cổ phiếu và ngành
+  Độ vênh & lan tỏa  : chuỗi D có dải phân vị · độ rộng · loại phiên · thống kê theo kỳ
+  Tập trung & loại trừ: chỉ số loại trừ một họ · phân phối CR5 · mã hay dẫn dắt nhất
+Khối "khối ngoại đi cùng chiều" và "đóng góp nhóm FTSE" chỉ nằm ở trang Chẩn đoán (không lặp lại)."""
 from __future__ import annotations
 
 import numpy as np
@@ -7,7 +10,6 @@ import pandas as pd
 import streamlit as st
 
 from src.app import data_access as da
-from src.analytics import narrative
 from src.app.components import charts, status_bar
 from src.app.components import widgets as W
 from src.app.components.states import empty, safe_block
@@ -58,8 +60,8 @@ def ex_family(lo, hi) -> None:
     plot(charts.line(df, "trade_date", {"VN-Index": "VN-Index (chuẩn hóa 100)", f"VN-Index loại trừ {fam}": f"Loại trừ {fam}"}, p),
          "p2_exfam")
     a, b = actual.iloc[-1] - 100, ex.iloc[-1] - 100
-    md(f'<div class="ffr-insight">Trong khoảng đã chọn, VN-Index {fmt.pct(a)}; nếu loại trừ nhóm {fam}, chỉ số {fmt.pct(b)}. '
-       f'Nhóm {fam} đóng góp {fmt.num(g["C"].sum(), 1, True)} điểm. Chỉ số loại trừ nhóm g = I(t−1) + Σ_(i∉g) C_i,t.</div>')
+    md(f'<div class="ffr-lead">Trong khoảng đã chọn, VN-Index <b>{fmt.pct(a)}</b>; nếu loại trừ nhóm {fam}, chỉ số '
+       f'<b>{fmt.pct(b)}</b>. Nhóm {fam} đóng góp {fmt.num(g["C"].sum(), 1, True)} điểm.</div>')
 
 
 @safe_block("bảng đóng góp chi tiết")
@@ -128,74 +130,74 @@ def render() -> None:
     sess = da.sessions()
     c1, c2 = st.columns([1, 3])
     with c1:
-        date = st.selectbox("Phiên phân rã", sess[::-1], format_func=lambda d: f"{d:%d/%m/%Y}", key="p2_date")
+        date = st.selectbox("Phiên phân tích", sess[::-1], format_func=lambda d: f"{d:%d/%m/%Y}", key="p2_date")
     with c2:
         lo, hi = _range_filter("p2_range")
     D = W.load(date)
-    c1, c2 = st.columns([1.25, 1], gap="small")
-    with c1, W.card("p2_wf"):
-        W.title("Thác nước đóng góp điểm", f"Phiên {date:%d/%m/%Y} · ΣC + ε = ΔVN-Index")
-        waterfalls(date)
-    with c2, W.card("p2_lead"):
-        W.w_leaders(D)
-        md(f'<div class="ffr-insight" style="margin-top:8px"><b>Nhận định theo quy tắc</b><br>'
-           f'{esc(narrative.market_summary(D["day"], D["leaders"]))}</div>')
-    c1, c2 = st.columns([1.35, 1], gap="small")
-    with c1, W.card("p2_ctab"):
-        W.title("Bảng đóng góp điểm chi tiết", f"Top 15 mã theo |đóng góp| · phiên {date:%d/%m/%Y}")
-        contrib_table(date)
-    with c2, W.card("p2_gtab"):
-        W.title("Đóng góp theo họ cổ phiếu và ngành", f"Phiên {date:%d/%m/%Y}")
-        group_table(date)
     d = da.daily()
     rng = d[d["trade_date"].between(lo, hi)]
-    if rng.empty:
-        empty("Khoảng phiên không có dữ liệu.")
-        return
-    c1, c2 = st.columns([2, 1], gap="small")
-    with c1, W.card("p2_d"):
-        W.title("Chuỗi điểm vênh D", "D = %VN-Index − % cổ phiếu trung vị · dải phân vị 10–90 của 250 phiên trước · chấm đỏ = độ vênh cao")
-        plot(charts.d_series(d[d["trade_date"] <= hi].tail(len(rng) + 250).pipe(lambda x: x[x["trade_date"] >= lo]), p), "p2_d")
-        meta = da.table("pipeline_meta")
-        k = st.columns(4)
-        for c, h in zip(k, [kpi("D trung bình", fmt.num(rng["D"].mean(), 3, True, " đ.%")),
-                            kpi("Số phiên độ vênh cao", str(int(rng["high_divergence"].sum()))),
-                            kpi("Trung vị |ε|", fmt.num(rng["eps"].abs().median(), 3, False, " điểm"),
-                                p["up"] if rng["eps"].abs().median() < get("contribution.eps_median_target") else p["down"]),
-                            kpi("Hệ số hiệu chỉnh k", fmt.num(meta["scale_k"].iloc[0] if not meta.empty else 1, 4))]):
-            with c:
-                md(h)
-    with c2, W.card("p2_br"):
-        W.w_breadth(D)
-    from src.app.views.p_chan_doan import link_series
-    link_series(date)                                        # nối sang khối ngoại và nhóm FTSE
-    with W.card("p2_dstat"):
-        W.title("Thống kê độ vênh và lan tỏa theo kỳ", f"Tính đến phiên {date:%d/%m/%Y}")
-        div_stats(date)
-    with W.card("p2_ex"):
-        W.title("Chỉ số loại trừ một họ cổ phiếu", "Nếu bỏ nhóm này thì chỉ số tăng hay giảm")
-        ex_family(lo, hi)
-    c1, c2 = st.columns(2, gap="small")
-    with c1, W.card("p2_cr5"):
-        W.title("Phân phối CR5", "Tỷ trọng 5 mã dẫn đầu trong tổng |đóng góp|")
-        big = st.toggle(f"Chỉ phiên |ΔI| ≥ {get('events.h1b_dI_min')} điểm", key="p2_big")
-        x = rng[rng["dI"].abs() >= get("events.h1b_dI_min")] if big else rng
-        plot(charts.hist(x["CR5"] * 100, p, f"CR5 (%) · {len(x)} phiên", vline=50), "p2_cr5")
-    with c2, W.card("p2_types"):
-        W.title("Loại phiên", "Quy tắc mục 8.2: dấu lợi suất VN-Index × dấu AD")
-        t1, t2 = st.tabs(["Tần suất", "Lịch theo phiên"])
-        with t1:
-            cnt = rng["session_type"].value_counts()
-            md(table_html(["Loại phiên", "Số phiên", "Tỷ lệ"],
-                          [[SESSION_TYPES[k], str(int(cnt.get(k, 0))), fmt.frac_pct(cnt.get(k, 0) / len(rng), 1)] for k in SESSION_TYPES],
-                          left=(0,)))
-        with t2:
-            plot(charts.session_calendar(rng, p), "p2_cal")
-    lead = da.table("leaders_daily")
-    lead = lead[lead["trade_date"].between(lo, hi)]
-    with W.card("p2_freq"):
-        W.title("Mã xuất hiện nhiều nhất trong Top 5 dẫn dắt", f"{lo:%d/%m/%Y} – {hi:%d/%m/%Y}")
-        freq = lead.groupby(["symbol", "side"]).agg(n=("C", "size"), C=("C", "sum")).reset_index().sort_values("n", ascending=False).head(12)
-        md(table_html(["Mã", "Chiều", "Số phiên trong Top 5", "Tổng đóng góp (điểm)"],
-                      [[f'<span class="ffr-sym">{r.symbol}</span>', "Kéo lên" if r.side == "pos" else "Kéo xuống", str(r.n),
-                        colored(r.C, fmt.num(r.C, 1, True))] for r in freq.itertuples()], left=(0, 1)))
+    t1, t2, t3 = st.tabs(["Phiên này", "Độ vênh & lan tỏa", "Tập trung & loại trừ"])
+
+    with t1:                                                  # ai kéo chỉ số trong phiên đã chọn
+        c1, c2 = st.columns([0.85, 1.3], gap="small")
+        with c1, W.card("p2_wf"):
+            W.title("Thác nước đóng góp điểm", f"Phiên {date:%d/%m/%Y} · tổng đóng góp + sai số = mức thay đổi VN-Index")
+            waterfalls(date)
+        with c2, W.card("p2_ctab"):
+            W.title("Bảng đóng góp điểm chi tiết", f"Top 15 mã theo |đóng góp| · phiên {date:%d/%m/%Y}")
+            contrib_table(date)
+        with W.card("p2_gtab"):
+            W.title("Đóng góp theo họ cổ phiếu và ngành", f"Phiên {date:%d/%m/%Y} · VN-Index sẽ ra sao nếu bỏ từng nhóm")
+            group_table(date)
+
+    with t2:                                                  # chỉ số có đại diện cho số đông không, theo thời gian
+        if rng.empty:
+            empty("Khoảng phiên không có dữ liệu.")
+        else:
+            with W.card("p2_d"):
+                W.title("Chuỗi điểm vênh D", "D = %VN-Index − % cổ phiếu trung vị · dải phân vị 10–90 của 250 phiên trước · "
+                                              "chấm đỏ = độ vênh cao")
+                plot(charts.d_series(d[d["trade_date"] <= hi].tail(len(rng) + 250).pipe(lambda x: x[x["trade_date"] >= lo]), p), "p2_d")
+                narrow = rng["session_type"].isin(["narrow_up", "narrow_down"]).mean()
+                k = st.columns(3)
+                for c, h in zip(k, [kpi("D trung bình", fmt.num(rng["D"].mean(), 3, True, " đ.%")),
+                                    kpi("Số phiên độ vênh cao", f'{int(rng["high_divergence"].sum())}/{len(rng)}'),
+                                    kpi("Phiên thiếu lan tỏa", fmt.frac_pct(narrow, 0))]):
+                    with c:
+                        md(h)
+            c1, c2 = st.columns(2, gap="small")
+            with c1, W.card("p2_br"):
+                W.w_breadth(D)
+            with c2, W.card("p2_types"):
+                W.title("Loại phiên", "Dấu lợi suất VN-Index × dấu AD (số mã tăng − giảm)")
+                ta, tb = st.tabs(["Tần suất", "Lịch theo phiên"])
+                with ta:
+                    cnt = rng["session_type"].value_counts()
+                    md(table_html(["Loại phiên", "Số phiên", "Tỷ lệ"],
+                                  [[SESSION_TYPES[k], str(int(cnt.get(k, 0))), fmt.frac_pct(cnt.get(k, 0) / len(rng), 1)]
+                                   for k in SESSION_TYPES], left=(0,)))
+                with tb:
+                    plot(charts.session_calendar(rng, p), "p2_cal")
+            with W.card("p2_dstat"):
+                W.title("Thống kê độ vênh và lan tỏa theo kỳ", f"Tính đến phiên {date:%d/%m/%Y}")
+                div_stats(date)
+
+    with t3:                                                  # chỉ số phụ thuộc vài mã lớn đến đâu
+        with W.card("p2_ex"):
+            W.title("Chỉ số loại trừ một họ cổ phiếu", "Nếu bỏ nhóm này thì chỉ số tăng hay giảm")
+            ex_family(lo, hi)
+        c1, c2 = st.columns(2, gap="small")
+        with c1, W.card("p2_cr5"):
+            W.title("Phân phối CR5", "Tỷ trọng 5 mã dẫn đầu trong tổng |đóng góp|")
+            big = st.toggle(f"Chỉ phiên |ΔI| ≥ {get('events.h1b_dI_min')} điểm", key="p2_big")
+            x = rng[rng["dI"].abs() >= get("events.h1b_dI_min")] if big else rng
+            plot(charts.hist(x["CR5"] * 100, p, f"CR5 (%) · {len(x)} phiên", vline=50), "p2_cr5")
+        with c2, W.card("p2_freq"):
+            lead = da.table("leaders_daily")
+            lead = lead[lead["trade_date"].between(lo, hi)]
+            W.title("Mã dẫn dắt thường xuyên nhất", f"Số phiên nằm trong Top 5 · {lo:%d/%m/%Y} – {hi:%d/%m/%Y}")
+            freq = (lead.groupby(["symbol", "side"]).agg(n=("C", "size"), C=("C", "sum")).reset_index()
+                    .sort_values("n", ascending=False).head(12))
+            md(table_html(["Mã", "Chiều", "Số phiên trong Top 5", "Tổng đóng góp (điểm)"],
+                          [[f'<span class="ffr-sym">{r.symbol}</span>', "Kéo lên" if r.side == "pos" else "Kéo xuống", str(r.n),
+                            colored(r.C, fmt.num(r.C, 1, True))] for r in freq.itertuples()], left=(0, 1)))

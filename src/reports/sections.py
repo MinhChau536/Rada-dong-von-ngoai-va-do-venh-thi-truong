@@ -15,7 +15,7 @@ import pandas as pd
 from src.common import fmt
 from src.common.config import get
 from src.data import database as db
-from src.finance.breadth import session_type_label
+from src.finance.breadth import session_label, session_type_label  # noqa: F401
 from src.finance.domestic import ABSORB_LABELS
 from src.reports import charts
 from src.reports.pdf_base import FFRPdf
@@ -186,7 +186,7 @@ def ch_breadth(pdf: FFRPdf, ctx: Dict, sub: bool = False) -> None:
     pdf.cards([("Mã trên MA20", fmt.num(pm, 0, False, "%"), f"{len(v)} mã hợp lệ", _clr((pm or 50) - 50)),
                ("Vượt đỉnh 20 phiên", str(int(v["new_high20"].sum())) if "new_high20" in v else "—", "số mã", None),
                ("Thủng đáy 20 phiên", str(int(v["new_low20"].sum())) if "new_low20" in v else "—", "số mã", None),
-               ("Loại phiên", session_type_label(x["session_type"]), f"AD = {fmt.num(x['AD'], 2, True)} · IQR {fmt.num(x['IQR_pct'], 1)}%", None)])
+               ("Loại phiên", session_label(x), f"AD = {fmt.num(x['AD'], 2, True)} · IQR {fmt.num(x['IQR_pct'], 1)}%", None)])
     rc = ctx["recap"][20]
     types = sorted(rc["types"].items(), key=lambda kv: -kv[1])
     pdf.bullets([

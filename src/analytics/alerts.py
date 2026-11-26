@@ -33,7 +33,7 @@ def _a(rule, typ, sym, prio, msg, session) -> Dict:
 
 
 def evaluate(day: pd.Series, leaders: pd.DataFrame, top_flow: pd.DataFrame, wl: pd.DataFrame,
-             system: Optional[Dict] = None) -> List[Dict]:
+             system: Optional[Dict] = None, lead_set: Optional[set] = None) -> List[Dict]:
     """Trả về danh sách cảnh báo kích hoạt cho một phiên (chưa lọc)."""
     A = get("alerts")
     out: List[Dict] = []
@@ -70,7 +70,7 @@ def evaluate(day: pd.Series, leaders: pd.DataFrame, top_flow: pd.DataFrame, wl: 
         if sd is not None and not pd.isna(sd) and sd > 0 and abs(r.ER_M) >= A["wl_er_sd_mult"] * sd:
             out.append(_a(5, "wl_deviation", r.symbol, "medium",
                           f"{r.symbol} {fmt.pct(r.ret * 100)} trong khi cổ phiếu điển hình {fmt.pct(day.get('median_ret_pct'))}", sess))
-        if r.symbol in set(leaders["symbol"]):
+        if r.symbol in (lead_set if lead_set is not None else set(leaders["symbol"])):   # 10 mã |C| lớn nhất toàn sàn
             out.append(_a(6, "wl_leader", r.symbol, "medium",
                           f"{r.symbol} đóng góp {fmt.num(r.C, 2, True)} điểm vào VN-Index hôm nay", sess))
         if getattr(r, "U", None) is not None and not pd.isna(r.U) and r.U >= A["room_used_min"]:
@@ -152,7 +152,8 @@ def context_for(date, path: Optional[Path] = None, watch: Optional[List[str]] = 
                            syms + [d], path=path)
         sd = hist.groupby("symbol")["ER_M"].apply(lambda x: x.tail(int(get("windows.er_sd_window", 60))).std())
         wl["sd60_ER_M"] = wl["symbol"].map(sd)
-    return {"day": day.iloc[0], "leaders": lead, "flow": st[["symbol", "net_flow"]], "wl": wl}
+    from src.analytics.diagnosis import top_leaders
+    return {"day": day.iloc[0], "leaders": lead, "flow": st[["symbol", "net_flow"]], "wl": wl, "lead_set": set(top_leaders(st))}
 
 
 def backtest(n_sessions: Optional[int] = None, path: Optional[Path] = None, write_note: bool = True) -> Dict:
@@ -168,7 +169,7 @@ def backtest(n_sessions: Optional[int] = None, path: Optional[Path] = None, writ
         ctx = context_for(d, path)
         if ctx is None:
             continue
-        al = evaluate(ctx["day"], ctx["leaders"], ctx["flow"], ctx["wl"])
+        al = evaluate(ctx["day"], ctx["leaders"], ctx["flow"], ctx["wl"], lead_set=ctx.get("lead_set"))
         for hh, mm in ((10, 0), (10, 15), (11, 0), (14, 45)):
             now = datetime(d.year, d.month, d.day, hh, mm)
             out = dispatch(al, now, mode="backtest", history=hist, path=path)

@@ -3,7 +3,7 @@ Các chương báo cáo PDF – thứ tự đọc từ toàn cảnh đến kết
 
   Bìa (+ kết luận phiên) → mục lục + tóm tắt điều hành (3 câu trả lời) →
   1. Tổng quan thị trường · 2. Dẫn dắt & độ vênh · 3. Dòng vốn ngoại · 4. Bối cảnh nâng hạng FTSE ·
-  5. Chẩn đoán thị trường · 6. Tác động lên watchlist · 7. Kết luận, hàm ý và khuyến nghị cho thị trường · 8. Phụ lục
+  5. Chẩn đoán thị trường · 6. Tác động lên watchlist · 7. Kết luận và điều cần theo dõi · 8. Phụ lục
 
 Quy ước trình bày: mỗi chương bắt đầu ở TRANG MỚI, mở đầu bằng một câu kết luận in đậm sinh từ số liệu và một khung
 "Diễn giải" vài dòng cho người đọc không chuyên; nếu trang cuối của chương còn trống quá nửa, chương được bổ sung biểu
@@ -20,7 +20,7 @@ from src.analytics import diagnosis as dg
 from src.common import fmt
 from src.common.config import get
 from src.data import database as db
-from src.finance.breadth import session_type_label
+from src.finance.breadth import session_label, session_type_label  # noqa: F401
 from src.finance.domestic import ABSORB_LABELS
 from src.reports import charts
 from src.reports.pdf_base import FFRPdf
@@ -60,8 +60,8 @@ def session_conclusion(ctx: Dict) -> str:
     """Một câu kết luận phiên (dùng cho bìa và chương kết luận)."""
     x, et, lead = ctx["day"], ctx.get("ex_today", pd.Series(dtype=float)), ctx["leaders"]
     main = lead[lead["side"] == ("neg" if x["dI"] < 0 else "pos")].head(2)
-    return (f"Phiên {session_type_label(x['session_type']).lower()}: năm mã tạo {fmt.frac_pct(x['CR5'], 0)} biến động, dẫn đầu "
-            f"{', '.join(main['symbol'])}; {fmt.frac_pct(et.get('codir'), 0)} biến động điểm đến từ các mã khối ngoại giao dịch cùng chiều.")
+    return (f"Phiên {session_label(x).lower()}: năm mã tạo {fmt.frac_pct(x['CR5'], 0)} biến động, dẫn đầu "
+            f"{', '.join(main['symbol'])}. " + dg.codir_sentence(et.get("codir"), et.get("codir_base")))
 
 
 # ── 1. Tổng quan thị trường ──────────────────────────────────────────────────
@@ -116,9 +116,7 @@ def ch_leaders_div(pdf: FFRPdf, ctx: Dict) -> None:
         + ("họ Vingroup làm biến động chỉ số mạnh hơn đáng kể." if pd.notna(ex_vin) and abs(x["r_vni_pct"] - ex_vin) >= 0.3
            else "ảnh hưởng của họ Vingroup không lớn trong phiên."),
         f"Độ vênh D = {fmt.num(x['D'], 2, True)} điểm %: "
-        + ("chỉ số giảm mạnh hơn cổ phiếu điển hình – danh mục không chứa nhóm dẫn dắt chịu thiệt hại nhẹ hơn chỉ số."
-           if x["D"] <= -0.3 else "chỉ số tăng mạnh hơn cổ phiếu điển hình – mức tăng của VN-Index không đại diện cho số đông."
-           if x["D"] >= 0.3 else "chỉ số phản ánh khá sát số đông cổ phiếu."),
+        + dg.representative(x) + f" (phân vị 250 phiên {fmt.num(x.get('D_pct250'), 0)}%).",
     ])
     both = pd.concat([lead[lead["side"] == "pos"].head(6), lead[lead["side"] == "neg"].head(6)]).sort_values("C", ascending=False)
     rest = float(x["sumC"] - both["C"].sum()) if "sumC" in x else 0.0
@@ -300,15 +298,14 @@ def ch_diagnosis(pdf: FFRPdf, ctx: Dict) -> None:
     stc = top10["absorb_state"].value_counts()
     steps = [
         f"Bước 1 – Lan tỏa: D = {fmt.num(x['D'], 2, True)} điểm % (phân vị {fmt.num(x['D_pct250'], 0)}% của 250 phiên), loại phiên "
-        f"{session_type_label(x['session_type']).lower()}, {fmt.num(x['pct_up'], 0)}% số mã tăng, IQR lợi suất {fmt.num(x['IQR_pct'], 1)}%. "
-        + ("Biến động chỉ số không đại diện cho số đông." if abs(x["D"]) >= 0.3 else "Chỉ số đại diện tốt cho số đông."),
+        f"{session_label(x).lower()}, {fmt.num(x['pct_up'], 0)}% số mã tăng, IQR lợi suất {fmt.num(x['IQR_pct'], 1)}%. "
+        + dg.representative(x)[:1].upper() + dg.representative(x)[1:] + ".",
         f"Bước 2 – Ai tạo biến động: CR5 = {fmt.frac_pct(x['CR5'], 0)}; dẫn đầu {', '.join(main['symbol'])} "
         f"({fmt.num(main['C'].sum(), 2, True)} điểm); 27 mã FTSE đóng góp {fmt.num(et.get('ftse_C'), 2, True)} điểm; số mã hiệu dụng "
         f"của chỉ số {fmt.num(et.get('eff_n'), 1)}. Bỏ họ Vingroup, VN-Index "
         f"{fmt.pct(vin['index_ex_group_ret_pct'].iloc[0]) if not vin.empty else '—'} (thực tế {fmt.pct(x['r_vni_pct'])}).",
-        f"Bước 3 – Khối ngoại có đứng sau không: {fmt.frac_pct(et.get('codir'), 0)} biến động điểm đến từ mã có khối ngoại cùng chiều; "
-        f"tương quan hạng ρ(C, NF) = {fmt.num(rho, 2, True)}; NN ròng {fmt.bn(x['NF_total'])}. "
-        + ("Khối ngoại đứng sau phần lớn biến động." if (et.get("codir") or 0) >= 0.6 else "Khối nội đóng vai trò đáng kể."),
+        "Bước 3 – Khối ngoại đi cùng chiều đến đâu: " + dg.codir_sentence(et.get("codir"), et.get("codir_base"))
+        + f" Tương quan hạng ρ(C, NF) = {fmt.num(rho, 2, True)}; NN ròng {fmt.bn(x['NF_total'])}.",
         "Bước 4 – Phản ứng giá ở 10 mã dẫn dắt: " + "; ".join(f"{ABSORB_LABELS[k].lower()} {int(n)}" for k, n in stc.items()
                                                                  if k != "neutral")
         + (f"; {int(stc.get('neutral', 0))} mã biến động nhỏ." if stc.get("neutral") else "."),
@@ -329,7 +326,7 @@ def ch_watch_impact(pdf: FFRPdf, ctx: Dict) -> None:
         return
     wl = ctx.get("wl_hist")
     e = dg.watch_exposure(syms, ctx["date"], pd.concat([wl, ctx["stock"]]).drop_duplicates(["trade_date", "symbol"]),
-                          ctx["hist"], pf) if wl is not None else {}
+                          ctx["hist"], pf, market=ctx["stock"]) if wl is not None else {}
     w = pf[pf["has_data"].astype(bool)] if "has_data" in pf else pf
     concl = (f"{int((w['ER_M'] > 0).sum())}/{len(w)} mã hơn trung vị thị trường hôm nay; {len(e.get('lead', []))}/{e.get('n', len(syms))} mã "
              f"nằm trong nhóm dẫn dắt; khi độ vênh cao, watchlist thua trung vị {fmt.frac_pct(e.get('lose_hiD'), 0)} số phiên.")
@@ -355,9 +352,11 @@ def ch_watch_impact(pdf: FFRPdf, ctx: Dict) -> None:
     pdf.bullets([r.sentence for r in pf.itertuples()], 8.2)
 
 
-# ── 7. Kết luận, hàm ý và khuyến nghị cho thị trường ────────────────────────
+# ── 7. Kết luận và điều cần theo dõi ─────────────────────────────────────────
 def market_recommendations(ctx: Dict) -> List[str]:
-    """Khuyến nghị ở cấp THỊ TRƯỜNG, suy ra từ chỉ báo theo quy tắc cố định (không chọn cổ phiếu, không định giá)."""
+    """Điều cần theo dõi ở cấp THỊ TRƯỜNG, suy ra từ chỉ báo theo quy tắc cố định.
+
+    Chỉ MÔ TẢ trạng thái và mốc cần theo dõi – không có câu hành động (mua/bán, tỷ trọng, đòn bẩy, thận trọng với nhóm…)."""
     x = ctx["day"]
     vni = ctx["idx_hist"]["VN-Index"]
     ma20, ma50 = vni.rolling(20).mean().iloc[-1], vni.rolling(50).mean().iloc[-1]
@@ -366,35 +365,32 @@ def market_recommendations(ctx: Dict) -> List[str]:
     vr = ctx.get("vol_range") or {}
     out = []
     if last < ma20 and last < ma50:
-        out.append(f"Xu hướng: VN-Index dưới cả MA20 ({fmt.num(ma20, 0)}) và MA50 ({fmt.num(ma50, 0)}) → ưu tiên quản trị rủi ro, hạn chế "
-                   f"đòn bẩy; tín hiệu cải thiện đầu tiên là khi chỉ số đóng cửa trở lại trên MA20.")
+        out.append(f"Xu hướng: VN-Index ({fmt.num(last, 0)}) nằm dưới cả MA20 ({fmt.num(ma20, 0)}) và MA50 ({fmt.num(ma50, 0)}) – "
+                   "xu hướng ngắn và trung hạn đang yếu. Mốc cần theo dõi: chỉ số đóng cửa trở lại trên MA20.")
     elif last > ma20 and last > ma50:
-        out.append(f"Xu hướng: VN-Index trên cả MA20 ({fmt.num(ma20, 0)}) và MA50 ({fmt.num(ma50, 0)}) → bối cảnh thuận lợi để duy trì tỷ "
-                   f"trọng; MA20 là ngưỡng tham chiếu để nhận biết xu hướng ngắn hạn suy yếu.")
+        out.append(f"Xu hướng: VN-Index ({fmt.num(last, 0)}) nằm trên cả MA20 ({fmt.num(ma20, 0)}) và MA50 ({fmt.num(ma50, 0)}) – "
+                   "xu hướng ngắn và trung hạn đang tích cực. Mốc cần theo dõi: đóng cửa dưới MA20 là dấu hiệu suy yếu đầu tiên.")
     else:
-        out.append(f"Xu hướng: tín hiệu trái chiều giữa MA20 ({fmt.num(ma20, 0)}) và MA50 ({fmt.num(ma50, 0)}) → giữ tỷ trọng trung tính, "
-                   "chờ chỉ số xác nhận hướng qua cả hai đường.")
-    if x["pct_up"] <= 40 or abs(x["D"]) >= 0.3:
-        out.append(f"Lan tỏa: {fmt.num(x['pct_up'], 0)}% số mã tăng, D = {fmt.num(x['D'], 2, True)} → biến động chỉ số không đại diện cho số "
-                   "đông; nên đánh giá danh mục theo trung vị thị trường và độ rộng thay vì chỉ nhìn VN-Index.")
+        out.append(f"Xu hướng: VN-Index ({fmt.num(last, 0)}) nằm giữa MA20 ({fmt.num(ma20, 0)}) và MA50 ({fmt.num(ma50, 0)}) – "
+                   "tín hiệu trái chiều. Mốc cần theo dõi: chỉ số đóng cửa cùng phía với cả hai đường.")
+    pct = x.get("D_pct250")
+    if x["pct_up"] <= 40 or (pd.notna(pct) and (pct >= 80 or pct <= 20)):
+        out.append(f"Lan tỏa: {fmt.num(x['pct_up'], 0)}% số mã tăng, D = {fmt.num(x['D'], 2, True)} (phân vị {fmt.num(pct, 0)}%) – "
+                   f"{dg.representative(x)}. So danh mục với cổ phiếu trung vị sẽ sát hơn so với VN-Index.")
     if (x.get("CR5_pct250") or 0) >= 80:
-        out.append(f"Tập trung: CR5 ở phân vị {fmt.num(x['CR5_pct250'], 0)}% → chỉ số phụ thuộc vài mã lớn; rủi ro tập trung cao với danh "
-                   "mục mô phỏng chỉ số.")
+        out.append(f"Tập trung: CR5 ở phân vị {fmt.num(x['CR5_pct250'], 0)}% của 250 phiên – chỉ số đang phụ thuộc vài mã lớn.")
     nf5 = reg.get("Khối ngoại 5 phiên")
     if nf5:
-        out.append(f"Khối ngoại: {nf5['value']} ({nf5['reading']}) → "
-                   + ("áp lực bán ròng đáng kể; thận trọng với nhóm cổ phiếu khối ngoại sở hữu cao." if nf5["tone"] == "neg" else
-                      "dòng vốn ngoại hỗ trợ; theo dõi tính bền vững qua lũy kế 20 phiên." if nf5["tone"] == "pos" else
-                      "dòng vốn ngoại chưa tạo áp lực một chiều rõ rệt."))
+        out.append(f"Khối ngoại 5 phiên: {nf5['value']} – {nf5['reading']}. Mốc cần theo dõi: lũy kế ròng 20 phiên có đổi chiều hay không.")
     if 5 in vr:
         r = vr[5]
-        out.append(f"Biên độ 5 phiên tới (90%): {fmt.num(r['lo90'], 0)} – {fmt.num(r['hi90'], 0)} điểm → đóng cửa ngoài biên này là tình huống "
-                   "hiếm (≈1/10 lần), nên xem là dấu hiệu rủi ro/biến động tăng, không phải tín hiệu mua bán.")
+        out.append(f"Biên dao động 5 phiên (90%): {fmt.num(r['lo90'], 0)} – {fmt.num(r['hi90'], 0)} điểm. Đóng cửa ngoài biên là tình "
+                   "huống hiếm (≈ 1/10 lần) – dấu hiệu biến động tăng, không phải tín hiệu giao dịch.")
     tones = [r["tone"] for r in ctx.get("regime", [])]
     neg, pos = tones.count("neg"), tones.count("pos")
-    stance = ("THẬN TRỌNG" if neg > pos else "TÍCH CỰC" if pos > neg else "TRUNG TÍNH")
-    out.insert(0, f"Đánh giá tổng hợp (định tính): {stance} – {pos} khía cạnh tích cực, {neg} tiêu cực, "
-                  f"{len(tones) - pos - neg} trung tính trong bảng trạng thái của chương Chẩn đoán thị trường.")
+    lean = "nghiêng tiêu cực" if neg > pos else "nghiêng tích cực" if pos > neg else "cân bằng"
+    out.insert(0, f"Bức tranh chỉ báo {lean}: {pos} khía cạnh tích cực, {neg} tiêu cực, {len(tones) - pos - neg} trung tính "
+                  "(xem bảng trạng thái từng chỉ báo).")
     return out
 
 
@@ -402,7 +398,7 @@ def ch_conclusion(pdf: FFRPdf, ctx: Dict, db_path=None) -> None:
     sr = _stats(db_path)
     rows = dg.research_rows(sr)
     rec = market_recommendations(ctx)
-    pdf.h1("Kết luận, hàm ý và khuyến nghị", "(a) kết luận phiên · (b) kết luận giai đoạn FTSE · (c) khuyến nghị cho thị trường từ chỉ báo · "
+    pdf.h1("Kết luận và điều cần theo dõi", "(a) kết luận phiên · (b) kết luận giai đoạn FTSE · (c) điều cần theo dõi, suy ra từ chỉ báo · "
                                             "(d) các ngưỡng cần theo dõi.", concl=session_conclusion(ctx))
     pdf.h2("(a) Kết luận phiên")
     pdf.bullets([f"{a['q']} {a['a']}" for a in ctx.get("answers", [])], 8.3)
@@ -410,8 +406,8 @@ def ch_conclusion(pdf: FFRPdf, ctx: Dict, db_path=None) -> None:
     if rows:
         pdf.table(["Câu hỏi", "p Holm", "Mức bằng chứng"], [[r["q"], _p(r["p"]), r["label"]] for r in rows], [118, 24, 40],
                   aligns=["L", "R", "L"])
-    pdf.h2("(c) Khuyến nghị cho thị trường – suy ra từ chỉ báo")
-    pdf.callout("Nhận định và khuyến nghị (cấp thị trường)", rec, 8.3)
+    pdf.h2("(c) Điều cần theo dõi – suy ra từ chỉ báo")
+    pdf.callout("Trạng thái và mốc cần theo dõi (cấp thị trường)", rec, 8.3)
     pdf.bullets(ctx.get("implications", []), 8.0)
     pdf.h2("(d) Các ngưỡng cần theo dõi")
     vni = ctx["idx_hist"]["VN-Index"]
@@ -425,12 +421,12 @@ def ch_conclusion(pdf: FFRPdf, ctx: Dict, db_path=None) -> None:
                                                  f"{fmt.num(r['lo90'], 0)}–{fmt.num(r['hi90'], 0)}",
                       f"EWMA hiệu chỉnh đuôi dày; bao phủ thực tế 90%: {fmt.frac_pct(r.get('coverage90'), 0)}"])
     pdf.table(["Ngưỡng", "Giá trị", "Ghi chú"], trows, [44, 70, 68], aligns=["L", "L", "L"])
-    pdf.para("Khuyến nghị chỉ ở cấp thị trường, suy ra từ chỉ báo theo quy tắc cố định nêu ở Phụ lục; không xét yếu tố cơ bản doanh "
-             "nghiệp, vĩ mô hay khẩu vị rủi ro của từng nhà đầu tư. " + get("app.disclaimer"), 7.6, "I")
+    pdf.para("Các nhận định chỉ mô tả trạng thái thị trường từ chỉ báo theo quy tắc cố định nêu ở Phụ lục; không xét yếu tố cơ bản "
+             "doanh nghiệp, vĩ mô và không phải lời khuyên mua bán. " + get("app.disclaimer"), 7.6, "I")
 
     def _state():
         tone = {"pos": "Tích cực", "neg": "Tiêu cực", "neu": "Trung tính"}
-        pdf.h2("Bảng căn cứ của khuyến nghị – trạng thái từng chỉ báo")
+        pdf.h2("Bảng căn cứ – trạng thái từng chỉ báo")
         pdf.table(["Nhóm", "Khía cạnh", "Đọc kết quả", "Đánh giá"],
                   [[r.get("group", ""), r["name"], r["reading"], tone[r["tone"]]] for r in ctx.get("regime", [])],
                   [34, 52, 72, 24], aligns=["L", "L", "L", "L"], size=7.6)
@@ -455,7 +451,7 @@ def ch_appendix(pdf: FFRPdf, ctx: Dict, db_path=None) -> None:
         ["Kỹ thuật", "MA, Dow, RSI(14), MACD", "MA20/50/200; đỉnh/đáy 20 phiên so 20 phiên trước; RSI Wilder 14; MACD = EMA12 − EMA26, tín hiệu EMA9"],
         ["Kỹ thuật", "Khối lượng, hỗ trợ/kháng cự", "GTGD/TB20 cùng chiều giá; ngưỡng = đỉnh/đáy 20–250 phiên trước và MA"],
         ["Biên dao động", "EWMA hiệu chỉnh đuôi dày", "σ EWMA λ = 0,94; biên I·exp(±k·σ·√h), k = phân vị sai số quá khứ"],
-        ["Khuyến nghị", "Quy tắc trạng thái", "MA20/MA50; ≥55%/≤40% mã tăng; CR5 phân vị ≥80; |nf5 z| ≥ 1; σ ≥1,5%/≤0,8%"],
+        ["Điều cần theo dõi", "Quy tắc trạng thái", "MA20/MA50; ≥55%/≤40% mã tăng; CR5 phân vị ≥80; |nf5 z| ≥ 1 (≥ 2: mạnh); σ ≥1,5%/≤0,8%"],
         ["Watchlist", "ERᴹ, β Dimson, phơi nhiễm", "ER = r − trung vị; Kruskal–Wallis trên ERᴹ theo loại phiên"],
     ], [24, 44, 114], aligns=["L", "L", "L"], size=7.6)
     q = db.query_df("SELECT check_name, value, status, detail FROM data_quality_log WHERE trade_date = ?", [ctx["date"]], path=db_path)
@@ -480,7 +476,7 @@ CHAPTERS = [
     ("Bối cảnh nâng hạng FTSE", "ftse"),
     ("Chẩn đoán thị trường", "diag"),
     ("Tác động lên watchlist", "watch"),
-    ("Kết luận, hàm ý và khuyến nghị", "concl"),
+    ("Kết luận và điều cần theo dõi", "concl"),
     ("Phụ lục", "appendix"),
 ]
 

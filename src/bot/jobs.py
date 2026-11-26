@@ -52,7 +52,7 @@ def run_alerts(system: Optional[Dict] = None, now: Optional[datetime] = None) ->
             le = st["last_error"].iloc[0]
             system = {"status": st["status"].iloc[0], "message": st["message"].iloc[0],
                       "since": "?" if le is None or pd.isna(le) else f"{pd.Timestamp(le):%H:%M}"}
-    al = alerts.evaluate(ctx["day"], ctx["leaders"], ctx["flow"], ctx["wl"], system)
+    al = alerts.evaluate(ctx["day"], ctx["leaders"], ctx["flow"], ctx["wl"], system, lead_set=ctx.get("lead_set"))
     out = alerts.dispatch(al, (now or now_vn()).replace(tzinfo=None), mode="live", sender=send_message)
     return int((out["status"] == "sent").sum()) if not out.empty else 0
 

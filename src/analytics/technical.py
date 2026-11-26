@@ -166,8 +166,9 @@ def market_state(day: pd.DataFrame) -> List[Dict]:
         "chỉ số bị vài mã chi phối" if (x.get("CR5_pct250") or 0) >= 80 else "bình thường",
         "neg" if (x.get("CR5_pct250") or 0) >= 80 else "neu", "Phân vị 250 phiên ≥ 80: tập trung cao")
     add("Khối ngoại 5 phiên", f"z = {fmt.num(nf5z, 2, True)}",
-        "mua ròng mạnh" if nf5z >= 1 else "bán ròng mạnh" if nf5z <= -1 else "trung tính",
-        "pos" if nf5z >= 1 else "neg" if nf5z <= -1 else "neu", "|z| ≥ 1: lệch đáng kể so với 60 phiên")
+        "mua ròng mạnh" if nf5z >= 2 else "mua ròng cao hơn bình thường" if nf5z >= 1 else
+        "bán ròng mạnh" if nf5z <= -2 else "bán ròng cao hơn bình thường" if nf5z <= -1 else "trung tính",
+        "pos" if nf5z >= 1 else "neg" if nf5z <= -1 else "neu", "|z| ≥ 2: mạnh · |z| ≥ 1: cao hơn bình thường (so 60 phiên)")
     add("Biến động", f"σ ngày {fmt.num(sig, 2)}%",
         "biến động cao" if sig >= 1.5 else "biến động thấp" if sig <= 0.8 else "bình thường",
         "neg" if sig >= 1.5 else "neu", "σ EWMA ≥ 1,5%: cao · ≤ 0,8%: thấp")

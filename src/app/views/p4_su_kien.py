@@ -1,4 +1,4 @@
-"""Trang 4 – Sự kiện FTSE (bước B6.14), trình bày cho người đọc không chuyên:
+"""Trang Nghiên cứu: nâng hạng FTSE (bước B6.14) – bối cảnh nghiên cứu, trình bày cho người đọc không chuyên:
 câu hỏi bằng lời thường → dòng thời gian các mốc → 27 mã chính thức → hiệu suất cộng dồn từ E1 → biểu đồ lợi suất &
 dòng vốn ngoại "vượt bình thường" quanh mốc (có dải tin cậy, tách 6 mã All-World và 21 mã All-Cap) → bảng kết quả gọn có
 kết luận bằng chữ → chênh lệch kép (DiD) → nhóm đối chứng → bảng kiểm định đầy đủ. Mọi phần hiện sẵn, không cần mở."""
@@ -110,86 +110,95 @@ def _cum_groups(p) -> None:
 
 
 def render() -> None:
-    header("Sự kiện FTSE", "Các mã được chọn vào rổ FTSE có tăng giá hoặc được khối ngoại mua nhiều hơn bình thường không?")
+    header("Nghiên cứu: nâng hạng FTSE", "Bối cảnh nghiên cứu – 27 mã vào rổ FTSE có tăng giá hoặc được khối ngoại mua nhiều hơn bình thường không?")
     status_bar.render()
     p = pal()
     ev = events().sort_values("event_date")
-    md('<div class="ffr-insight"><b>Câu hỏi:</b> khi FTSE Russell công bố và điều chỉnh rổ, 27 mã được chọn có tăng giá hay được khối '
-       'ngoại mua <b>nhiều hơn mức bình thường</b> so với các mã có quy mô tương tự nhưng không được chọn (nhóm đối chứng) không?<br>'
-       '<b>Cách đọc:</b> "lợi suất vượt dự kiến" = lợi suất thực tế − mức dự kiến theo diễn biến VN-Index (ước lượng từ các phiên '
-       'trước mốc). Đường đi lên sau ngày 0 nghĩa là mã tăng nhiều hơn dự kiến; hai nhóm chồng lên nhau nghĩa là không khác biệt.</div>')
-    with W.card("p4_tl"):
-        W.title("Dòng thời gian nâng hạng", "5 mốc dùng trong phân tích")
-        _timeline(ev)
-    with W.card("p4_uni"):
-        W.title("27 mã vào rổ FTSE (danh sách chính thức)", "FTSE All-Cap; 6 mã đồng thời vào FTSE All-World")
-        _universe()
-    with W.card("p4_cumc"):
-        W.title("Hiệu suất cộng dồn từ khi công bố nâng hạng (E1)", "Lợi suất bình quân đồng trọng số · nhóm FTSE so với đối chứng và VN30")
-        _cum_groups(p)
+    st.caption("So 27 mã được chọn vào rổ FTSE với nhóm đối chứng có quy mô tương tự. \"Lợi suất vượt dự kiến\" = lợi suất thực tế − "
+               "mức dự kiến theo VN-Index (ước lượng từ các phiên trước mốc). Kết quả mô tả, không khẳng định nhân quả.")
     aar = da.table("event_aar")
+    stats = da.table("stats_results")
+    t1, t2, t3, t4 = st.tabs(["Bối cảnh", "Nghiên cứu sự kiện", "Chênh lệch kép & đối chứng", "Bảng kiểm định đầy đủ"])
+
+    with t1:
+        with W.card("p4_tl"):
+            W.title("Dòng thời gian nâng hạng", "5 mốc dùng trong phân tích")
+            _timeline(ev)
+        with W.card("p4_cumc"):
+            W.title("Hiệu suất cộng dồn từ khi công bố nâng hạng (E1)", "Lợi suất bình quân đồng trọng số · nhóm FTSE so với đối chứng và VN30")
+            _cum_groups(p)
+        with W.card("p4_uni"):
+            W.title("27 mã vào rổ FTSE (danh sách chính thức)", "FTSE All-Cap; 6 mã đồng thời vào FTSE All-World")
+            _universe()
+
     if aar.empty:
-        empty("Chưa có kết quả nghiên cứu sự kiện – chạy `python -m src.data.rebuild_all`.")
+        with t2:
+            empty("Chưa có kết quả nghiên cứu sự kiện – chạy `python -m src.data.rebuild_all`.")
         return
     have = [e for e in ev["event_id"] if e in set(aar["event_id"])]
     default = "L1" if "L1" in have else (have[-1] if have else None)
-    eid = st.segmented_control("Chọn mốc sự kiện", have, default=default, key="p4_ev",
-                               format_func=lambda e: f"{e} · {ev.set_index('event_id').loc[e, 'label']} "
-                                                     f"({ev.set_index('event_id').loc[e, 'event_date']:%d/%m/%Y})") or default
-    a = aar[(aar["event_id"] == eid) & (aar["variant"] == "base")]
-    st.caption(f"{eid}: {EV_EXPLAIN.get(eid, ev.set_index('event_id').loc[eid, 'description'])}")
-    c1, c2 = st.columns(2, gap="small")
-    with c1, W.card("p4_caar"):
-        W.title("Lợi suất vượt dự kiến, cộng dồn quanh mốc (%)",
-                "Trục ngang: số phiên trước (−) / sau (+) mốc · dải mờ = khoảng tin cậy 95% · nét chấm = 2 nhóm con")
-        plot(charts.caar_chart(a, p, "CAAR"), "p4_caar_fig")
-    with c2, W.card("p4_caff"):
-        W.title("Khối ngoại mua ròng vượt bình thường, cộng dồn",
-                "nf (ròng / GTGD) so với mức bình quân trước mốc · dương = khối ngoại mua nhiều hơn thường lệ")
-        plot(charts.caar_chart(a, p, "CAFF"), "p4_caff_fig")
-    stats = da.table("stats_results")
-    s = stats[(stats["event_id"] == eid) & (stats["variant"] == "base")]
-    with W.card("p4_s1"):
-        W.title("Kết quả: lợi suất vượt dự kiến (CAR)", "Trung bình nhóm trong từng cửa sổ · p hiệu chỉnh Holm cho chênh lệch FTSE − đối chứng")
-        _summary(s, "H3a", "CAR", 100, "%")
-    with W.card("p4_s2"):
-        W.title("Kết quả: khối ngoại mua ròng vượt bình thường (CAFF)", "Cùng cách đọc · đơn vị: nf cộng dồn")
-        _summary(s, "H3b", "CAFF", 1, "")
-    with W.card("p4_did"):
-        W.title("Chênh lệch kép (DiD) quanh phiên điều chỉnh rổ E3",
-                "So thay đổi trước/sau E3 của nhóm FTSE với thay đổi của nhóm đối chứng · hệ số trước E3 ≈ 0 → giả định xu hướng song song hợp lý")
-        did = stats[(stats["hypothesis"] == "H3c") & (stats["variant"] == "base")]
-        if did.empty:
-            empty("Chưa đủ dữ liệu cửa sổ quanh E3.")
-        else:
-            rows = [[r.metric, r.model, r.test, fmt.num(r.estimate, 4, True), fmt.num(r.statistic, 2, True), fmt.num(r.p_value, 4),
-                     f"[{fmt.num(r.ci_lo, 4)}; {fmt.num(r.ci_hi, 4)}]", str(int(r.n)) if pd.notna(r.n) else "—", r.note or ""]
-                    for r in did.itertuples()]
-            md(table_html(["Biến kết quả", "Mô hình", "Kiểm định", "δ (tác động)", "t", "p", "KTC 95%", "N", "Ghi chú"], rows,
-                          left=(0, 1, 2, 8)))
-            coefs = da.table("did_coefs")
-            if not coefs.empty:
-                outcome = st.radio("Biến kết quả", coefs["outcome"].unique().tolist(), horizontal=True, key="p4_did")
-                plot(charts.did_coef_chart(coefs, p, outcome), "p4_didc")
-            st.caption("Chỉ có 27 cặp mã nên sai số cụm kém tin cậy; diễn giải kết quả DiD thận trọng.")
-    c1, c2 = st.columns([1.3, 1], gap="small")
-    with c1, W.card("p4_cg"):
-        W.title("Nhóm đối chứng", "Mỗi mã FTSE ghép 1 mã không vào rổ có vốn hóa và thanh khoản gần nhất (120 phiên trước E1)")
-        cg = control_group()
-        if not cg.empty:
-            md(table_html(["Mã FTSE", "Đối chứng", "Khoảng cách", "Đối chứng phương án 2 (thanh khoản)"],
-                          [[f'<span class="ffr-sym">{r.ftse_symbol}</span>', r.control_symbol, fmt.num(float(r.distance), 3),
-                            r.control_symbol_liq] for r in cg.itertuples()], left=(0, 1, 3)))
-    with c2, W.card("p4_bal"):
-        W.title("Hai nhóm có cân bằng không?", "Trung vị vốn hóa/thanh khoản trước E1 · p > 0,05 = không khác biệt (ghép tốt)")
-        bal = da.table("control_balance")
-        if not bal.empty:
-            md(table_html(["Biến", "Trung vị FTSE", "Trung vị đối chứng", "Mann–Whitney p"],
-                          [[r.variable, fmt.num(r.median_ftse, 3), fmt.num(r.median_control, 3), fmt.num(r.mw_p, 3)]
-                           for r in bal.itertuples()], left=(0,)))
-        md('<div class="ffr-insight" style="margin-top:10px"><b>Giới hạn</b><br>Mẫu nhỏ (27 mã) nên độ mạnh thống kê hạn chế; '
-           'các mốc trùng biến động vĩ mô (lãi suất, tỷ giá); kết quả mô tả, không khẳng định nhân quả. '
-           'Mã có tỷ trọng ≥ 3% dùng VN-Index loại trừ chính mã làm lợi suất thị trường.</div>')
-    with W.card("p4_full"):
-        W.title("Bảng kiểm định đầy đủ", f"Mốc {eid} · t, BMP, BMP hiệu chỉnh Kolari–Pynnönen, dấu, Welch, Mann–Whitney · p Holm")
-        _stats_table(s[s["hypothesis"].isin(["H3a", "H3b"])].sort_values(["hypothesis", "metric", "window", "group", "test"]))
+    with t2:
+        eid = st.segmented_control("Chọn mốc sự kiện", have, default=default, key="p4_ev",
+                                   format_func=lambda e: f"{e} · {ev.set_index('event_id').loc[e, 'label']} "
+                                                         f"({ev.set_index('event_id').loc[e, 'event_date']:%d/%m/%Y})") or default
+        a = aar[(aar["event_id"] == eid) & (aar["variant"] == "base")]
+        st.caption(f"{eid}: {EV_EXPLAIN.get(eid, ev.set_index('event_id').loc[eid, 'description'])}")
+        c1, c2 = st.columns(2, gap="small")
+        with c1, W.card("p4_caar"):
+            W.title("Lợi suất vượt dự kiến, cộng dồn quanh mốc (%)",
+                    "Trục ngang: số phiên trước (−) / sau (+) mốc · dải mờ = khoảng tin cậy 95% · nét chấm = 2 nhóm con")
+            plot(charts.caar_chart(a, p, "CAAR"), "p4_caar_fig")
+        with c2, W.card("p4_caff"):
+            W.title("Khối ngoại mua ròng vượt bình thường, cộng dồn",
+                    "nf (ròng / GTGD) so với mức bình quân trước mốc · dương = khối ngoại mua nhiều hơn thường lệ")
+            plot(charts.caar_chart(a, p, "CAFF"), "p4_caff_fig")
+        s = stats[(stats["event_id"] == eid) & (stats["variant"] == "base")]
+        with W.card("p4_s1"):
+            W.title("Kết quả: lợi suất vượt dự kiến (CAR)", "Trung bình nhóm trong từng cửa sổ · p hiệu chỉnh Holm cho chênh lệch FTSE − đối chứng")
+            _summary(s, "H3a", "CAR", 100, "%")
+        with W.card("p4_s2"):
+            W.title("Kết quả: khối ngoại mua ròng vượt bình thường (CAFF)", "Cùng cách đọc · đơn vị: nf cộng dồn")
+            _summary(s, "H3b", "CAFF", 1, "")
+
+    with t3:
+        with W.card("p4_did"):
+            W.title("Chênh lệch kép (DiD) quanh phiên điều chỉnh rổ E3",
+                    "So thay đổi trước/sau E3 của nhóm FTSE với nhóm đối chứng · hệ số trước E3 ≈ 0 → giả định xu hướng song song hợp lý")
+            did = stats[(stats["hypothesis"] == "H3c") & (stats["variant"] == "base")]
+            if did.empty:
+                empty("Chưa đủ dữ liệu cửa sổ quanh E3.")
+            else:
+                rows = [[r.metric, r.model, r.test, fmt.num(r.estimate, 4, True), fmt.num(r.statistic, 2, True), fmt.num(r.p_value, 4),
+                         f"[{fmt.num(r.ci_lo, 4)}; {fmt.num(r.ci_hi, 4)}]", str(int(r.n)) if pd.notna(r.n) else "—", r.note or ""]
+                        for r in did.itertuples()]
+                md(table_html(["Biến kết quả", "Mô hình", "Kiểm định", "δ (tác động)", "t", "p", "KTC 95%", "N", "Ghi chú"], rows,
+                              left=(0, 1, 2, 8)))
+                coefs = da.table("did_coefs")
+                if not coefs.empty:
+                    outcome = st.radio("Biến kết quả", coefs["outcome"].unique().tolist(), horizontal=True, key="p4_did")
+                    plot(charts.did_coef_chart(coefs, p, outcome), "p4_didc")
+                st.caption("Chỉ có 27 cặp mã nên sai số cụm kém tin cậy.")
+        c1, c2 = st.columns([1.3, 1], gap="small")
+        with c1, W.card("p4_cg"):
+            W.title("Nhóm đối chứng", "Mỗi mã FTSE ghép 1 mã không vào rổ có vốn hóa và thanh khoản gần nhất (120 phiên trước E1)")
+            cg = control_group()
+            if not cg.empty:
+                md(table_html(["Mã FTSE", "Đối chứng", "Khoảng cách", "Đối chứng phương án 2 (thanh khoản)"],
+                              [[f'<span class="ffr-sym">{r.ftse_symbol}</span>', r.control_symbol, fmt.num(float(r.distance), 3),
+                                r.control_symbol_liq] for r in cg.itertuples()], left=(0, 1, 3)))
+        with c2, W.card("p4_bal"):
+            W.title("Hai nhóm có cân bằng không?", "Trung vị vốn hóa/thanh khoản trước E1 · p > 0,05 = không khác biệt (ghép tốt)")
+            bal = da.table("control_balance")
+            if not bal.empty:
+                md(table_html(["Biến", "Trung vị FTSE", "Trung vị đối chứng", "Mann–Whitney p"],
+                              [[r.variable, fmt.num(r.median_ftse, 3), fmt.num(r.median_control, 3), fmt.num(r.mw_p, 3)]
+                               for r in bal.itertuples()], left=(0,)))
+            st.caption("Giới hạn: mẫu nhỏ (27 mã) nên độ mạnh thống kê hạn chế; các mốc trùng biến động vĩ mô; kết quả mô tả, "
+                       "không khẳng định nhân quả. Mã có tỷ trọng ≥ 3% dùng VN-Index loại trừ chính mã làm lợi suất thị trường.")
+
+    with t4:
+        with W.card("p4_full"):
+            W.title("Bảng kiểm định đầy đủ", f"Mốc {eid} (đổi ở tab Nghiên cứu sự kiện) · t, BMP, BMP hiệu chỉnh Kolari–Pynnönen, dấu, "
+                                             "Welch, Mann–Whitney · p Holm")
+            s = stats[(stats["event_id"] == eid) & (stats["variant"] == "base")]
+            _stats_table(s[s["hypothesis"].isin(["H3a", "H3b"])].sort_values(["hypothesis", "metric", "window", "group", "test"]))

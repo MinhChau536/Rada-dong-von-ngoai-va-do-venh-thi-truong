@@ -60,6 +60,26 @@ def add_validity(df: pd.DataFrame, sec_type: pd.Series | None = None, board: str
     return d
 
 
+BALANCED_AD = 0.15        # |AD| dưới ngưỡng này: số mã tăng và giảm gần cân bằng → không gọi là "lan rộng/đồng thuận"
+
+
+def session_label(x) -> str:
+    """Nhãn hiển thị của một phiên (web, bot, PDF).
+
+    Loại phiên dùng cho kiểm định (classify_session: dấu r_VNI × dấu AD) giữ nguyên. Riêng phần hiển thị: phiên "lan rộng /
+    đồng thuận" mà |AD| < 0,15 (vd. 164 tăng / 136 giảm, trung vị 0%) được gọi đúng là "độ rộng cân bằng" để không nói quá."""
+    get_ = x.get if hasattr(x, "get") else (lambda k, d=None: d)
+    t = str(get_("session_type", "flat") or "flat")
+    ad = get_("AD", None)
+    try:
+        ad = float(ad)
+    except (TypeError, ValueError):
+        ad = float("nan")
+    if t in ("broad_up", "broad_down") and not np.isnan(ad) and abs(ad) < BALANCED_AD:
+        return "Tăng, độ rộng cân bằng" if t == "broad_up" else "Giảm, độ rộng cân bằng"
+    return session_type_label(t)
+
+
 def classify_session(r_vni_pct: float, ad: float, flat_pct: float | None = None) -> str:
     """Quy tắc mục 8.2: đi ngang nếu |r_VNI| < 0,1%; còn lại theo dấu r_VNI và AD."""
     flat = get("breadth.flat_threshold_pct", 0.1) if flat_pct is None else flat_pct

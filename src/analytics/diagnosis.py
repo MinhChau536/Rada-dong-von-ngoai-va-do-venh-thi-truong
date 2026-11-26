@@ -2,8 +2,11 @@
 Chẩn đoán thị trường – nối độ vênh, mã dẫn dắt, khối ngoại, nhóm FTSE và watchlist thành câu trả lời nghiên cứu.
 
 Chỉ báo mới (mỗi phiên, tính từ indicator_stock_daily, không nhìn trước):
-  codir      = Σ|C_i| của các mã có dấu NF_i trùng dấu C_i  /  Σ|C_i|
-               → bao nhiêu phần biến động điểm đến từ những mã mà khối ngoại giao dịch CÙNG CHIỀU giá.
+  codir      = Σ|C_i| của các mã có |nf_i| ≥ 5% VÀ dấu NF_i trùng dấu C_i  /  Σ|C_i|      (nf_i = NF_i / GTGD_i)
+               → bao nhiêu phần biến động điểm đến từ những mã mà khối ngoại mua/bán ròng ĐÁNG KỂ, CÙNG CHIỀU giá.
+               Lọc |nf_i| ≥ 5% để giao dịch ròng lặt vặt không được tính là "cùng chiều" (không lọc thì mức thường lệ
+               đã ≈ 2/3 mọi phiên). codir_base = trung vị 250 phiên trước → so với mức thường lệ, không so với 50%.
+               Đây là quan hệ CÙNG PHIÊN, không cho biết khối ngoại gây ra biến động.
   hhi_w      = Σ w_i²  (w_i = tỷ trọng vốn hóa trong rổ)  → độ tập trung TỶ TRỌNG chỉ số; biến kiểm soát cho CR5:
                CR5 có thể tăng chỉ vì vài mã phình tỷ trọng (VIC 2025), không phải vì thị trường "tập trung hơn".
   eff_n      = 1 / hhi_w  → số mã "hiệu dụng" của chỉ số.
@@ -27,14 +30,51 @@ import statsmodels.api as sm
 from src.common.config import ftse_universe, get
 
 BIG_N = 10
+CODIR_MIN_NF = 0.05          # |NF_i / GTGD_i| tối thiểu để coi là khối ngoại mua/bán ròng đáng kể
+
+
+def codir_level(cod, base) -> str:
+    """So codir của phiên với mức thường lệ (trung vị 250 phiên trước)."""
+    if cod is None or base is None or pd.isna(cod) or pd.isna(base):
+        return "chưa đủ lịch sử để so"
+    if cod >= base + 0.10:
+        return "cao hơn mức thường lệ"
+    if cod <= base - 0.10:
+        return "thấp hơn mức thường lệ"
+    return "tương đương mức thường lệ"
+
+
+def codir_sentence(cod, base) -> str:
+    """Một câu dùng chung cho web, bot, PDF – nói rõ là quan hệ cùng phiên."""
+    from src.common import fmt
+    if cod is None or pd.isna(cod):
+        return "Chưa đủ dữ liệu khối ngoại để đánh giá."
+    return (f"{fmt.frac_pct(cod, 0)} biến động điểm đến từ các mã có khối ngoại mua/bán ròng đáng kể (≥ 5% GTGD của mã) "
+            f"cùng chiều giá – {codir_level(cod, base)}"
+            + (f" (trung vị 250 phiên: {fmt.frac_pct(base, 0)})" if base is not None and pd.notna(base) else "")
+            + ". Đây là quan hệ cùng phiên, không cho biết khối ngoại gây ra biến động.")
+
+
+def representative(x) -> str:
+    """Chỉ số có đại diện cho số đông không – chỉ kết luận 'không đại diện' khi D ở 20% cao nhất/thấp nhất 250 phiên."""
+    pct = x.get("D_pct250") if hasattr(x, "get") else None
+    if pct is None or pd.isna(pct):
+        return "chưa đủ lịch sử để đánh giá độ đại diện của chỉ số"
+    if pct >= 80:
+        return "chỉ số tăng mạnh hơn hẳn số đông cổ phiếu – ít đại diện cho danh mục thông thường" if x["D"] > 0 else             "độ vênh ở mức cao bất thường – chỉ số ít đại diện cho số đông"
+    if pct <= 20:
+        return "chỉ số giảm mạnh hơn hẳn số đông cổ phiếu – ít đại diện cho danh mục thông thường" if x["D"] < 0 else             "độ vênh ở mức thấp bất thường – chỉ số ít đại diện cho số đông"
+    return "độ vênh trong vùng bình thường – chỉ số phản ánh tương đối sát số đông cổ phiếu"
 
 
 def daily_extras(stock: pd.DataFrame, day: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-    s = stock[stock["is_valid"].astype(bool)][["trade_date", "symbol", "w", "C", "net_flow", "tv"]].copy()
+    cols = ["trade_date", "symbol", "w", "C", "net_flow", "tv"] + (["nf"] if "nf" in stock else [])
+    s = stock[stock["is_valid"].astype(bool)][cols].copy()
     s["trade_date"] = pd.to_datetime(s["trade_date"])
     s["absC"] = s["C"].abs()
     nf = s["net_flow"].fillna(0)
-    s["same"] = (np.sign(nf) == np.sign(s["C"])) & (nf != 0) & (s["C"] != 0)
+    nf_i = s["nf"] if "nf" in s else nf / s["tv"].replace(0, np.nan)     # nf đã dùng mẫu số gồm thỏa thuận
+    s["same"] = (np.sign(nf) == np.sign(s["C"])) & (nf_i.abs() >= CODIR_MIN_NF) & (s["C"] != 0)
     s["absC_same"] = s["absC"].where(s["same"], 0.0)
     wsum = s.groupby("trade_date")["w"].transform("sum")
     s["wn"] = s["w"] / wsum.replace(0, np.nan)
@@ -46,6 +86,8 @@ def daily_extras(stock: pd.DataFrame, day: Optional[pd.DataFrame] = None) -> pd.
     out = pd.DataFrame({"absC": g["absC"].sum(), "absC_same": g["absC_same"].sum(), "hhi_w": g["w2"].sum(),
                         "n_flow": g["net_flow"].apply(lambda x: int((x.fillna(0) != 0).sum()))})
     out["codir"] = out["absC_same"] / out["absC"].replace(0, np.nan)
+    out = out.sort_index()
+    out["codir_base"] = out["codir"].shift(1).rolling(250, min_periods=60).median()
     out["eff_n"] = 1 / out["hhi_w"]
     gb = big.groupby("trade_date")
     out["big_C"] = gb["C"].sum()
@@ -102,57 +144,64 @@ def session_answers(ctx_day: pd.Series, ex_today: pd.Series, lead: pd.DataFrame,
                     watch: Optional[pd.DataFrame] = None) -> List[Dict]:
     """Ba câu trả lời của phiên, bằng lời thường + 2–3 con số (dùng chung cho web, bot, PDF)."""
     from src.common import fmt
-    from src.finance.breadth import session_type_label
+    from src.finance.breadth import session_label
     x = ctx_day
     out = []
     pct = x.get("D_pct250")
-    spread = ("phản ánh khá sát số đông cổ phiếu" if abs(x["D"]) < 0.3 else
-              "tăng mạnh hơn số đông cổ phiếu" if x["D"] > 0 else "giảm mạnh hơn số đông cổ phiếu")
     out.append({"q": "Chỉ số hôm nay có phản ánh đúng thị trường không?",
-                "a": f"VN-Index {fmt.pct(x['r_vni_pct'])} nhưng cổ phiếu trung vị {fmt.pct(x['median_ret_pct'])}: chỉ số {spread} "
+                "a": f"VN-Index {fmt.pct(x['r_vni_pct'])}, cổ phiếu trung vị {fmt.pct(x['median_ret_pct'])}: {representative(x)} "
                      f"(độ vênh D = {fmt.num(x['D'], 2, True)} điểm %, "
                      + (f"cao hơn {fmt.num(pct, 0)}% số phiên trong một năm). " if pd.notna(pct) and pct >= 50 else
                         f"thấp hơn {fmt.num(100 - pct, 0)}% số phiên trong một năm). " if pd.notna(pct) else "). ")
-                     + f"Loại phiên: {session_type_label(x['session_type']).lower()}, {fmt.num(x['pct_up'], 0)}% số mã tăng."})
+                     + f"Loại phiên: {session_label(x).lower()}, {fmt.num(x['pct_up'], 0)}% số mã tăng."})
     pos, neg = lead[lead["side"] == "pos"].head(3), lead[lead["side"] == "neg"].head(3)
     main = neg if x["dI"] < 0 else pos
-    cod = ex_today.get("codir")
-    behind = ("phần lớn" if cod >= 0.6 else "khoảng một nửa" if cod >= 0.4 else "phần nhỏ") if pd.notna(cod) else "—"
-    out.append({"q": "Ai tạo ra biến động, và khối ngoại có đứng sau không?",
+    out.append({"q": "Ai tạo ra biến động, và khối ngoại đi cùng chiều đến đâu?",
                 "a": f"5 mã ảnh hưởng nhất tạo {fmt.frac_pct(x['CR5'], 0)} tổng đóng góp, dẫn đầu "
                      f"{', '.join(main['symbol'])} ({fmt.num(main['C'].sum(), 2, True)} điểm). "
-                     f"{fmt.frac_pct(cod, 0)} biến động điểm đến từ các mã khối ngoại giao dịch cùng chiều giá – khối ngoại đứng sau "
-                     f"{behind} biến động. Nhóm 27 mã FTSE đóng góp {fmt.num(ex_today.get('ftse_C'), 2, True)} điểm."})
+                     + codir_sentence(ex_today.get("codir"), ex_today.get("codir_base"))
+                     + f" Nhóm 27 mã FTSE đóng góp {fmt.num(ex_today.get('ftse_C'), 2, True)} điểm."})
     if watch is not None and not watch.empty and "has_data" in watch:
         w = watch[watch["has_data"].astype(bool)]
-        lead_set = set(lead["symbol"])
+        lead_set = set(top_leaders(stock_day))           # cùng định nghĩa với web, bot, PDF: 10 mã |C| lớn nhất toàn sàn
         in_lead = [s for s in w["symbol"] if s in lead_set]
         beat = int((w["ER_M"] > 0).sum())
         out.append({"q": "Điều đó có ý nghĩa gì với các mã tôi đang theo dõi?",
                     "a": f"{beat}/{len(w)} mã watchlist hơn trung vị thị trường; "
-                         + (f"{', '.join(in_lead)} nằm trong nhóm dẫn dắt nên chịu tác động trực tiếp của diễn biến chỉ số. "
-                            if in_lead else "không mã nào nằm trong nhóm dẫn dắt – diễn biến chỉ số ít đại diện cho danh mục. ")
+                         + (f"{len(in_lead)}/{len(w)} mã ({', '.join(in_lead)}) nằm trong 10 mã dẫn dắt toàn sàn nên chịu tác động "
+                            f"trực tiếp của diễn biến chỉ số. " if in_lead else
+                            "không mã nào nằm trong 10 mã dẫn dắt toàn sàn – diễn biến chỉ số ít đại diện cho danh mục. ")
                          + f"Khối ngoại ròng trên watchlist: {fmt.bn(w['net_flow'].sum())}."})
     return out
+
+
+def top_leaders(stock_day: pd.DataFrame, n: int = 10) -> List[str]:
+    """Nhóm dẫn dắt của phiên = n mã có |đóng góp điểm C| lớn nhất TOÀN SÀN HOSE (một định nghĩa cho web, bot, PDF)."""
+    if stock_day is None or stock_day.empty or "C" not in stock_day:
+        return []
+    v = stock_day[stock_day["is_valid"].astype(bool)] if "is_valid" in stock_day else stock_day
+    v = v.drop_duplicates("symbol")
+    return list(v.reindex(v["C"].abs().sort_values(ascending=False).index).head(n)["symbol"])
 
 
 def implications(x: pd.Series) -> List[str]:
     """Hàm ý dạng câu điều kiện – mô tả cách đọc chỉ số, KHÔNG phải lệnh mua/bán."""
     out = []
-    if x["CR5"] >= 0.6 or (pd.notna(x.get("D_pct250")) and x["D_pct250"] >= 80):
-        out.append("Khi CR5 cao hoặc độ vênh D ở phân vị cao, VN-Index không đại diện cho danh mục thông thường – "
-                   "nên so danh mục với cổ phiếu trung vị thay vì với chỉ số.")
+    pct = x.get("D_pct250")
+    if pd.notna(pct) and (pct >= 80 or pct <= 20):
+        out.append("Độ vênh D đang ở nhóm 20% cực trị của 250 phiên – VN-Index ít đại diện cho danh mục thông thường; "
+                   "so danh mục với cổ phiếu trung vị sẽ sát hơn so với chỉ số.")
     else:
-        out.append("Khi CR5 và độ vênh D ở mức bình thường, VN-Index phản ánh tương đối sát số đông cổ phiếu – "
-                   "so sánh danh mục với chỉ số là hợp lý.")
-    out.append("Khi khối ngoại giao dịch cùng chiều ở các mã dẫn dắt, biến động chỉ số gắn với dòng vốn ngoại; "
-               "khi ngược chiều, biến động chủ yếu do khối nội.")
+        out.append("Độ vênh D trong vùng bình thường của 250 phiên – VN-Index phản ánh tương đối sát số đông cổ phiếu.")
+    out.append("Khối ngoại mua/bán ròng đáng kể cùng chiều giá ở các mã dẫn dắt cho thấy biến động chỉ số diễn ra cùng lúc "
+               "với dòng vốn ngoại – đây là quan hệ cùng phiên, không chứng minh khối ngoại gây ra biến động.")
     out.append("Biên dao động EWMA mô tả mức biến động bình thường của chỉ số – vượt biên 90% là tình huống hiếm "
                "(khoảng 1/10 phiên), không phải tín hiệu giao dịch.")
     return out
 
 
-def watch_exposure(symbols: List[str], date, stock_hist: pd.DataFrame, day: pd.DataFrame, profile: Optional[pd.DataFrame] = None) -> Dict:
+def watch_exposure(symbols: List[str], date, stock_hist: pd.DataFrame, day: pd.DataFrame, profile: Optional[pd.DataFrame] = None,
+                   market: Optional[pd.DataFrame] = None) -> Dict:
     """Mức phơi nhiễm của watchlist với nhóm dẫn dắt (thay khối tối ưu danh mục – đúng câu hỏi 'tác động lên danh mục'):
       lead_share  – số mã watchlist nằm trong 10 mã |C| lớn nhất của phiên
       vin_share   – số mã thuộc họ Vingroup
@@ -163,8 +212,10 @@ def watch_exposure(symbols: List[str], date, stock_hist: pd.DataFrame, day: pd.D
     s["trade_date"] = pd.to_datetime(s["trade_date"])
     s = s.drop_duplicates(["trade_date", "symbol"])
     today = s[s["trade_date"] == d]
-    top = today.reindex(today["C"].abs().sort_values(ascending=False).index).head(10)
-    lead = [x for x in symbols if x in set(top["symbol"])]
+    # nhóm dẫn dắt phải chọn trên TOÀN SÀN (market = mọi mã của phiên); chọn trong chính watchlist thì luôn ra n/n
+    mk = market if market is not None and not market.empty else today
+    top = set(top_leaders(mk[pd.to_datetime(mk["trade_date"]) == d] if "trade_date" in mk else mk))
+    lead = [x for x in symbols if x in top]
     fam = today.set_index("symbol")["family"] if "family" in today else pd.Series(dtype=object)
     vin = [x for x in symbols if fam.get(x) == "VINGROUP"]
     beta = float(profile["beta_dimson"].astype(float).mean()) if profile is not None and "beta_dimson" in profile else np.nan
@@ -182,6 +233,7 @@ RESEARCH_QUESTIONS = [
     ("CR5 – tập trung đóng góp", "Tập trung đóng góp (CR5) tăng sau công bố FTSE?", "base"),
     ("CR5 – tập trung đóng góp · kiểm soát HHI tỷ trọng", "… vẫn tăng khi đã kiểm soát tỷ trọng phình to?", "control_hhi_w"),
     ("Tỷ lệ phiên thiếu lan tỏa", "Phiên thiếu lan tỏa nhiều hơn sau công bố?", "base"),
+    ("Tỷ lệ phiên thiếu lan tỏa · kiểm soát HHI tỷ trọng", "… vẫn nhiều hơn khi đã kiểm soát tỷ trọng phình to?", "control_hhi_w"),
     ("FPR – tỷ trọng GD khối ngoại", "Khối ngoại tham gia giao dịch nhiều hơn?", "base"),
     ("nf toàn sàn – cường độ ròng", "Khối ngoại mua ròng mạnh hơn?", "base"),
     ("D – độ vênh (điểm %)", "Độ vênh bình quân thay đổi?", "base"),

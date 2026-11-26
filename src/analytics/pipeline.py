@@ -109,7 +109,7 @@ def compute(path: Optional[Path] = None, write: bool = True) -> Dict[str, object
     topn = int(get("foreign.top_value_n", 10))
     top = s[s["is_valid"]].sort_values("w", ascending=False).groupby("trade_date").head(topn)
     tg = top.groupby("trade_date")
-    day["NF_top"] = tg["net_flow"].sum() / tg["tv"].sum().replace(0, np.nan)
+    day["NF_top"] = tg["net_flow"].sum() / tg["tv_f"].sum().replace(0, np.nan)
 
     # ── Module D (cấp mã) ──
     s["ER_I"] = s["ret"] - s["trade_date"].map(r_vni)

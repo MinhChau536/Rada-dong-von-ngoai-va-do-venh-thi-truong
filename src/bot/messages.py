@@ -15,7 +15,7 @@ from src.analytics import watchlist_impact as wi
 from src.common import fmt
 from src.common.config import get
 from src.data import database as db
-from src.finance.breadth import session_type_label
+from src.finance.breadth import session_label, session_type_label  # noqa: F401
 from src.finance.domestic import ABSORB_LABELS
 from src.reports import context
 
@@ -114,7 +114,7 @@ def market(ctx: Optional[Dict] = None, with_buttons: bool = False):
             lines.append(f"{ic} {name}: <b>{fmt.num(r['value'])}</b>  {dot(r['change'])} {fmt.num(r['change'], 2, True)} "
                          f"({fmt.pct(r['ratio_change'])})")
     lines.append("\n🧭 <b>CHẤT LƯỢNG XU HƯỚNG</b>")
-    lines.append(f"• Loại phiên: <b>{session_type_label(x['session_type'])}</b>")
+    lines.append(f"• Loại phiên: <b>{session_label(x)}</b>")
     lines.append(f"• Tăng / Đứng / Giảm: 🟢 {int(x['n_up'])} · 🟡 {int(x['n_unch'])} · 🔴 {int(x['n_down'])} "
                  f"(trần {int(x['n_ceiling'])}, sàn {int(x['n_floor'])}) · AD = {fmt.num(x['AD'], 2, True)}")
     lines.append(f"• Trung vị cổ phiếu HOSE: {fmt.pct(x['median_ret_pct'])} · độ vênh D = {fmt.num(x['D'], 2, True)} đ.%")
@@ -177,6 +177,10 @@ def foreign(ctx: Optional[Dict] = None, with_buttons: bool = False):
         lines += [f"<code>{r.symbol:<4}</code> {bar(r.net_flow, vmax)} {fmt.bn(r.net_flow)}" for r in tb.itertuples() if r.net_flow > 0]
         lines.append("\n🔴 <b>BÁN RÒNG</b>")
         lines += [f"<code>{r.symbol:<4}</code> {bar(r.net_flow, vmax)} {fmt.bn(r.net_flow)}" for r in ts.itertuples() if r.net_flow < 0]
+        from src.analytics.narrative import put_through_note
+        note = put_through_note(pd.concat([tb, ts]), x["NF_total"])        # thương vụ thỏa thuận lớn (vd. VIC 25/11/2026)
+        if note:
+            lines.append("\n⚠️ <i>" + escape(note.strip()) + "</i>")
     g = ctx["groups"]
     uni = g[g["group_type"] == "universe"].set_index("group_name")
     rows = [(n, l) for n, l in (("FTSE", "Nhóm FTSE"), ("CONTROL", "Đối chứng"), ("VN30", "VN30")) if n in uni.index]

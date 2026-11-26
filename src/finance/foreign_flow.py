@@ -2,7 +2,10 @@
 Module B – Dòng vốn ngoại (bước B5.1–B5.6).
 
   (6) NF = FB − FS ;  nf = NF / mẫu số ;  FPR = (FB + FS) / (2·mẫu số)
-      mẫu số = TV (khớp lệnh) hoặc TV + TV_pt nếu trường khối ngoại gồm thỏa thuận (chốt ở B2.5)
+      mẫu số = max(TV + TV_pt, FB, FS)   (TV_pt chỉ cộng khi trường khối ngoại gồm thỏa thuận – chốt ở B2.5)
+      Giá trị mua/bán của khối ngoại do SSI công bố GỒM CẢ thỏa thuận (vd. VIC 25/11/2026: NN bán 19,3 triệu cp trong khi
+      khớp lệnh 1,36 triệu), và có phiên SSI ghi TV_pt = 0 dù FB/FS vượt TV. Tổng giá trị giao dịch của một mã không thể
+      nhỏ hơn giá trị mua (hay bán) của riêng khối ngoại → lấy max làm cận dưới, bảo đảm |nf| ≤ 1 và FPR ≤ 1.
   (7) HHI_t = Σ_i (|NF_i| / Σ_j |NF_j|)² ;  U = 1 − Remain / Room
   (8) z_i,t = (nf_i,t − mean_[t−60,t−1]) / sd_[t−60,t−1]
 Chuỗi phiên: số phiên mua/bán ròng liên tiếp; đảo chiều: phiên đổi dấu sau chuỗi ≥ 3.
@@ -45,6 +48,8 @@ def stock_flows(df: pd.DataFrame, denominator: str = "match") -> pd.DataFrame:
     """Chỉ báo dòng vốn theo mã × phiên. df cần: trade_date, symbol, fb, fs, tv, tv_pt, remain, room."""
     d = df.sort_values(["symbol", "trade_date"]).copy()
     denom = d["tv"] + (d["tv_pt"].fillna(0) if denominator == "match_plus_deal" else 0)
+    denom = np.fmax(np.fmax(denom, d["fb"]), d["fs"])          # cận dưới của tổng giá trị giao dịch (xem đầu mô-đun)
+    d["tv_f"] = denom
     d["net_flow"] = d["fb"] - d["fs"]
     d["nf"] = safe_div(d["net_flow"], denom)
     d["FPR"] = safe_div(d["fb"] + d["fs"], 2 * denom)
@@ -75,7 +80,8 @@ def market_flows(stock: pd.DataFrame) -> pd.DataFrame:
     # min_count=1: phiên thiếu toàn bộ dữ liệu khối ngoại → NaN (không phải 0)
     out = pd.DataFrame({
         "NF_total": g["net_flow"].sum(min_count=1), "FB_total": g["fb"].sum(min_count=1),
-        "FS_total": g["fs"].sum(min_count=1), "tv_total_f": g["tv"].sum(), "absNF_total": g["absNF"].sum(min_count=1),
+        "FS_total": g["fs"].sum(min_count=1), "tv_total_f": g["tv_f" if "tv_f" in v else "tv"].sum(),
+        "absNF_total": g["absNF"].sum(min_count=1),
     })
     share2 = v.assign(sh=v["absNF"] / v["trade_date"].map(out["absNF_total"]).replace(0, np.nan))
     out["HHI"] = share2.groupby("trade_date")["sh"].apply(lambda s: float((s ** 2).sum()))
@@ -97,7 +103,7 @@ def group_flows(stock: pd.DataFrame, mapping: pd.Series, group_type: str) -> pd.
     d = d.dropna(subset=["grp"])
     s1 = lambda x: x.sum(min_count=1)  # noqa: E731 – thiếu khối ngoại cả nhóm → NaN
     g = d.groupby(["trade_date", "grp"]).agg(net_flow=("net_flow", s1), FB=("fb", s1), FS=("fs", s1),
-                                              TV=("tv", "sum"), n=("symbol", "nunique"),
+                                              TV=("tv_f" if "tv_f" in d else "tv", "sum"), n=("symbol", "nunique"),
                                               ret_eq=("ret", "mean")).reset_index()
     g["nf"] = g["net_flow"] / g["TV"].replace(0, np.nan)
     g["FPR"] = (g["FB"] + g["FS"]) / (2 * g["TV"].replace(0, np.nan))

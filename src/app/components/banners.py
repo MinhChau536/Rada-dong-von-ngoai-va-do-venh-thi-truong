@@ -139,7 +139,7 @@ def _rewind() -> str:
 ART = {"chan-doan": _shield, "kiem-chung": _rewind, "tong-quan": _candles, "dan-dat": _waterfall, "khoi-ngoai": _radar, "su-kien-ftse": _calendar,
        "watchlist": _eye_pie, "bao-cao": _report, "chat-luong": _shield, "phuong-phap": _book, "ket-noi": _plug, "telegram": _plane, "backtest": _rewind}
 TITLE_TO_SLUG = {"Tổng quan thị trường": "tong-quan", "Dẫn dắt & độ vênh": "dan-dat", "Ra-đa khối ngoại": "khoi-ngoai",
-                 "Sự kiện FTSE": "su-kien-ftse", "Watchlist Impact": "watchlist", "Báo cáo PDF": "bao-cao", "Bot Telegram": "telegram", "Backtest": "backtest",
+                 "Sự kiện FTSE": "su-kien-ftse", "Nghiên cứu: nâng hạng FTSE": "su-kien-ftse", "Watchlist Impact": "watchlist", "Báo cáo PDF": "bao-cao", "Bot Telegram": "telegram", "Backtest": "backtest",
                  "Chất lượng dữ liệu": "chat-luong", "Chẩn đoán thị trường": "chan-doan", "Kiểm chứng & dữ liệu": "kiem-chung", "Phương pháp & giới hạn": "phuong-phap", "Kết nối dữ liệu": "ket-noi"}
 GRADIENTS = {"chan-doan": ("#B45309", "#1E3A8A"), "kiem-chung": ("#15803D", "#0F172A"), "tong-quan": ("#0F766E", "#1E3A8A"), "dan-dat": ("#7C3AED", "#1E40AF"), "khoi-ngoai": ("#0E7490", "#134E4A"),
              "su-kien-ftse": ("#B45309", "#7C2D12"), "watchlist": ("#BE185D", "#5B21B6"), "bao-cao": ("#1D4ED8", "#0F766E"),
@@ -175,6 +175,7 @@ MODULES = {"tong-quan": ("01", "Thị trường"), "dan-dat": ("02", "Thị trư
 HIGHLIGHT = {"Chẩn đoán thị trường": ("Chẩn đoán", "thị trường"), "Kiểm chứng & dữ liệu": ("Kiểm chứng &", "dữ liệu"),
              "Tổng quan thị trường": ("Tổng quan", "thị trường"), "Dẫn dắt & độ vênh": ("Dẫn dắt &", "độ vênh"),
              "Ra-đa khối ngoại": ("Ra-đa", "khối ngoại"), "Sự kiện FTSE": ("Sự kiện", "FTSE"),
+             "Nghiên cứu: nâng hạng FTSE": ("Nghiên cứu:", "nâng hạng FTSE"),
              "Watchlist Impact": ("Watchlist", "Impact"), "Báo cáo PDF": ("Báo cáo", "PDF"), "Bot Telegram": ("Bot", "Telegram"),
              "Chất lượng dữ liệu": ("Chất lượng", "dữ liệu"), "Backtest": ("", "Backtest"),
              "Phương pháp & giới hạn": ("Phương pháp &", "giới hạn"), "Kết nối dữ liệu": ("Kết nối", "dữ liệu")}
@@ -333,7 +334,7 @@ DARK_WIDGETS = """
 def banner_css(dark: bool) -> str:
     return (DARK_WIDGETS if dark else "") + """
 .ffr-banner { position:relative; display:flex; align-items:stretch; justify-content:space-between; gap:20px; border-radius:20px;
-  padding:26px 34px; margin:4px 0 16px; color:#fff; overflow:hidden; min-height:168px;
+  padding:18px 28px; margin:2px 0 12px; color:#fff; overflow:hidden; min-height:112px;
   background:linear-gradient(105deg,#071120 0%,#0A1830 42%,#0E2142 100%);
   border:1px solid rgba(245,179,65,.22); box-shadow:0 18px 40px rgba(2,8,23,.35), inset 0 1px 0 rgba(255,255,255,.04); }
 .ffr-hero-photo { position:absolute; inset:0 0 0 30%; background-size:cover; background-position:center; opacity:.55;
@@ -344,10 +345,10 @@ def banner_css(dark: bool) -> str:
              radial-gradient(ellipse at 10% 120%, rgba(245,179,65,.16), transparent 50%),
              linear-gradient(90deg, rgba(7,17,32,.96) 0%, rgba(7,17,32,.75) 45%, rgba(7,17,32,.15) 100%); }
 .ffr-banner-txt { position:relative; z-index:1; display:flex; flex-direction:column; justify-content:center; max-width:64%; }
-.ffr-kicker { font-family:'JetBrains Mono',Consolas,monospace; font-size:11px; letter-spacing:2.2px; text-transform:uppercase;
+.ffr-kicker { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:11px; letter-spacing:1.2px; text-transform:uppercase;
   color:#F5B341; font-weight:600; display:flex; align-items:center; gap:9px; margin-bottom:8px; }
 .ffr-kicker span { width:7px; height:7px; border-radius:50%; background:#F5B341; box-shadow:0 0 0 4px rgba(245,179,65,.2); }
-.ffr-banner-title { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:38px; font-weight:800; letter-spacing:-.6px;
+.ffr-banner-title { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:30px; font-weight:800; letter-spacing:-.5px;
   line-height:1.12; color:#F8FAFC; }
 .ffr-banner-title .amp { font-weight:300; color:#CBD5E1; margin:0 .08em; font-size:.92em; }
 .ffr-banner-title em { font-style:normal; color:#F5B341; background:linear-gradient(90deg,#F5B341,#FCD38A);
@@ -356,7 +357,7 @@ def banner_css(dark: bool) -> str:
 .ffr-banner-pills { margin-top:12px; }
 .ffr-banner-pills .ffr-pill { background:rgba(245,179,65,.10) !important; color:#FDE7B5 !important; border-color:rgba(245,179,65,.35) !important;
   margin:0 6px 0 0 !important; }
-.ffr-banner-art { position:relative; z-index:1; width:320px; min-width:220px; height:130px; align-self:center; }
+.ffr-banner-art { position:relative; z-index:1; width:260px; min-width:200px; height:96px; align-self:center; }
 .ffr-banner-art svg { filter:drop-shadow(0 6px 18px rgba(245,179,65,.25)); }
 """ + """
 div[data-testid="stElementContainer"]:has(iframe[height="0"]) { display:none !important; }

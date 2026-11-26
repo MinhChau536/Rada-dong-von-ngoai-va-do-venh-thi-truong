@@ -10,7 +10,7 @@ import pandas as pd
 
 from src.common import fmt
 from src.common.config import get
-from src.finance.breadth import session_type_label
+from src.finance.breadth import session_label, session_type_label  # noqa: F401
 from src.finance.domestic import ABSORB_LABELS
 
 
@@ -27,7 +27,7 @@ def market_summary(day: pd.Series, leaders: Optional[pd.DataFrame] = None, with_
     n = int(day.get("n_valid") or 0)
     pct_down = (day.get("n_down") or 0) / n * 100 if n else None
     pct_up = day.get("pct_up")
-    st = session_type_label(day.get("session_type", "flat"))
+    st = session_label(day)
     lead = f"VN-Index {fmt.num(dI, 2, True)} điểm ({fmt.pct(r)})"
     if dI is not None and dI >= 0:
         parts.append(f"{lead} nhưng {fmt.num(pct_down, 0)}% số mã HOSE giảm." if pct_down and pct_down > 50
@@ -63,7 +63,24 @@ def foreign_summary(day: pd.Series, top_buy: Optional[pd.DataFrame] = None, top_
         s += " Tập trung bán: " + ", ".join(f"{x.symbol} ({fmt.bn(x.net_flow, 0)})" for x in top_sell.head(3).itertuples()) + "."
     if top_buy is not None and not top_buy.empty and (nf or 0) >= 0:
         s += " Tập trung mua: " + ", ".join(f"{x.symbol} ({fmt.bn(x.net_flow, 0)})" for x in top_buy.head(3).itertuples()) + "."
+    s += put_through_note(pd.concat([d for d in (top_buy, top_sell) if d is not None]) if (top_buy is not None or top_sell is not None)
+                          else None, nf)
     return s
+
+
+def put_through_note(stocks: Optional[pd.DataFrame], nf_total) -> str:
+    """Ghi chú khi dòng vốn ngoại của phiên chủ yếu đến từ GIAO DỊCH THỎA THUẬN (vd. 25/11/2026: VIC thỏa thuận ≈ 4.595 tỷ).
+
+    SSI gộp cả khớp lệnh và thỏa thuận trong giá trị mua/bán của khối ngoại; một thương vụ thỏa thuận lớn có thể quyết định cả
+    con số toàn sàn – cần nói rõ để người đọc không hiểu nhầm là bán tháo trên sàn khớp lệnh."""
+    if stocks is None or stocks.empty or "tv_pt" not in stocks or not nf_total:
+        return ""
+    big = stocks[(stocks["tv_pt"].fillna(0) >= 0.5 * stocks["net_flow"].abs()) & (stocks["net_flow"].abs() >= 0.3 * abs(nf_total))
+                 & (stocks["net_flow"].abs() >= 200e9)].drop_duplicates("symbol")
+    if big.empty:
+        return ""
+    parts = ", ".join(f"{x.symbol} (thỏa thuận {fmt.bn(x.tv_pt, 0, False)}, khối ngoại ròng {fmt.bn(x.net_flow, 0)})" for x in big.itertuples())
+    return (f" Lưu ý: phần lớn con số đến từ giao dịch thỏa thuận – {parts}; dòng vốn ngoại trên sàn khớp lệnh nhỏ hơn nhiều.")
 
 
 def stock_line(p: Dict) -> str:

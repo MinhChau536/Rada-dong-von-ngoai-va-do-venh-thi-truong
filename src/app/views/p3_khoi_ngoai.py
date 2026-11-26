@@ -19,13 +19,14 @@ from src.finance.domestic import ABSORB_LABELS
 
 
 def extra_insight(date, s_) -> str:
-    """Hai ý nối: khối ngoại có đứng sau các mã dẫn dắt không; nhóm FTSE khác đối chứng thế nào."""
-    lead = da.leaders(date)
-    top = s_[s_["symbol"].isin(lead["symbol"].head(10))]
-    same = top[(np.sign(top["net_flow"].fillna(0)) == np.sign(top["C"])) & (top["net_flow"].fillna(0) != 0)]
+    """Hai ý nối: khối ngoại mua/bán ròng đáng kể cùng chiều giá ở bao nhiêu mã dẫn dắt; nhóm FTSE khác đối chứng thế nào."""
+    from src.analytics.diagnosis import CODIR_MIN_NF, top_leaders
+    top = s_[s_["symbol"].isin(top_leaders(s_))]
+    nf_i = top["nf"]
+    same = top[(np.sign(top["net_flow"].fillna(0)) == np.sign(top["C"])) & (nf_i.abs() >= CODIR_MIN_NF)]
     g = da.groups(date, "universe").set_index("group_name")
-    out = (f"Ở 10 mã dẫn dắt, khối ngoại giao dịch cùng chiều giá tại {len(same)}/{len(top)} mã"
-           + (f" ({', '.join(same['symbol'].head(4))})." if len(same) else "."))
+    out = (f"Ở 10 mã dẫn dắt, khối ngoại mua/bán ròng ≥ 5% GTGD cùng chiều giá tại {len(same)}/{len(top)} mã"
+           + (f" ({', '.join(same['symbol'].head(4))})" if len(same) else "") + " – quan hệ cùng phiên, không phải nhân quả.")
     if {"FTSE", "CONTROL"} <= set(g.index):
         a, b = g.loc["FTSE", "net_flow"], g.loc["CONTROL", "net_flow"]
         out += f" Nhóm FTSE ròng {fmt.bn(a)} so với nhóm đối chứng {fmt.bn(b)}."
@@ -110,65 +111,68 @@ def render() -> None:
                               format_func=lambda d: f"{d:%d/%m/%Y}", key="p3_range")
     d = da.daily()
     x = d.set_index("trade_date").loc[date]
-    k = st.columns(5)
-    for c, h in zip(k, [kpi("NF toàn sàn", fmt.bn(x["NF_total"]), color_for(x["NF_total"], p)),
-                        kpi("z tổng NF (60 phiên)", fmt.num(x["z_NF_total"], 2, True)),
-                        kpi("HHI tập trung", fmt.num(x["HHI"], 3),
-                            sub=f"≈ dòng vốn trải đều trên {fmt.num(1 / x['HHI'] if x['HHI'] else float('nan'), 0)} mã"),
-                        kpi("Top 5 / Σ|NF|", fmt.frac_pct(x["top5_share_flow"], 0)),
-                        kpi("FPR toàn sàn", fmt.frac_pct(x["FPR_total"], 1), sub="phần còn lại thuộc khối nội")]):
-        with c:
-            md(h)
     D = W.load(date)
-    c1, c2 = st.columns([1.25, 2], gap="small")
-    with c1, W.card("p3_top"):
-        W.w_foreign_top(D)
-    with c2, W.card("p3_flow"):
-        W.w_foreign_flow(D)
-    s_ = da.stock_day(date)
-    s_ = s_[s_["is_valid"]]
-    md(f'<div class="ffr-insight" style="margin:4px 0 10px"><b>Nhận định theo quy tắc</b><br>'
-       f'{esc(narrative.foreign_summary(x, s_.nlargest(5, "net_flow"), s_.nsmallest(5, "net_flow")))} {extra_insight(date, s_)}</div>')
-    with W.card("p3_rank"):
-        W.title("Bảng xếp hạng dòng vốn", f"Phiên {date:%d/%m/%Y} · {group}")
-        ranking(date, group)
-    with W.card("p3_sec"):
-        W.title("Khối ngoại theo ngành", f"Phiên {date:%d/%m/%Y} · sắp theo giá trị ròng")
-        sector_foreign(date)
-    c1, c2 = st.columns(2, gap="small")
-    with c1, W.card("p3_gw"):
-        W.title("Lũy kế theo nhóm", "Tỷ đồng · 1 / 5 / 20 / 60 phiên")
-        group_windows(date)
-    with c2, W.card("p3_streak"):
-        W.title("Chuỗi mua / bán ròng dài nhất", f"Phiên {date:%d/%m/%Y}")
-        streaks(date)
     rng = d[d["trade_date"].between(lo, hi)]
-    c1, c2 = st.columns(2, gap="small")
-    with c1, W.card("p3_hhi"):
-        W.title("Diễn biến theo khoảng phiên", f"{lo:%d/%m/%Y} – {hi:%d/%m/%Y}")
-        t1, t2 = st.tabs(["Mức tập trung HHI", "NF toàn sàn lũy kế"])
-        with t1:
+    t1, t2, t3 = st.tabs(["Phiên này", "Ngành & nhóm", "Theo thời gian"])
+
+    with t1:
+        k = st.columns(4)
+        for c, h in zip(k, [kpi("Khối ngoại ròng HOSE", fmt.bn(x["NF_total"]), color_for(x["NF_total"], p),
+                                sub=f"z = {fmt.num(x['z_NF_total'], 2, True)} so với 60 phiên"),
+                            kpi("Top 5 mã / tổng |ròng|", fmt.frac_pct(x["top5_share_flow"], 0), sub="mức tập trung của dòng vốn"),
+                            kpi("HHI dòng vốn", fmt.num(x["HHI"], 3),
+                                sub=f"≈ trải đều trên {fmt.num(1 / x['HHI'] if x['HHI'] else float('nan'), 0)} mã"),
+                            kpi("Tỷ trọng GD khối ngoại", fmt.frac_pct(x["FPR_total"], 1), sub="phần còn lại thuộc khối nội")]):
+            with c:
+                md(h)
+        c1, c2 = st.columns([1.25, 2], gap="small")
+        with c1, W.card("p3_top"):
+            W.w_foreign_top(D)
+        with c2, W.card("p3_flow"):
+            W.w_foreign_flow(D)
+        s_ = da.stock_day(date)
+        s_ = s_[s_["is_valid"]]
+        md(f'<div class="ffr-lead">{esc(narrative.foreign_summary(x, s_.nlargest(5, "net_flow"), s_.nsmallest(5, "net_flow")))} '
+           f'{extra_insight(date, s_)}</div>')
+        with W.card("p3_rank"):
+            W.title("Bảng xếp hạng dòng vốn", f"Phiên {date:%d/%m/%Y} · {group} · chọn cách sắp xếp")
+            ranking(date, group)
+
+    with t2:
+        c1, c2 = st.columns([1.4, 1], gap="small")
+        with c1, W.card("p3_sec"):
+            W.title("Khối ngoại theo ngành", f"Phiên {date:%d/%m/%Y} · sắp theo giá trị ròng")
+            sector_foreign(date)
+        with c2, W.card("p3_gw"):
+            W.title("Lũy kế theo nhóm", "Tỷ đồng · 1 / 5 / 20 / 60 phiên")
+            group_windows(date)
+        with W.card("p3_groups"):
+            W.title("Dòng vốn theo nhóm và ngành", f"Cộng dồn {lo:%d/%m/%Y} – {hi:%d/%m/%Y} · 3 nhóm chính, 5 ngành mua ròng và "
+                                                   "5 ngành bán ròng nhiều nhất · tỷ đồng")
+            g = da.groups()
+            g = g[g["trade_date"].between(lo, hi)]
+            uni = g[g["group_type"].isin(["universe", "sector"])].groupby(["group_type", "group_name"])["net_flow"].sum().div(1e9).reset_index()
+            sec = uni[uni["group_type"] == "sector"]
+            uni = pd.concat([uni[uni["group_type"] == "universe"], sec.nlargest(5, "net_flow"), sec.nsmallest(5, "net_flow")])
+            uni = uni.drop_duplicates("group_name")
+            uni["group_name"] = uni["group_name"].replace({"FTSE": "★ Nhóm FTSE", "CONTROL": "★ Đối chứng", "VN30": "★ VN30"})
+            fig = charts.sector_bars(uni.rename(columns={"net_flow": "val"}), "val", p, " tỷ")
+            fig.update_traces(textposition="auto", insidetextanchor="end",
+                              text=[fmt.num(v, 0, True, " tỷ") for v in fig.data[0].x])
+            plot(fig, "p3_groups")
+
+    with t3:
+        c1, c2 = st.columns([1.4, 1], gap="small")
+        with c1, W.card("p3_hhi"):
+            W.title("Mức tập trung dòng vốn (HHI)", f"{lo:%d/%m/%Y} – {hi:%d/%m/%Y} · càng cao = dòng vốn dồn vào ít mã")
             plot(charts.line(rng.assign(HHI_ma=rng["HHI"].rolling(10).mean()), "trade_date",
                              {"HHI": "HHI", "HHI_ma": "Trung bình 10 phiên"}, p), "p3_hhi")
-        with t2:
-            plot(charts.line(rng.assign(cum=rng["NF_total"].fillna(0).cumsum() / 1e9), "trade_date", {"cum": "NF lũy kế (tỷ)"}, p),
-                 "p3_cum")
-    with c2, W.card("p3_groups"):
-        W.title("Dòng vốn theo nhóm và ngành", "Cộng dồn trong khoảng phiên · 3 nhóm chính, 5 ngành mua ròng và 5 ngành bán ròng nhiều nhất · tỷ đồng")
-        g = da.groups()
-        g = g[g["trade_date"].between(lo, hi)]
-        uni = g[g["group_type"].isin(["universe", "sector"])].groupby(["group_type", "group_name"])["net_flow"].sum().div(1e9).reset_index()
-        sec = uni[uni["group_type"] == "sector"]
-        uni = pd.concat([uni[uni["group_type"] == "universe"], sec.nlargest(5, "net_flow"), sec.nsmallest(5, "net_flow")])
-        uni = uni.drop_duplicates("group_name")                       # 3 nhóm chính + 5 ngành mua ròng + 5 ngành bán ròng nhiều nhất
-        uni["group_name"] = uni["group_name"].replace({"FTSE": "★ Nhóm FTSE", "CONTROL": "★ Đối chứng", "VN30": "★ VN30"})
-        fig = charts.sector_bars(uni.rename(columns={"net_flow": "val"}), "val", p, " tỷ")
-        fig.update_traces(textposition="auto", insidetextanchor="end",                # nhãn vào trong thanh dài, không đè tên nhóm
-                          text=[fmt.num(v, 0, True, " tỷ") for v in fig.data[0].x])
-        plot(fig, "p3_groups")
-    with W.card("p3_abs"):
-        W.title("Chiều giá so với chiều khối ngoại", "Mã–phiên khối ngoại bán ròng có ý nghĩa mà giá vẫn tăng = \"Giá tăng dù ngoại bán\"")
-        absorb(lo, hi, group)
+        with c2, W.card("p3_streak"):
+            W.title("Chuỗi mua / bán ròng dài nhất", f"Tính đến phiên {date:%d/%m/%Y}")
+            streaks(date)
+        with W.card("p3_abs"):
+            W.title("Chiều giá so với chiều khối ngoại", "Mã–phiên khối ngoại bán ròng đáng kể mà giá vẫn tăng = \"Giá tăng dù ngoại bán\"")
+            absorb(lo, hi, group)
 
 
 @safe_block("trạng thái hấp thụ")

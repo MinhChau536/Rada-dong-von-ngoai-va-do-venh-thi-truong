@@ -432,9 +432,10 @@ def codir_chart(ex: pd.DataFrame, n: int = 60, size=(3.7, 2.4)) -> io.BytesIO:
     fig, ax = plt.subplots(figsize=size)
     ax.bar(x, e["codir"] * 100, color="#38BDF8", alpha=0.55, width=0.8, label="Phiên")
     ax.plot(x, (e["codir"] * 100).rolling(10).mean(), color=AMBER, lw=1.6, label="TB 10 phiên")
-    ax.axhline(50, color=MUTED, lw=0.7, ls=":")
+    if "codir_base" in e:
+        ax.plot(x, e["codir_base"] * 100, color=MUTED, lw=1.0, ls=":", label="Thường lệ (trung vị 250 phiên)")
     ax.set_ylim(0, 100)
-    ax.set_title(f"% biến động VN-Index có khối ngoại đi cùng chiều · {len(e)} phiên")
+    ax.set_title(f"% biến động VN-Index có khối ngoại ròng ≥ 5% GTGD cùng chiều · {len(e)} phiên")
     step = max(len(e) // 5, 1)
     ax.set_xticks(x[::step])
     ax.set_xticklabels([f"{d:%d/%m}" for d in pd.to_datetime(e["trade_date"]).iloc[::step]])

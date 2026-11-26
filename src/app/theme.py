@@ -22,13 +22,13 @@ DARK = {**COMMON, "dark": True, "sidebar": "#081221", "bg": "#0A1628", "card": "
         "text": "#E8EEF6", "muted": "#94A6BD", "accent": "#2DD4BF", "grid": "#1C2D47", "track": "#172A44",
         "soft": "#13243C", "insight_bg": "#2A2414", "insight_border": "#A16207"}
 GOLD = {"dark": "#F5B341", "light": "#B7791F"}             # màu nhấn cho chữ đặc biệt (tiêu đề nổi bật, mã CK, mục đang chọn)
-SERIF = "'Playfair Display', Georgia, serif"
-MONO = "'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace"
+SERIF = "'Be Vietnam Pro', Inter, system-ui, sans-serif"     # một họ chữ sans duy nhất – gọn, hiện đại, đủ dấu tiếng Việt
+MONO = "'Be Vietnam Pro', Inter, system-ui, sans-serif"
 ABSORB_COLORS = {"absorb": "#16A34A", "joint_sell": "#DC2626", "joint_buy": "#2563EB",
                  "domestic_take": "#D97706", "neutral": "#94A3B8"}
 SESSION_COLORS = {"broad_up": "#16A34A", "narrow_up": "#84CC16", "flat": "#94A3B8",
                   "narrow_down": "#F97316", "broad_down": "#DC2626"}
-FONT = "Be Vietnam Pro, Inter, system-ui, sans-serif"
+FONT = "'Be Vietnam Pro', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif"
 
 
 def palette(mode: str = "light") -> Dict:
@@ -74,11 +74,12 @@ def css(mode: str = "light") -> str:
     NOTEBG = "rgba(56,189,248,.08)" if p["dark"] else "#F0F9FF"
     NOTEBD = "rgba(56,189,248,.25)" if p["dark"] else "#BAE6FD"
     return f"""<style>
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap&subset=vietnamese');
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap&subset=vietnamese');
 :root {{ --ffr-bg:{p['bg']}; --ffr-card:{p['card']}; --ffr-border:{p['border']}; --ffr-text:{p['text']};
   --ffr-muted:{p['muted']}; --ffr-accent:{p['accent']}; --ffr-up:{p['up']}; --ffr-down:{p['down']}; --ffr-ref:{p['ref']}; }}
 html, body, [data-testid="stAppViewContainer"], .stApp {{ background:{p['bg']} !important; color:{p['text']};
-  font-family:{FONT}; }}
+  font-family:{FONT}; font-size:14.5px; -webkit-font-smoothing:antialiased; font-feature-settings:"tnum" 1, "cv11" 1; }}
+[data-testid="stMarkdownContainer"] p, [data-testid="stCaptionContainer"] {{ line-height:1.55; }}
 [data-testid="stHeader"] {{ background:transparent; }}
 /* nút mở lại thanh bên khi đã thu gọn – luôn nổi rõ ở góc trái trên */
 [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"] {{ z-index:1000020 !important;
@@ -208,6 +209,10 @@ table.ffr-t tr:hover td {{ background:{p['soft']}; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] {{ background:{p['accent']} !important; border-color:{p['accent']} !important; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:#fff !important; }}
 div[data-testid="stMetric"] {{ background:{p['card']}; border:1px solid {p['border']}; border-radius:12px; padding:10px 14px; }}
+/* tab cấp trang: chữ rõ, có gạch chân màu nhấn */
+.stTabs [data-testid="stTab"] p {{ font-size:15px; font-weight:600; }}
+.stTabs [role="tablist"] {{ gap:6px; }}
+.stTabs [data-testid="stTab"] {{ padding:8px 14px; }}
 /* ── trang Toàn cảnh thị trường: lưới thẻ tiêu đề + thanh tab (phong cách cổng thông tin chứng khoán) ── */
 div[class*="st-key-tcw"] {{ background:{p['card']}; border:1px solid {p['border']} !important; border-radius:10px !important;
   box-shadow:0 1px 3px rgba(15,23,42,.06); padding:10px 12px 14px !important; overflow:hidden; }}
@@ -247,22 +252,22 @@ table.tc-t td:first-child {{ color:{p['muted']}; }}
 /* thanh bên */
 .ffr-brand {{ background:linear-gradient(135deg,rgba(245,179,65,.14),rgba(255,255,255,.02)) !important;
   border:1px solid rgba(245,179,65,.28) !important; }}
-.ffr-brand b {{ font-family:{SERIF}; font-size:18px !important; letter-spacing:.2px; }}
-.ffr-grp span {{ font-family:{MONO}; color:#C9A253 !important; font-size:10.5px !important; letter-spacing:1.8px !important; }}
+.ffr-brand b {{ font-size:17px !important; font-weight:800 !important; letter-spacing:-.2px; }}
+.ffr-grp span {{ color:#9AA8BC !important; font-size:11px !important; letter-spacing:.9px !important; font-weight:700 !important; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ padding:9px 14px !important; border:1px solid transparent;
   border-left:3px solid transparent; }}
-section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ text-transform:uppercase; letter-spacing:.6px; font-size:12.8px !important;
-  font-weight:600 !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ font-size:14px !important; font-weight:500 !important; letter-spacing:0; }}
 section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a {{
   background:linear-gradient(90deg,rgba(245,179,65,.22),rgba(245,179,65,.05)) !important; border:1px solid rgba(245,179,65,.65) !important;
   border-left:3px solid #F5B341 !important; box-shadow:0 0 0 3px rgba(245,179,65,.06), 0 6px 18px rgba(0,0,0,.25); }}
 section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a p,
 section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a span {{ color:#F5B341 !important; }}
-.ffr-srct {{ font-family:{MONO}; color:#C9A253 !important; }}
+.ffr-srct {{ color:#9AA8BC !important; letter-spacing:.8px !important; }}
 /* tiêu đề, nhãn */
 .ffr-sec h3, .ffr-title {{ font-family:{FONT}; font-weight:700 !important; letter-spacing:-.2px; }}
-.ffr-lbl, .ffr-kpi small {{ font-family:{FONT}; letter-spacing:.6px !important; font-weight:700 !important; }}
-table.ffr-t th, table.tc-t th {{ font-family:{FONT}; letter-spacing:.3px !important; font-size:12px !important; font-weight:700 !important; }}
+.ffr-lbl, .ffr-kpi small {{ font-family:{FONT}; letter-spacing:.4px !important; font-weight:600 !important; }}
+table.ffr-t th, table.tc-t th {{ font-family:{FONT}; letter-spacing:.2px !important; font-size:12px !important; font-weight:600 !important;
+  text-transform:none !important; }}
 .ffr-kpi {{ border-radius:14px !important; position:relative; overflow:hidden; }}
 .ffr-kpi::before {{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(180deg,{G},transparent); }}
 .ffr-kpi b {{ font-size:22px !important; }}
@@ -288,10 +293,15 @@ div[class*="st-key-tcw"] .stTabs [aria-selected="true"] p {{ color:#1A1206 !impo
 table.tc-t tbody tr:nth-child(odd) td {{ background:{ROW} !important; }}
 table.tc-t tbody tr:hover td, table.ffr-t tr:hover td {{ background:rgba(245,179,65,.07) !important; }}
 /* hộp nhắc */
-.ffr-acad {{ border-radius:12px !important; border-left:3px solid {G} !important; }}
-.ffr-note {{ display:flex; align-items:center; gap:10px; border-radius:12px; padding:7px 14px; margin:0 0 10px; font-size:12.5px;
-  background:{NOTEBG}; border:1px solid {NOTEBD}; border-left:3px solid #38BDF8; color:{TXT}; }}
-.ffr-note b {{ color:#38BDF8; }}
-.ffr-insight {{ border-left:3px solid {G} !important; border-radius:12px !important; }}
+.ffr-acad {{ background:transparent !important; border:none !important; border-bottom:1px solid {CBD} !important; border-radius:0 !important;
+  padding:2px 2px 8px !important; margin:0 0 10px !important; font-size:12px !important; color:{MUT} !important; }}
+.ffr-acad b, .ffr-acad b.ffr-gold {{ color:{TXT} !important; font-weight:600; }}
+.ffr-note {{ display:flex; align-items:center; gap:10px; border-radius:10px; padding:6px 12px; margin:0 0 10px; font-size:12.5px;
+  background:{NOTEBG}; border:1px solid {NOTEBD}; color:{TXT}; }}
+.ffr-note b {{ color:{'#7DD3FC' if p['dark'] else '#0369A1'}; font-weight:600; }}
+.ffr-insight {{ background:transparent !important; border:none !important; border-left:3px solid {p['accent']} !important;
+  border-radius:0 !important; padding:4px 0 4px 12px !important; color:{TXT}; font-size:13.5px; line-height:1.6; }}
+.ffr-lead {{ font-size:14px; line-height:1.6; color:{TXT}; margin:10px 2px 2px; }}
+.ffr-lead b {{ font-weight:700; }}
 .ffr-pill {{ font-size:12px !important; }}
 </style>"""

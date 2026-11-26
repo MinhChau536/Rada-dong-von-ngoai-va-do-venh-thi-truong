@@ -57,7 +57,7 @@ contribution:
 
 # ── Module B ─────────────────────────────────────────────────────────────────
 foreign:
-  denominator: "auto"         # auto | match | match_plus_deal (chốt ở B2.5)
+  denominator: "match_plus_deal"   # SSI gộp thỏa thuận vào giá trị mua/bán khối ngoại → mẫu số = khớp + thỏa thuận (cận dưới max(FB, FS))
   absorb_nf_min: 0.05         # |nf| tối thiểu để gán trạng thái hấp thụ
   absorb_ret_min: 0.005       # |r| tối thiểu (0,5%)
   streak_reversal_min: 3      # đảo chiều sau chuỗi ≥ 3 phiên

@@ -78,6 +78,11 @@ def build(date=None, db_path=None, force: bool = False) -> Tuple[Optional[Path],
         log_report("closing", date, None, "failed", "Không có dữ liệu", db_path)
         return None, "Không có dữ liệu"
     ok, reason = quality_gate(ctx["date"], db_path)
+    if not ok:
+        src = db.query_df("SELECT DISTINCT source FROM raw_daily_stock WHERE trade_date = ?", [ctx["date"]], path=db_path)
+        if not src.empty and "SSI" not in set(src["source"]):      # mới có số chốt tạm tính từ luồng WebSocket
+            reason += (" – đang dùng số chốt tạm tính từ luồng WebSocket; Closing Report tự xuất được khi SSI công bố "
+                       "số liệu cuối ngày chính thức (thường 15:30–18:00). Trong lúc chờ, dùng Market Snapshot")
     if not ok and not force:
         log_report("closing", ctx["date"], None, "blocked", reason, db_path)
         return None, reason

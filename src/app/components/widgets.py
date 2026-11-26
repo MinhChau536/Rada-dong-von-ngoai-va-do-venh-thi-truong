@@ -292,7 +292,7 @@ def w_sectors(D: Dict) -> None:
                                    text=[fmt.pct(v, 1) for v in s["ret_pct"]], textposition="outside", cliponaxis=False,
                                    hovertemplate="%{y}: %{x:+.2f}%<extra></extra>"))
             _fig(fig, 340)
-            fig.update_yaxes(tickfont=dict(size=11))
+            fig.update_yaxes(tickfont=dict(size=12))
             span = float(s["ret_pct"].abs().max() or 1) * 1.35
             fig.update_xaxes(range=[-span, span])
             plot(fig, f"tc_sec{n}")

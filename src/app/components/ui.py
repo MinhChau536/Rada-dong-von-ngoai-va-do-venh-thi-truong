@@ -61,6 +61,9 @@ def spark(values: Iterable, color: str, w: int = 170, h: int = 40, fill: bool = 
 
 
 def chip(text: str, bg: str, fg: str = "#ffffff") -> str:
+    """Nhãn trạng thái: nền nhạt + chữ đậm cùng màu (taste-skill: không dùng nền bão hòa chữ trắng)."""
+    if fg.lower() in ("#fff", "#ffffff") and bg.startswith("#") and len(bg) == 7:
+        return f'<span class="ffr-chip" style="background:{tint(bg)};color:{bg}">{esc(text)}</span>'
     return f'<span class="ffr-chip" style="background:{bg};color:{fg}">{esc(text)}</span>'
 
 

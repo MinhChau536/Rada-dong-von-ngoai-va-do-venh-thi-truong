@@ -315,7 +315,7 @@ DARK_WIDGETS = """
 [data-testid="stMain"] [data-testid="stToggle"] label p, [data-testid="stMain"] [data-testid="stExpander"] summary p,
 [data-testid="stMain"] [data-testid="stCaptionContainer"] { color:#E2E8F0 !important; }
 [data-testid="stMain"] button[data-baseweb="tab"][aria-selected="true"] p,
-[data-testid="stMain"] [data-testid="stTab"][aria-selected="true"] p { color:var(--ffr-accent-ink) !important; }
+[data-testid="stMain"] [data-testid="stTab"][aria-selected="true"] p { color:var(--ffr-accent) !important; }
 [data-testid="stMain"] div[class*="st-key-tcw"] [data-testid="stTab"][aria-selected="true"] p { color:var(--ffr-text) !important; }
 [data-testid="stMain"] [data-testid="stBaseButton-secondary"], [data-testid="stMain"] [data-testid="stDownloadButton"] button {
   background:#151B26 !important; border-color:#2A3342 !important; }

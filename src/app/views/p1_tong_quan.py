@@ -22,7 +22,7 @@ from src.app import data_access as da
 from src.app.components import about, charts, status_bar
 from src.app.components import widgets as W
 from src.app.components.states import empty, safe_block
-from src.app.components.ui import (colored, esc, header, kpi, md, pal, plot, section, soft_chip, spark, table_html)
+from src.app.components.ui import (colored, esc, header, kpi, md, pal, plot, section, soft_chip, spark, table_html, tint)
 from src.app.theme import ABSORB_COLORS, SESSION_COLORS, color_for
 from src.common import fmt
 from src.common.config import events, get
@@ -66,7 +66,6 @@ def render_index_cards(data: Dict) -> None:
                f'<div class="ffr-lbl" style="letter-spacing:0">{d:%d/%m/%Y}</div></div>'
                f'<div class="ffr-val">{fmt.num(last["value"])}</div>'
                f'<div class="ffr-chg" style="color:{clr}">{fmt.arrow(chg)} {fmt.num(chg, 2, True)} ({fmt.pct(rc)})</div>'
-               f'<div style="margin-top:4px">{spark(h["value"].tail(int(get("windows.sparkline_index", 40))), clr)}</div>'
                f'<div class="ffr-meta"><span>Thấp–Cao: {fmt.num(last["low"], 1)} – {fmt.num(last["high"], 1)}</span></div>'
                f'<div class="ffr-meta"><span>KL: {fmt.num(last["vol"] / 1e6, 1)} tr</span><span>1Th '
                f'{colored(r["1Th"], fmt.pct(r["1Th"], 1))} · YTD {colored(r["YTD"], fmt.pct(r["YTD"], 1))}</span></div></div>')
@@ -216,7 +215,7 @@ def _movers(df: pd.DataFrame, sparks: Dict, extra: str) -> str:
         rows.append([f'<span style="color:{p["muted"]}">{i}</span>',
                      f'<span class="ffr-sym">{r.symbol}</span> <small style="color:{p["muted"]}">{esc(r.sector)}</small>',
                      fmt.price(r.close), colored(r.close - r.ref, fmt.num(r.close - r.ref, 0, True)),
-                     f'<span class="ffr-chip" style="background:{clr};color:#fff">{fmt.pct(r.ret * 100)}</span>',
+                     f'<span class="ffr-chip" style="background:{tint(clr)};color:{clr}">{fmt.pct(r.ret * 100)}</span>',
                      fmt.num(r.vol, 0), ex, colored(r.net_flow, fmt.num(r.net_flow / 1e9, 1, True)),
                      colored(r.ret_20d, fmt.pct(r.ret_20d, 1)),
                      f'<div style="width:110px">{spark(sparks.get(r.symbol, []), clr, 110, 24, False)}</div>'])

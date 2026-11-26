@@ -30,13 +30,19 @@ LIGHT = {**COMMON, "dark": False, "bg": "#F4F6F9", "card": "#FFFFFF", "border": 
 DARK = {**COMMON, "dark": True, "sidebar": "#081221", "bg": "#0A1628", "card": "#0F1E33", "border": "#1E3050",
         "text": "#E8EEF6", "muted": "#94A6BD", "accent": "#2DD4BF", "grid": "#1C2D47", "track": "#172A44",
         "soft": "#13243C", "insight_bg": "#2A2414", "insight_border": "#A16207"}
-# bảng màu web (taste-skill: "Frost and slate" sáng · "Night and sky" tối, màu nhấn giữ xanh ngọc của thương hiệu)
-WEB_LIGHT = {**LIGHT, "bg": "#F5F7F8", "card": "#FFFFFF", "border": "#DDE3E7", "text": "#1B2A33", "muted": "#5A6872",
-             "accent": "#0D7480", "accent_ink": "#FFFFFF", "grid": "#E6EBEE", "track": "#EDF1F3", "soft": "#F1F4F6",
-             "hover": "#E8F2F3", "insight_bg": "#F1F4F6", "insight_border": "#DDE3E7"}
-WEB_DARK = {**DARK, "sidebar": "#0B1017", "bg": "#0A0D14", "card": "#11161F", "border": "#232B38", "text": "#E9EDF3",
-            "muted": "#949EAE", "accent": "#2DD4BF", "accent_ink": "#06201C", "grid": "#1B2230", "track": "#18202C",
-            "soft": "#151B26", "hover": "rgba(45,212,191,.10)", "insight_bg": "#151B26", "insight_border": "#232B38"}
+# bảng màu web – style "framed-sheet" của taste-skill 2.1.5 (library/app.json), dashboard phân tích:
+# khung (menu + nền ngoài) một tông xám-ngọc nhạt lấy từ màu thương hiệu, nội dung trên "tờ" trắng viền 1px, không bóng;
+# màu nhấn xanh ngọc chỉ cho số liệu chính và mục đang chọn. Tối: nền trung tính thật (không xanh navy).
+WEB_LIGHT = {**LIGHT, "frame": "#F1F5F5", "bg": "#FFFFFF", "card": "#FFFFFF", "raised": "#F4F6F8", "active": "#E6EBEC",
+             "border": "#E5E8EA", "rule": "#EFF1F2", "control": "#CDD1D4", "text": "#131416", "muted": "#5D6164",
+             "accent": "#1B6C80", "accent_ink": "#FFFFFF", "grid": "#EEF0F2", "track": "#EFF1F2", "soft": "#F4F6F8",
+             "hover": "#F4F6F8", "insight_bg": "#F4F6F8", "insight_border": "#E5E8EA",
+             "sb_text": "#3D4245", "sb_muted": "#6A7074", "chart": ["#1B6C80", "#2F70BB", "#A86F0C"]}
+WEB_DARK = {**DARK, "frame": "#0E0F11", "bg": "#151618", "card": "#151618", "raised": "#1C1D20", "active": "#26282C",
+            "border": "#27292D", "rule": "#1F2124", "control": "#3A3C41", "text": "#EDEEF0", "muted": "#9A9DA3",
+            "accent": "#4FC3B5", "accent_ink": "#06201C", "grid": "#222428", "track": "#1F2124", "soft": "#1C1D20",
+            "hover": "#1C1D20", "insight_bg": "#1C1D20", "insight_border": "#27292D",
+            "sb_text": "#B9BCC2", "sb_muted": "#868A91", "chart": ["#4FC3B5", "#6FA3E0", "#D9A441"]}
 GOLD = {"dark": "#F5B341", "light": "#B7791F"}             # chỉ còn cho logo / đường MA20 – không dùng làm màu nhấn giao diện
 FONT = "'IBM Plex Sans', 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif"
 MONO = "'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace"
@@ -68,10 +74,12 @@ def register_plotly(mode: str = "light") -> str:
     tpl.layout = go.Layout(
         font=dict(family=FONT, color=p["text"], size=12.5),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        colorway=[p["accent"], "#2563EB", "#D97706", "#E11D48", "#0891B2", "#65A30D", "#64748B"],
-        xaxis=dict(gridcolor=p["grid"], zerolinecolor=p["grid"], linecolor=p["border"], automargin=True),
-        yaxis=dict(gridcolor=p["grid"], zerolinecolor=p["grid"], linecolor=p["border"], automargin=True),
-        legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", y=1.08, x=0),
+        colorway=[*p["chart"], "#8A8F94", "#C4242A", "#1E7B4F"],
+        xaxis=dict(gridcolor=p["grid"], zerolinecolor=p["border"], linecolor=p["border"], showgrid=False, automargin=True,
+                   tickfont=dict(color=p["muted"], size=12), title=dict(font=dict(color=p["muted"], size=12))),
+        yaxis=dict(gridcolor=p["grid"], zerolinecolor=p["border"], showline=False, automargin=True,
+                   tickfont=dict(color=p["muted"], size=12), title=dict(font=dict(color=p["muted"], size=12))),
+        legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", y=1.08, x=0, font=dict(color=p["muted"], size=12)),
         margin=dict(l=8, r=8, t=30, b=8),
         hoverlabel=dict(font_family=FONT, bgcolor=p["card"], bordercolor=p["border"], font_color=p["text"]),
     )
@@ -86,26 +94,35 @@ def css(mode: str = "light") -> str:
     TXT, MUT, ACC, AINK, BD, CARD, SOFT, TRACK = (p["text"], p["muted"], p["accent"], p["accent_ink"], p["border"],
                                                     p["card"], p["soft"], p["track"])
     HOV = p["hover"]
-    # thanh bên: một nền mực phẳng ở cả hai chế độ
-    SB, SBT, SBL = p["sidebar"], p["sidebar_text"], p["sidebar_label"]
-    SBLINE = "rgba(255,255,255,.08)"
-    SBFILL = "rgba(255,255,255,.05)"
-    SBACC = "#2DD4BF"
+    # khung (framed-sheet): thanh bên nằm trên nền khung, không đường kẻ; mục đang chọn = viên xám trung tính
+    FR, ACT, RULE, CTRL = p["frame"], p["active"], p["rule"], p["control"]
+    SB, SBT, SBL = FR, p["sb_text"], p["sb_muted"]
+    SBLINE = BD
     return f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap&subset=vietnamese');
 :root {{ --ffr-bg:{p['bg']}; --ffr-card:{CARD}; --ffr-border:{BD}; --ffr-text:{TXT}; --ffr-muted:{MUT};
   --ffr-accent:{ACC}; --ffr-accent-ink:{AINK}; --ffr-soft:{SOFT}; --ffr-up:{p['up']}; --ffr-down:{p['down']}; --ffr-ref:{p['ref']};
   --ffr-gold:{ACC}; --ffr-serif:{FONT}; --ffr-mono:{MONO}; --ffr-font:{FONT};
-  --r-sm:8px; --r-md:12px; --r-lg:16px; --ease:{EASE}; --m-in:150ms; --m-out:120ms; --m-press:90ms; }}
+  --r-sm:6px; --r-md:8px; --r-lg:8px; --ease:{EASE}; --m-in:150ms; --m-out:120ms; --m-press:90ms; }}
 
 /* ── nền, chữ ── */
-html, body, [data-testid="stAppViewContainer"], .stApp {{ background:{p['bg']} !important; color:{TXT};
+html, body, [data-testid="stAppViewContainer"], .stApp {{ background:{FR} !important; color:{TXT};
   font-family:{FONT}; font-size:15px; -webkit-font-smoothing:antialiased; font-feature-settings:"tnum" 1; }}
 h1,h2,h3,h4,p,span,div,label,li,td,th,input,textarea,button {{ font-family:{FONT}; }}
 [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li {{ line-height:1.6; }}
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {{ font-size:13.5px !important; line-height:1.55; color:{MUT} !important; }}
 [data-testid="stHeader"] {{ background:transparent; }}
-.block-container {{ padding:16px 32px 48px !important; max-width:1560px !important; }}
+/* tờ nội dung: trắng, cách mép phải/trên/dưới 8px, viền 1px, bo 16px, không bóng */
+[data-testid="stMain"] {{ background:{p['bg']} !important; margin:8px 8px 8px 0; border:1px solid {BD}; border-radius:16px;
+  overflow:auto; height:calc(100dvh - 16px) !important; max-height:calc(100dvh - 16px); }}
+.block-container {{ padding:24px 32px 48px !important; max-width:1560px !important; }}
+[data-testid="stMain"] [data-testid="stMainBlockContainer"] {{ padding-top:20px !important; }}
+[data-testid="stHeader"] {{ height:0 !important; min-height:0 !important; }}
+div[class*="st-key-tcw"] {{ margin-top:8px; }}
+/* khối chỉ chứa <style>/<script> (cao 0px) không chiếm khoảng cách của lưới – CSS bên trong vẫn có hiệu lực */
+[data-testid="stElementContainer"]:has(> [data-testid="stMarkdown"] style):not(:has(p, div.ffr-banner, table, svg)),
+[data-testid="stLayoutWrapper"]:has(> .st-key-ffr_fx) {{ display:none !important; }}
+.ffr-srcr {{ font-size:12.5px; white-space:nowrap; }}
 code, kbd, pre {{ font-family:{MONO} !important; }}
 ::selection {{ background:{'rgba(45,212,191,.28)' if D else '#CDE7EA'}; }}
 *:focus-visible {{ outline:2px solid {ACC} !important; outline-offset:2px; }}
@@ -114,66 +131,57 @@ code, kbd, pre {{ font-family:{MONO} !important; }}
 [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"] {{ z-index:1000020 !important;
   visibility:visible !important; opacity:1 !important; display:flex !important; }}
 [data-testid="stSidebarCollapsedControl"] button, button[data-testid="stExpandSidebarButton"],
-[data-testid="stExpandSidebarButton"] button {{ background:{ACC} !important; color:{AINK} !important; border:1px solid {ACC} !important;
+[data-testid="stExpandSidebarButton"] button {{ background:{TXT} !important; color:{p['bg']} !important; border:1px solid {TXT} !important;
   border-radius:var(--r-sm) !important; width:40px !important; height:40px !important; box-shadow:none !important;
   opacity:1 !important; visibility:visible !important; }}
 [data-testid="stSidebarCollapsedControl"] svg, [data-testid="stExpandSidebarButton"] svg,
-[data-testid="stSidebarCollapsedControl"] span, [data-testid="stExpandSidebarButton"] span {{ color:{AINK} !important; fill:{AINK} !important; }}
+[data-testid="stSidebarCollapsedControl"] span, [data-testid="stExpandSidebarButton"] span {{ color:{p['bg']} !important; fill:{p['bg']} !important; }}
 
 /* ── thanh bên: nền mực phẳng, một đường kẻ, mục đang mở tô màu nhấn ── */
-section[data-testid="stSidebar"] {{ background:{SB} !important; width:316px !important; min-width:316px !important;
-  border-right:1px solid {SBLINE}; }}
+section[data-testid="stSidebar"] {{ background:{SB} !important; width:292px !important; min-width:292px !important;
+  border-right:none !important; }}
+section[data-testid="stSidebar"] > div {{ background:{SB} !important; }}
 section[data-testid="stSidebar"] * {{ color:{SBT}; }}
 [data-testid="stAppViewContainer"] {{ height:100vh !important; height:100dvh !important; max-height:100dvh !important; }}
 section[data-testid="stSidebar"] {{ height:100vh !important; height:100dvh !important; max-height:100dvh !important; }}
 [data-testid="stSidebarContent"] {{ height:100% !important; max-height:100dvh !important; overflow-y:auto !important; overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.22) transparent; }}
+  -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:{CTRL} transparent; }}
 [data-testid="stSidebarContent"]::-webkit-scrollbar {{ width:8px; }}
 [data-testid="stSidebarContent"]::-webkit-scrollbar-track {{ background:transparent; }}
-[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb {{ background:rgba(255,255,255,.22); border-radius:8px; }}
-[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb:hover {{ background:rgba(255,255,255,.36); }}
-section[data-testid="stSidebar"] input {{ background:{SBFILL} !important; color:#EEF2F6 !important; border:1px solid {SBLINE} !important; }}
-section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{ background:#17232E !important; border:1px solid rgba(255,255,255,.12) !important;
-  border-radius:var(--r-sm) !important; }}
-section[data-testid="stSidebar"] div[data-baseweb="select"] * {{ color:#EEF2F6 !important; }}
-section[data-testid="stSidebar"] div[data-baseweb="select"] input::placeholder {{ color:#8A98A6 !important; }}
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] div:has(> input) {{ background:#17232E !important;
-  border:1px solid rgba(255,255,255,.12) !important; border-radius:var(--r-sm) !important; }}
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] input {{ background:transparent !important; color:#EEF2F6 !important; }}
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] input::placeholder {{ color:#8A98A6 !important; opacity:1; }}
-section[data-testid="stSidebar"] [data-testid="stSelectbox"] button {{ background:transparent !important; border:none !important; }}
-section[data-testid="stSidebar"] button {{ background:{SBFILL} !important; border:1px solid rgba(255,255,255,.12) !important;
-  padding:4px 10px !important; border-radius:var(--r-sm) !important; }}
-section[data-testid="stSidebar"] button p {{ color:#EEF2F6 !important; font-size:13px; white-space:nowrap; }}
-.ffr-brand {{ display:flex; align-items:center; gap:12px; margin:0 0 16px; padding:12px; border-radius:var(--r-md);
-  background:{SBFILL}; border:1px solid {SBLINE}; }}
+[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb {{ background:{CTRL}; border-radius:8px; }}
+section[data-testid="stSidebar"] [data-baseweb="select"] > div, section[data-testid="stSidebar"] input {{
+  background:{p['card']} !important; border-color:{CTRL} !important; color:{TXT} !important; border-radius:6px !important; }}
+section[data-testid="stSidebar"] [data-baseweb="select"] * {{ color:{TXT} !important; }}
+section[data-testid="stSidebar"] button {{ background:{p['card']} !important; border:1px solid {CTRL} !important;
+  padding:4px 10px !important; border-radius:6px !important; }}
+section[data-testid="stSidebar"] button p {{ color:{TXT} !important; font-size:13px; white-space:nowrap; }}
+.ffr-brand {{ display:flex; align-items:center; gap:12px; margin:0 0 16px; padding:4px 4px 0; background:none; border:none; }}
 .ffr-brand svg {{ flex:0 0 auto; }}
-.ffr-brand b {{ display:block; color:#F5F7F9 !important; font-size:16px; font-weight:600; line-height:1.25; letter-spacing:-.01em; white-space:nowrap; }}
+.ffr-brand b {{ display:block; color:{TXT} !important; font-size:16px; font-weight:600; line-height:1.25; letter-spacing:-.01em; white-space:nowrap; }}
 .ffr-brand small {{ display:block; color:{SBL} !important; font-size:12px; font-weight:400; white-space:nowrap; line-height:1.4; }}
-.ffr-grp {{ display:flex; align-items:center; gap:8px; margin:20px 0 4px 4px; }}
+.ffr-grp {{ display:flex; align-items:center; gap:8px; margin:22px 0 6px 12px; }}
 .ffr-grp span {{ color:{SBL} !important; font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; white-space:nowrap; }}
-.ffr-grp::after {{ content:""; flex:1; height:1px; background:{SBLINE}; }}
+.ffr-grp::after {{ content:none; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ border-radius:var(--r-sm); padding:8px 12px !important; margin:1px 0;
   border:1px solid transparent; transition:background var(--m-in) var(--ease), color var(--m-in) var(--ease); }}
-section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ color:{SBT} !important; font-size:14.5px !important; font-weight:500 !important; white-space:nowrap; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ color:{SBT} !important; font-size:14px !important; font-weight:400 !important; white-space:nowrap; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a span {{ color:{SBL} !important; }}
-section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{ background:{SBFILL} !important; }}
-section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover p {{ color:#FFFFFF !important; }}
-section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a {{ background:rgba(45,212,191,.12) !important;
-  border:1px solid rgba(45,212,191,.30) !important; box-shadow:inset 2px 0 0 {SBACC}; }}
-section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a p {{ color:#FFFFFF !important; font-weight:600 !important; }}
-section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a span {{ color:{SBACC} !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{ background:{ACT} !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover p {{ color:{TXT} !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a {{ background:{ACT} !important; border-color:transparent !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a p {{ color:{TXT} !important; font-weight:500 !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a span {{ color:{TXT} !important; }}
 .ffr-sep {{ height:1px; background:{SBLINE}; margin:16px 0 12px; }}
 section[data-testid="stSidebar"] [data-testid="stExpander"] details {{ background:transparent !important;
   border:1px solid {SBLINE} !important; border-radius:var(--r-md) !important; }}
-section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ color:#E6EBF0 !important; font-weight:500; }}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ color:{SBT} !important; font-weight:400; }}
 .ffr-srcbox {{ background:transparent; border:1px solid {SBLINE}; border-radius:var(--r-md); padding:12px; font-size:13px; margin-top:12px; }}
 .ffr-srct {{ color:{SBL} !important; font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; margin-bottom:6px; }}
 .ffr-srcr {{ display:flex; align-items:center; padding:3px 0; color:{SBT} !important; }}
-.ffr-srcr em {{ margin-left:auto; font-style:normal; color:#F5F7F9 !important; font-weight:500; font-variant-numeric:tabular-nums; }}
+.ffr-srcr em {{ margin-left:auto; font-style:normal; color:{TXT} !important; font-weight:500; font-variant-numeric:tabular-nums; }}
 .ffr-disc {{ border:1px solid {SBLINE}; background:transparent; border-radius:var(--r-md); padding:12px; font-size:13px; margin-top:12px;
   line-height:1.55; color:{SBT} !important; }}
-.ffr-disc-t {{ font-weight:600; color:#F5F7F9 !important; font-size:13px; margin-bottom:2px; }}
+.ffr-disc-t {{ font-weight:600; color:{TXT} !important; font-size:13px; margin-bottom:2px; }}
 .ffr-dot {{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:8px; }}
 
 /* ── nội dung: đầu mục, thẻ, chỉ số ── */
@@ -186,12 +194,12 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ color:#
 .ffr-pill {{ font-size:13px; font-weight:500; padding:4px 10px; border-radius:999px; border:1px solid {BD};
   background:{CARD}; color:{MUT}; display:inline-flex; align-items:center; gap:6px; margin-left:6px; }}
 .ffr-card {{ background:{CARD}; border:1px solid {BD}; border-radius:var(--r-md); padding:16px; height:100%; box-shadow:none; }}
-.ffr-lbl {{ font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; color:{MUT}; }}
-.ffr-val {{ font-size:26px; font-weight:600; color:{TXT}; line-height:1.15; margin-top:4px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }}
+.ffr-lbl {{ font-size:13px; font-weight:600; letter-spacing:0; text-transform:none; color:{MUT}; }}
+.ffr-val {{ font-size:26px; font-weight:400; color:{TXT}; line-height:1.15; margin-top:4px; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }}
 .ffr-chg {{ font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }}
 .ffr-meta {{ display:flex; justify-content:space-between; font-size:13px; color:{MUT}; margin-top:6px; font-variant-numeric:tabular-nums; gap:6px; }}
 .ffr-sec {{ display:flex; align-items:baseline; gap:12px; margin:32px 0 12px; flex-wrap:wrap; }}
-.ffr-sec h3 {{ font-size:19px; font-weight:600; color:{TXT}; margin:0; padding:0; letter-spacing:-.01em; }}
+.ffr-sec h3 {{ font-size:17px; font-weight:600; color:{TXT}; margin:0; padding:0; letter-spacing:-.01em; }}
 .ffr-sec span {{ font-size:14px; color:{MUT}; }}
 .ffr-new {{ font-size:12px; font-weight:600; background:{ACC}; color:{AINK} !important; padding:2px 6px; border-radius:6px; }}
 .ffr-chip {{ display:inline-block; padding:2px 8px; border-radius:6px; font-size:13px; font-weight:500; white-space:nowrap; }}
@@ -209,8 +217,8 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ color:#
 .ffr-bar {{ display:flex; height:12px; border-radius:999px; overflow:hidden; background:{TRACK}; margin:8px 0 6px; }}
 .ffr-legend {{ display:flex; justify-content:space-between; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; flex-wrap:wrap; gap:6px; }}
 .ffr-kpi {{ background:{CARD}; border:1px solid {BD}; border-radius:var(--r-md); padding:12px 16px; height:100%; }}
-.ffr-kpi small {{ font-size:13px; color:{MUT}; font-weight:500; text-transform:none; letter-spacing:0; }}
-.ffr-kpi b {{ display:block; font-size:22px; font-weight:600; letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin-top:2px; }}
+.ffr-kpi small {{ font-size:13px; color:{MUT}; font-weight:600; text-transform:none; letter-spacing:0; }}
+.ffr-kpi b {{ display:block; font-size:24px; font-weight:400; letter-spacing:-.01em; font-variant-numeric:tabular-nums; margin-top:2px; }}
 .ffr-sym, .tc-sym {{ font-weight:600; color:{ACC} !important; }}
 .ffr-gold, b.ffr-gold {{ color:{ACC} !important; }}
 .ffr-comp {{ display:flex; justify-content:space-between; font-size:13px; color:{MUT}; margin:8px 0 4px; }}
@@ -228,7 +236,7 @@ div[data-testid="stMetric"] {{ background:{CARD}; border:1px solid {BD}; border-
 table.ffr-t, table.tc-t {{ width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }}
 table.ffr-t th, table.tc-t th {{ text-align:right; font-size:13px; font-weight:500; color:{MUT}; text-transform:none; letter-spacing:0;
   padding:8px; border-bottom:1px solid {BD}; white-space:normal; vertical-align:bottom; }}
-table.ffr-t td, table.tc-t td {{ white-space:nowrap; text-align:right; padding:7px 8px; border-bottom:1px solid {TRACK}; color:{TXT}; }}
+table.ffr-t td, table.tc-t td {{ white-space:nowrap; text-align:right; padding:9px 8px; border-bottom:1px solid {RULE}; color:{TXT}; }}
 table.ffr-t th.l, table.ffr-t td.l, table.tc-t th.l, table.tc-t td.l {{ text-align:left; }}
 table.ffr-t td.l {{ white-space:normal; }}
 table.ffr-t td:first-child {{ white-space:nowrap; }}
@@ -236,6 +244,14 @@ table.tc-t td:first-child {{ color:{MUT}; }}
 table.tc-t tbody tr:nth-child(odd) td {{ background:transparent; }}
 table.ffr-t tr:hover td, table.tc-t tbody tr:hover td {{ background:{HOV} !important; }}
 .tc-tw {{ width:100%; overflow-x:auto; }}
+/* bảng: chỉ đường kẻ ngang (không kẻ dọc, không khung ngoài của bảng markdown Streamlit) */
+table.ffr-t, table.tc-t {{ border:none !important; }}
+table.ffr-t th, table.ffr-t td, table.tc-t th, table.tc-t td {{ border-left:none !important; border-right:none !important; border-top:none !important; }}
+table.ffr-t th, table.tc-t th {{ border-bottom:1px solid {BD} !important; background:transparent !important; }}
+/* thẻ cùng một hàng chung một mép đáy (taste-skill: không "ragged row") */
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-tcw"]) {{ align-items:stretch; }}
+[data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:only-child:has(> div[class*="st-key-tcw"]) {{ flex:1 1 auto; }}
+[data-testid="stColumn"] > [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:only-child > div[class*="st-key-tcw"] {{ height:100%; }}
 
 /* ── thẻ widget (st-key-tcw…): một kiểu thẻ cho cả trang ── */
 div[class*="st-key-tcw"] {{ background:{CARD} !important; border:1px solid {BD} !important; border-radius:var(--r-lg) !important;
@@ -243,7 +259,7 @@ div[class*="st-key-tcw"] {{ background:{CARD} !important; border:1px solid {BD} 
 .tc-head {{ background:{CARD}; border-radius:var(--r-md); padding:16px 20px; border:1px solid {BD}; }}
 .tc-h1 {{ font-size:26px; font-weight:600; color:{TXT}; letter-spacing:-.02em; line-height:1.15; }}
 .tc-date {{ font-size:14px; color:{MUT}; margin-top:4px; }}
-.tc-title {{ text-align:left !important; font-size:17px !important; font-weight:600 !important; color:{TXT} !important;
+.tc-title {{ text-align:left !important; font-size:16px !important; font-weight:600 !important; color:{TXT} !important;
   letter-spacing:-.01em; padding:0 !important; }}
 .tc-title::before {{ content:none !important; }}
 .tc-sub {{ text-align:left !important; font-size:13.5px !important; color:{MUT} !important; margin:2px 0 12px 0 !important; }}
@@ -255,39 +271,44 @@ div[class*="st-key-tcw"] {{ background:{CARD} !important; border:1px solid {BD} 
 
 /* ── tab cấp trang: to, IN HOA (theo yêu cầu), tab đang chọn tô kín màu nhấn ── */
 .stTabs [role="tablist"] {{ gap:6px; border-bottom:1px solid {BD}; padding-bottom:0; flex-wrap:wrap; }}
-.stTabs [data-testid="stTab"] {{ padding:10px 18px !important; border-radius:var(--r-sm) var(--r-sm) 0 0; background:transparent;
+.stTabs [data-testid="stTab"] {{ padding:12px 18px !important; border-radius:6px 6px 0 0; background:transparent;
   border:1px solid transparent; border-bottom:none; height:auto;
   transition:background var(--m-in) var(--ease), color var(--m-in) var(--ease); }}
 .stTabs [data-testid="stTab"] p {{ font-size:14.5px !important; font-weight:600 !important; text-transform:uppercase;
   letter-spacing:.04em; color:{MUT} !important; }}
 .stTabs [data-testid="stTab"]:hover {{ background:{HOV}; }}
 .stTabs [data-testid="stTab"]:hover p {{ color:{TXT} !important; }}
-.stTabs [data-testid="stTab"][aria-selected="true"] {{ background:{ACC} !important; border-color:{ACC}; }}
-.stTabs [data-testid="stTab"][aria-selected="true"] p {{ color:{AINK} !important; }}
+.stTabs [data-testid="stTab"][aria-selected="true"] {{ background:transparent !important; box-shadow:inset 0 -3px 0 {ACC}; }}
+.stTabs [data-testid="stTab"][aria-selected="true"] p {{ color:{ACC} !important; }}
 .stTabs [data-baseweb="tab-highlight"], .stTabs .react-aria-SelectionIndicator {{ background:{ACC} !important; }}
 .stTabs [data-baseweb="tab-border"] {{ display:none; }}
 /* tab trong thẻ: nút chọn nhỏ, chữ thường, mục đang chọn tô màu nhấn */
-div[class*="st-key-tcw"] .stTabs [role="tablist"] {{ border-bottom:none !important; background:{SOFT}; border-radius:10px;
+div[class*="st-key-tcw"] .stTabs [role="tablist"] {{ border-bottom:none !important; background:{SOFT}; border-radius:8px;
   padding:3px; gap:3px !important; flex-wrap:nowrap; }}
 div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] {{ flex:1 1 0; min-width:0; justify-content:center; background:transparent !important;
   border:none !important; border-radius:var(--r-sm) !important; padding:6px 6px !important; margin:0; }}
 div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] p {{ font-size:13.5px !important; font-weight:500 !important; color:{MUT} !important;
   text-transform:none !important; letter-spacing:0 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 div[class*="st-key-tcw"] .stTabs [data-testid="stTab"]:hover p {{ color:{TXT} !important; }}
-div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:{CARD} !important; box-shadow:0 0 0 1px {BD}; }}
+div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:{CARD} !important; box-shadow:0 0 0 1px {BD} !important; }}
 div[class*="st-key-tcw"] .stTabs [aria-selected="true"] p {{ color:{TXT} !important; font-weight:600 !important; }}
 div[class*="st-key-tcw"] .stTabs .react-aria-SelectionIndicator,
 div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-highlight"], div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-border"] {{ display:none; }}
 
 /* ── nút, nhóm nút, ô nhập ── */
-div[data-testid="stButtonGroup"] button[aria-checked="true"] {{ background:{ACC} !important; border-color:{ACC} !important; }}
-div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:{AINK} !important; }}
+div[data-testid="stButtonGroup"] button {{ background:{SOFT} !important; border-color:{BD} !important; }}
+div[data-testid="stButtonGroup"] button p {{ color:{MUT} !important; }}
+div[data-testid="stButtonGroup"] button[aria-checked="true"] {{ background:{CARD} !important; border-color:{CTRL} !important;
+  box-shadow:inset 0 -2px 0 {ACC} !important; }}
+div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:{TXT} !important; font-weight:600; }}
 [data-testid="stMain"] [data-testid^="stBaseButton"], [data-testid="stMain"] [data-testid="stDownloadButton"] button {{
-  border-radius:var(--r-sm) !important; min-height:40px; box-shadow:none !important;
+  border-radius:var(--r-sm) !important; min-height:36px; box-shadow:none !important;
   transition:transform var(--m-out) var(--ease), background var(--m-in) var(--ease), border-color var(--m-in) var(--ease); }}
-[data-testid="stMain"] [data-testid="stBaseButton-primary"] {{ background:{ACC} !important; border-color:{ACC} !important; }}
-[data-testid="stMain"] [data-testid="stBaseButton-primary"] p {{ color:{AINK} !important; font-weight:600; }}
+[data-testid="stMain"] [data-testid="stBaseButton-primary"] {{ background:{TXT} !important; border-color:{TXT} !important; }}
+[data-testid="stMain"] [data-testid="stBaseButton-primary"] p {{ color:{p['bg']} !important; font-weight:600; }}
 [data-testid="stMain"] [data-baseweb="select"] > div, [data-testid="stMain"] [data-baseweb="input"] {{ border-radius:var(--r-sm) !important; }}
+[data-testid="stMain"] [data-baseweb="select"] > div {{ background:{CARD} !important; border-color:{CTRL} !important; }}
+[data-testid="stMain"] [data-baseweb="select"] > div * {{ color:{TXT} !important; }}
 [data-testid="stMain"] [data-testid="stExpander"] details {{ border:1px solid {BD} !important; border-radius:var(--r-md) !important;
   background:{CARD}; }}
 [data-testid="stMain"] [data-testid="stExpander"] summary p {{ font-weight:500; }}
@@ -300,5 +321,6 @@ div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:{AINK} !
     transition-duration:var(--m-press); }}
 }}
 @media (prefers-reduced-motion: reduce) {{ * {{ transition:none !important; animation:none !important; }} }}
-@media (max-width: 640px) {{ .block-container {{ padding:12px 16px 40px !important; }} .ffr-val {{ font-size:22px; }} }}
+@media (max-width: 640px) {{ [data-testid="stMain"] {{ margin:0; border:none; border-radius:0; height:100dvh !important; max-height:100dvh; }}
+  .block-container {{ padding:12px 16px 40px !important; }} .ffr-val {{ font-size:22px; }} }}
 </style>"""

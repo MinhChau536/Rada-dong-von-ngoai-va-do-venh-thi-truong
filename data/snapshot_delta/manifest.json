@@ -1,13 +1,13 @@
 {
- "created": "2026-11-26 11:11:43",
+ "created": "2026-11-26 15:11:56",
  "base_created": "2026-11-26 11:11:29",
  "base_last": "2026-11-25",
  "source": "SSI FastConnect V3",
  "tables": {
   "alert_log": {
    "mode": "full",
-   "rows": 660,
-   "total_rows": 660,
+   "rows": 684,
+   "total_rows": 684,
    "files": [
     "data_0.parquet"
    ]
@@ -38,8 +38,8 @@
   },
   "data_quality_log": {
    "mode": "full",
-   "rows": 7253,
-   "total_rows": 7253,
+   "rows": 7289,
+   "total_rows": 7289,
    "files": [
     "data_0.parquet"
    ]
@@ -102,16 +102,16 @@
   },
   "fact_daily_index": {
    "mode": "full",
-   "rows": 10851,
-   "total_rows": 10851,
+   "rows": 10855,
+   "total_rows": 10855,
    "files": [
     "data_0.parquet"
    ]
   },
   "fact_daily_stock": {
    "mode": "after",
-   "rows": 381,
-   "total_rows": 1016344,
+   "rows": 739,
+   "total_rows": 1016702,
    "files": [
     "data_0.parquet"
    ]
@@ -126,16 +126,16 @@
   },
   "indicator_daily": {
    "mode": "full",
-   "rows": 2720,
-   "total_rows": 2720,
+   "rows": 2721,
+   "total_rows": 2721,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_group_daily": {
    "mode": "after",
-   "rows": 30,
-   "total_rows": 82039,
+   "rows": 60,
+   "total_rows": 82069,
    "files": [
     "data_0.parquet"
    ]
@@ -150,8 +150,8 @@
   },
   "indicator_stock_daily": {
    "mode": "after",
-   "rows": 381,
-   "total_rows": 1016344,
+   "rows": 739,
+   "total_rows": 1016702,
    "files": [
     "data_0.parquet"
    ]
@@ -166,16 +166,16 @@
   },
   "ingest_log": {
    "mode": "full",
-   "rows": 36831,
-   "total_rows": 36831,
+   "rows": 37715,
+   "total_rows": 37715,
    "files": [
     "data_0.parquet"
    ]
   },
   "leaders_daily": {
    "mode": "after",
-   "rows": 10,
-   "total_rows": 26959,
+   "rows": 20,
+   "total_rows": 26969,
    "files": [
     "data_0.parquet"
    ]
@@ -190,16 +190,16 @@
   },
   "raw_daily_index": {
    "mode": "full",
-   "rows": 10851,
-   "total_rows": 10851,
+   "rows": 10855,
+   "total_rows": 10855,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_daily_stock": {
    "mode": "after",
-   "rows": 381,
-   "total_rows": 1016344,
+   "rows": 739,
+   "total_rows": 1016702,
    "files": [
     "data_0.parquet"
    ]
@@ -230,8 +230,8 @@
   },
   "raw_stream": {
    "mode": "full",
-   "rows": 118573,
-   "total_rows": 118573,
+   "rows": 133373,
+   "total_rows": 133373,
    "files": [
     "data_0.parquet"
    ]
@@ -244,8 +244,8 @@
   },
   "reports_log": {
    "mode": "full",
-   "rows": 51,
-   "total_rows": 51,
+   "rows": 53,
+   "total_rows": 53,
    "files": [
     "data_0.parquet"
    ]
@@ -299,5 +299,5 @@
    ]
   }
  },
- "last_session": "2026-11-25 00:00:00"
+ "last_session": "2026-11-26 00:00:00"
 }

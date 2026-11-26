@@ -303,6 +303,7 @@ def close_from_stream(state: Dict) -> Optional[Dict]:
             out = rebuild_all.main(robustness=False)
         log.info("Đã tính xong phiên %s từ số liệu chốt WebSocket trong %.0f giây (hash %s)", now_vn().date(),
                  time.time() - t0, out.get("hash"))
+        _publish()                                    # bản công khai có giá đóng cửa ngay (~15:15), chưa chờ SSI REST
         return res
     except updater.Busy:
         log.warning("Đang có tiến trình cập nhật khác – bỏ qua chốt phiên từ luồng")

@@ -71,7 +71,7 @@ def _phone(text: str, kb, me) -> str:
         for row in (kb or []) if row)
     name = esc((me or {}).get("first_name", "FTSE Flow Radar"))
     return (f'<div style="background:{bg};border-radius:16px;padding:14px;max-width:470px;border:1px solid {p["border"]}">'
-            f'<div style="font-size:12px;color:{"#8BA0B3" if dark else "#3F6212"};font-weight:700;margin-bottom:6px">🤖 {name}</div>'
+            f'<div style="font-size:13px;color:{"#8BA0B3" if dark else "#3F6212"};font-weight:700;margin-bottom:6px">🤖 {name}</div>'
             f'<div style="background:{bubble};color:{fg};border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:13.5px;'
             f'line-height:1.5;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.15)">{body}</div>'
             f'{rows}</div>')
@@ -115,7 +115,7 @@ def _intro(me, p) -> None:
     cols = st.columns(4, gap="small")
     for col, (ico, t, d) in zip(cols, FEATURES):
         col.markdown(f'<div class="ffr-card" style="height:100%"><div style="font-size:26px">{ico}</div>'
-                     f'<div style="font-weight:800;font-size:15px;margin:4px 0">{esc(t)}</div>'
+                     f'<div style="font-weight:600;font-size:15px;margin:4px 0">{esc(t)}</div>'
                      f'<div style="font-size:13px;line-height:1.5;color:{p["muted"]}">{esc(d)}</div></div>', unsafe_allow_html=True)
     section("Luồng hoạt động", "Từ SSI tới tin nhắn trên điện thoại")
     md(table_html(["Bước", "Thành phần", "Việc làm"], [

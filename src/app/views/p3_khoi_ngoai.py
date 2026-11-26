@@ -46,8 +46,7 @@ def ranking(date, group: str) -> None:
     s = {"Mua ròng": s.sort_values("net_flow", ascending=False), "Bán ròng": s.sort_values("net_flow"),
          "|z| lớn nhất": s.reindex(s["z_nf"].abs().sort_values(ascending=False).index),
          "Room gần cạn": s.sort_values("U", ascending=False)}[sort].head(15)
-    rows = [[f'<span class="ffr-sym">{r.symbol}</span>' + (' <span class="ffr-chip" style="background:rgba(245,179,65,.18);'
-             'color:#F5B341">Top 5 đóng góp</span>' if r.symbol in top5 else '') + f' <small>{r.sector}</small>',
+    rows = [[f'<span class="ffr-sym">{r.symbol}</span>' + (' <span class="ffr-chip" style="background:var(--ffr-soft);color:var(--ffr-accent);border:1px solid var(--ffr-border)">Top 5 đóng góp</span>' if r.symbol in top5 else '') + f' <small>{r.sector}</small>',
              colored(r.ret, fmt.pct(r.ret * 100)),
              colored(r.net_flow, fmt.bn(r.net_flow, 1)), fmt.num(r.nf, 3, True), fmt.frac_pct(r.FPR, 1),
              colored(r.z_nf, fmt.num(r.z_nf, 2, True)), fmt.num(r.pct60_nf, 0), f"{int(r.streak):+d}" + (" ↺" if r.reversal else ""),

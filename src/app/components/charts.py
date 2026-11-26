@@ -128,7 +128,7 @@ def sector_bars(df: pd.DataFrame, col: str, p: Dict, suffix: str = "%") -> go.Fi
 
 def line_comparison(series: Dict[str, pd.Series], p: Dict, height: int = 330) -> go.Figure:
     fig = go.Figure()
-    colors = [p["accent"], "#4F46E5", "#F59E0B", "#DB2777"]
+    colors = [p["accent"], "#2563EB", "#D97706", "#E11D48"]
     for i, (name, s) in enumerate(series.items()):
         s = s.dropna()
         if s.empty:
@@ -208,7 +208,7 @@ def caar_chart(aar: pd.DataFrame, p: Dict, col: str = "CAAR", title: str = "", h
     fig = go.Figure()
     names = {"FTSE": "Nhóm FTSE (27 mã)", "CONTROL": "Nhóm đối chứng", "FTSE_AW": "Vào All-World (6 mã lớn/vừa)",
              "FTSE_SC": "Chỉ vào All-Cap (21 mã nhỏ)"}
-    for g, c in (("FTSE", p["accent"]), ("CONTROL", "#94A3B8"), ("FTSE_AW", "#F5B341"), ("FTSE_SC", "#A78BFA")):
+    for g, c in (("FTSE", p["accent"]), ("CONTROL", "#94A3B8"), ("FTSE_AW", "#F5B341"), ("FTSE_SC", "#2563EB")):
         d = aar[aar["group"] == g].sort_values("tau")
         if d.empty:
             continue
@@ -248,7 +248,7 @@ def did_coef_chart(c: pd.DataFrame, p: Dict, outcome: str, height: int = 320) ->
 
 def line(df: pd.DataFrame, x: str, ys: Dict[str, str], p: Dict, height: int = 300, title: str = "") -> go.Figure:
     fig = go.Figure()
-    colors = [p["accent"], "#4F46E5", "#F59E0B", "#DB2777", "#94A3B8"]
+    colors = [p["accent"], "#2563EB", "#D97706", "#E11D48", "#94A3B8"]
     for i, (col, name) in enumerate(ys.items()):
         fig.add_trace(go.Scatter(x=df[x], y=df[col], name=name, line=dict(color=colors[i % 5], width=1.8)))
     return _lay(fig, p, height, hovermode="x unified", title=dict(text=title, font=dict(size=13)))

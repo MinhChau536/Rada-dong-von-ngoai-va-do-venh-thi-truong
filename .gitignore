@@ -41,3 +41,6 @@ report/*.docx
 report/*.pdf
 *BaoCao*.docx
 *BaoCao*.pdf
+
+# skill thiết kế cài cục bộ (taste-skill) – không đưa lên git
+.claude/skills/

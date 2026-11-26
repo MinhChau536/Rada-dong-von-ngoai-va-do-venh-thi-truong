@@ -146,7 +146,7 @@ def company_card(ci: dict) -> None:
     if "close" not in ci:
         empty(no_data_reason(None, ci["symbol"]))
         return
-    tags = "".join(f'<span class="ffr-chip" style="background:rgba(245,179,65,.14);color:#F5B341;margin-right:6px">{esc(g)}</span>'
+    tags = "".join(f'<span class="ffr-chip" style="background:var(--ffr-soft);color:var(--ffr-accent);border:1px solid var(--ffr-border);margin-right:6px">{esc(g)}</span>'
                    for g in ci["groups"] + ([f"Họ {ci['family']}"] if ci.get("family") else []))
     years = (pd.Timestamp.today() - ci["first"]).days / 365.25
     since = (f"từ {ci['first']:%d/%m/%Y}" + (" (đầu kho dữ liệu)" if ci["first_is_data"] else "")
@@ -169,18 +169,17 @@ def company_card(ci: dict) -> None:
 
 
 WL_CSS = """<style>
-.wl-co { border:1px solid rgba(245,179,65,.28); border-radius:16px; padding:18px 20px; margin:6px 0 14px;
-  background:linear-gradient(120deg,rgba(245,179,65,.10),rgba(15,30,51,.0) 55%); }
+.wl-co { border:1px solid var(--ffr-border); border-radius:16px; padding:20px 24px; margin:6px 0 16px; background:var(--ffr-card); }
 .wl-co-head { display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; }
-.wl-co-sym { font-size:30px; font-weight:800; color:#F5B341; letter-spacing:.5px; line-height:1; }
+.wl-co-sym { font-size:30px; font-weight:600; color:var(--ffr-accent); letter-spacing:-.01em; line-height:1; }
 .wl-co-name { font-size:16px; font-weight:700; margin-top:6px; }
-.wl-co-meta, .wl-co-note { font-size:12.5px; opacity:.75; margin-top:4px; }
+.wl-co-meta, .wl-co-note { font-size:13px; color:var(--ffr-muted); margin-top:4px; }
 .wl-co-note { margin-top:10px; font-style:italic; }
-.wl-tile small { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; opacity:.7; }
+.wl-tile small { font-size:13px; font-weight:500; color:var(--ffr-muted); }
 .wl-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-top:14px; }
 .wl-tile { border:1px solid rgba(148,163,184,.18); border-radius:12px; padding:10px 12px; background:rgba(255,255,255,.03); }
-.wl-tile b { display:block; font-size:19px; font-weight:800; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
-.wl-tile span { font-size:11.5px; opacity:.7; }
+.wl-tile b { display:block; font-size:19px; font-weight:600; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
+.wl-tile span { font-size:13px; opacity:.7; }
 </style>"""
 
 

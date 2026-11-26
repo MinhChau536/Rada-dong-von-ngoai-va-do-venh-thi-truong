@@ -15,7 +15,7 @@ def render_intro() -> None:
 
 def render_full() -> None:
     md(f"""<div class="ffr-card"><div class="ffr-lbl">Giới thiệu sản phẩm</div>
-    <div style="font-size:20px;font-weight:800;margin:4px 0">{get("app.name")} {get("app.version")}</div>
+    <div style="font-size:20px;font-weight:600;margin:4px 0">{get("app.name")} {get("app.version")}</div>
     <p><b>Mục tiêu:</b> {GOAL}.</p><p><b>Người dùng:</b> {USERS}.</p>
     <p><b>Dữ liệu:</b> chỉ SSI FastConnect V3 – REST (lịch sử giá, khối ngoại, room, độ rộng, nến 5 phút) và
     WebSocket (chỉ số, lệnh khớp, room ngoại theo thời gian thực, có lưu trữ). Không dùng dữ liệu giả lập.</p>

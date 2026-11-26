@@ -185,19 +185,12 @@ NO_PHOTO = {"tong-quan"}                                  # ảnh gốc là bi�
 
 
 def banner_html(title: str, sub: str, pills_html: str = "") -> str:
-    """Banner đầu trang: dòng mô-đun (mono) · tiêu đề serif có phần tô vàng · ảnh nền mờ dần sang phải · hình minh họa."""
-    slug = TITLE_TO_SLUG.get(title, "tong-quan")
-    c1, _ = GRADIENTS.get(slug, GRADIENTS["tong-quan"])
-    ph = photo_uri(slug) if slug not in NO_PHOTO else None
-    no, grp = MODULES.get(slug, ("", ""))
-    plain, gold = HIGHLIGHT.get(title, (title, ""))
-    head = (f'{plain} <em>{gold}</em>' if gold else plain).strip().replace("&", '<span class="amp">&amp;</span>')
-    photo = f'<div class="ffr-hero-photo" style="background-image:url(\'{ph}\')"></div>' if ph else ""
-    return (f'<div class="ffr-banner" style="--ffr-tint:{_hexa(c1, .55)}">{photo}<div class="ffr-hero-glow"></div>'
-            f'<div class="ffr-banner-txt">'
+    """Đầu trang phẳng: tiêu đề · một dòng mô tả · các nhãn trạng thái (CSS ở banner_css)."""
+    plain, rest = HIGHLIGHT.get(title, (title, ""))
+    head = (f"{plain} {rest}" if rest else plain).strip().replace("&", '<span class="amp">&amp;</span>')
+    return (f'<div class="ffr-banner"><div class="ffr-banner-txt">'
             f'<div class="ffr-banner-title">{head}</div><div class="ffr-banner-sub">{sub}</div>'
-            f'<div class="ffr-banner-pills">{pills_html}</div></div>'
-            f'<div class="ffr-banner-art">{art_svg(slug)}</div></div>')
+            f'<div class="ffr-banner-pills">{pills_html}</div></div></div>')
 
 
 # ── nền trang ────────────────────────────────────────────────────────────────
@@ -322,9 +315,10 @@ DARK_WIDGETS = """
 [data-testid="stMain"] [data-testid="stToggle"] label p, [data-testid="stMain"] [data-testid="stExpander"] summary p,
 [data-testid="stMain"] [data-testid="stCaptionContainer"] { color:#E2E8F0 !important; }
 [data-testid="stMain"] button[data-baseweb="tab"][aria-selected="true"] p,
-[data-testid="stMain"] [data-testid="stTab"][aria-selected="true"] p { color:#5EEAD4 !important; }
+[data-testid="stMain"] [data-testid="stTab"][aria-selected="true"] p { color:var(--ffr-accent-ink) !important; }
+[data-testid="stMain"] div[class*="st-key-tcw"] [data-testid="stTab"][aria-selected="true"] p { color:var(--ffr-text) !important; }
 [data-testid="stMain"] [data-testid="stBaseButton-secondary"], [data-testid="stMain"] [data-testid="stDownloadButton"] button {
-  background:#1E293B !important; border-color:#334155 !important; }
+  background:#151B26 !important; border-color:#2A3342 !important; }
 [data-testid="stMain"] [data-testid="stBaseButton-secondary"] p, [data-testid="stMain"] [data-testid="stDownloadButton"] button p {
   color:#E2E8F0 !important; }
 [data-testid="stMain"] [data-testid="stBaseButton-secondary"]:disabled p { color:#64748B !important; }
@@ -332,36 +326,24 @@ DARK_WIDGETS = """
 
 
 def banner_css(dark: bool) -> str:
+    """Đầu trang phẳng (taste-skill): tiêu đề mực, dòng mô tả xám, các nhãn trạng thái; một đường kẻ mảnh bên dưới.
+    Không ảnh mờ, quầng sáng hay chữ chuyển màu – nhấn bằng độ tương phản, màu dành cho số liệu."""
     return (DARK_WIDGETS if dark else "") + """
-.ffr-banner { position:relative; display:flex; align-items:stretch; justify-content:space-between; gap:20px; border-radius:20px;
-  padding:18px 28px; margin:2px 0 12px; color:#fff; overflow:hidden; min-height:112px;
-  background:linear-gradient(105deg,#071120 0%,#0A1830 42%,#0E2142 100%);
-  border:1px solid rgba(245,179,65,.22); box-shadow:0 18px 40px rgba(2,8,23,.35), inset 0 1px 0 rgba(255,255,255,.04); }
-.ffr-hero-photo { position:absolute; inset:0 0 0 30%; background-size:cover; background-position:center; opacity:.55;
-  -webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 45%); mask-image:linear-gradient(90deg,transparent 0%,#000 45%);
-  filter:saturate(1.1) contrast(1.05); }
-.ffr-hero-glow { position:absolute; inset:0; pointer-events:none;
-  background:radial-gradient(ellipse at 88% 30%, var(--ffr-tint), transparent 55%),
-             radial-gradient(ellipse at 10% 120%, rgba(245,179,65,.16), transparent 50%),
-             linear-gradient(90deg, rgba(7,17,32,.96) 0%, rgba(7,17,32,.75) 45%, rgba(7,17,32,.15) 100%); }
-.ffr-banner-txt { position:relative; z-index:1; display:flex; flex-direction:column; justify-content:center; max-width:64%; }
-.ffr-kicker { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:11px; letter-spacing:1.2px; text-transform:uppercase;
-  color:#F5B341; font-weight:600; display:flex; align-items:center; gap:9px; margin-bottom:8px; }
-.ffr-kicker span { width:7px; height:7px; border-radius:50%; background:#F5B341; box-shadow:0 0 0 4px rgba(245,179,65,.2); }
-.ffr-banner-title { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:30px; font-weight:800; letter-spacing:-.5px;
-  line-height:1.12; color:#F8FAFC; }
-.ffr-banner-title .amp { font-weight:300; color:#CBD5E1; margin:0 .08em; font-size:.92em; }
-.ffr-banner-title em { font-style:normal; color:#F5B341; background:linear-gradient(90deg,#F5B341,#FCD38A);
-  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
-.ffr-banner-sub { font-size:14.5px; color:#CBD5E1; margin-top:10px; line-height:1.5; max-width:720px; }
-.ffr-banner-pills { margin-top:12px; }
-.ffr-banner-pills .ffr-pill { background:rgba(245,179,65,.10) !important; color:#FDE7B5 !important; border-color:rgba(245,179,65,.35) !important;
-  margin:0 6px 0 0 !important; }
-.ffr-banner-art { position:relative; z-index:1; width:260px; min-width:200px; height:96px; align-self:center; }
-.ffr-banner-art svg { filter:drop-shadow(0 6px 18px rgba(245,179,65,.25)); }
+.ffr-banner { position:relative; display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;
+  padding:4px 0 16px; margin:0 0 16px; border-bottom:1px solid var(--ffr-border); background:none; color:var(--ffr-text); }
+.ffr-hero-photo, .ffr-hero-glow, .ffr-banner-art { display:none !important; }
+.ffr-banner-txt { display:flex; flex-direction:column; min-width:0; max-width:100%; }
+.ffr-banner-title { font-family:var(--ffr-font); font-size:30px; font-weight:600; letter-spacing:-.025em; line-height:1.15;
+  color:var(--ffr-text); }
+.ffr-banner-title .amp { font-weight:400; color:var(--ffr-muted); margin:0 .06em; }
+.ffr-banner-title em { font-style:normal; color:inherit; }
+.ffr-banner-sub { font-size:15px; color:var(--ffr-muted); margin-top:6px; line-height:1.55; max-width:86ch; }
+.ffr-banner-pills { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+.ffr-banner-pills:empty { display:none; }
+.ffr-banner-pills .ffr-pill { margin:0 !important; }
 """ + """
 div[data-testid="stElementContainer"]:has(iframe[height="0"]) { display:none !important; }
 .st-key-ffr_fx { position:absolute !important; width:0 !important; height:0 !important; overflow:hidden !important;
   margin:0 !important; padding:0 !important; }
-@media (max-width: 900px) { .ffr-banner-art { display:none; } .ffr-banner-txt { max-width:100%; } .ffr-banner-title { font-size:22px; } }
+@media (max-width: 900px) { .ffr-banner-title { font-size:24px; } }
 """

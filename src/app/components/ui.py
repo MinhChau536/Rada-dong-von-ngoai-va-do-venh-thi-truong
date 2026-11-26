@@ -76,7 +76,7 @@ def soft_chip(text: str, color: str) -> str:
 
 def kpi(label: str, value: str, color: Optional[str] = None, sub: str = "", title: str = "") -> str:
     c = color or pal()["text"]
-    s = f'<div style="font-size:11.5px;color:{pal()["muted"]};margin-top:2px">{sub}</div>' if sub else ""
+    s = f'<div style="font-size:13px;color:{pal()["muted"]};margin-top:2px">{sub}</div>' if sub else ""
     return f'<div class="ffr-kpi" title="{esc(title)}"><small>{label}</small><b style="color:{c}">{value}</b>{s}</div>'
 
 

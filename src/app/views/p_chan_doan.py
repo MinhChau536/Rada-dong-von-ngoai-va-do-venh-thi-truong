@@ -57,15 +57,15 @@ def _step(no: int, title: str, value_html: str, sentence: str) -> str:
 
 
 DX_CSS = """<style>
-.dx-step { display:flex; gap:14px; border:1px solid rgba(148,163,184,.18); border-radius:14px; padding:12px 14px; margin-bottom:10px;
-  background:rgba(255,255,255,.025); }
-.dx-no { flex:0 0 34px; height:34px; border-radius:50%; background:#F5B341; color:#1A1206; font-weight:800; display:flex;
+.dx-step { display:flex; gap:16px; border:1px solid var(--ffr-border); border-radius:12px; padding:16px; margin-bottom:12px;
+  background:var(--ffr-card); }
+.dx-no { flex:0 0 34px; height:34px; border-radius:50%; background:var(--ffr-soft); color:var(--ffr-accent); border:1px solid var(--ffr-border); font-weight:600; display:flex;
   align-items:center; justify-content:center; font-size:16px; }
-.dx-q { font-weight:700; font-size:15px; }
+.dx-q { font-weight:600; font-size:15.5px; }
 .dx-v { display:flex; gap:18px; flex-wrap:wrap; margin:4px 0; font-size:13px; opacity:.9; }
 .dx-v b { font-size:18px; font-variant-numeric:tabular-nums; }
-.dx-a { font-size:13.5px; line-height:1.55; }
-.dx-ev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
+.dx-a { font-size:14.5px; line-height:1.6; }
+.dx-ev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:13px; font-weight:700; white-space:nowrap; }
 .dx-concl { border:none; border-left:3px solid var(--ffr-accent); border-radius:0; padding:4px 0 4px 14px;
   font-size:15px; line-height:1.6; margin:4px 0 12px; background:transparent; }
 </style>"""

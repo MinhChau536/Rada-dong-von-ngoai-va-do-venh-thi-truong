@@ -64,9 +64,9 @@ def _timeline(ev: pd.DataFrame) -> None:
         f'<div class="ft-ev"><b>{r.event_id}</b><span>{r.event_date:%d/%m/%Y}</span><em>{esc(r.label)}</em>'
         f'<small>{esc(EV_EXPLAIN.get(r.event_id, ""))}</small></div>' for r in ev.sort_values("event_date").itertuples())
     md('<style>.ft-tl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:4px 0 6px}'
-       '.ft-ev{border:1px solid rgba(148,163,184,.2);border-left:3px solid #F5B341;border-radius:12px;padding:9px 12px;'
-       'background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:2px}.ft-ev b{color:#F5B341;font-size:15px}'
-       '.ft-ev span{font-weight:700;font-size:13.5px}.ft-ev em{font-style:normal;font-size:13px}.ft-ev small{opacity:.75;font-size:12px;'
+       '.ft-ev{border:1px solid var(--ffr-border);border-radius:12px;padding:12px 16px;'
+       'background:var(--ffr-card);display:flex;flex-direction:column;gap:2px}.ft-ev b{color:var(--ffr-accent);font-size:15px;font-weight:600}'
+       '.ft-ev span{font-weight:600;font-size:14px}.ft-ev em{font-style:normal;font-size:14px}.ft-ev small{color:var(--ffr-muted);font-size:13px;'
        'line-height:1.4}</style>' + f'<div class="ft-tl">{items}</div>')
 
 

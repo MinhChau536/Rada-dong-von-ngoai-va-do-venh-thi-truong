@@ -116,8 +116,8 @@ def render_watchlist_strip(data: Dict) -> None:
             md(f'<div class="ffr-card" style="padding:10px 12px"><div style="display:flex;justify-content:space-between">'
                f'<b class="ffr-sym">{sym}</b><b style="color:{clr}">{fmt.pct(r["ret"] * 100)}</b></div>'
                f'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><div>'
-               f'<div style="font-size:18px;font-weight:800">{fmt.price(r["close"])}</div>'
-               f'<div style="font-size:11px;color:{p["muted"]}">vs trung vị {fmt.num(r["ER_M"] * 100, 2, True)} đ.% · NN {fmt.bn(r["net_flow"], 0)}</div>'
+               f'<div style="font-size:18px;font-weight:600">{fmt.price(r["close"])}</div>'
+               f'<div style="font-size:13px;color:{p["muted"]}">vs trung vị {fmt.num(r["ER_M"] * 100, 2, True)} đ.% · NN {fmt.bn(r["net_flow"], 0)}</div>'
                f'</div><div style="width:80px">{spark(data["sparks"].get(sym, []), clr, 80, 30, False)}</div></div>'
                f'<div style="margin-top:5px">{soft_chip(ABSORB_LABELS[ab], ABSORB_COLORS[ab])}</div></div>')
             if st.button("Xem hồ sơ →", key=f"wl_go_{sym}", width="stretch"):
@@ -165,7 +165,7 @@ def render_health(data: Dict) -> None:
     rows = "".join(f'<div class="ffr-comp"><span>{v["label"]} <small>({v["weight"]}%)</small></span><b>{v["detail"]}</b></div>'
                    f'<div class="ffr-track"><i style="width:{max(2, v["score"]):.0f}%;background:{color_for(v["score"] - 50, p)}"></i></div>'
                    for v in h["components"].values())
-    md(f'<div style="text-align:center;font-weight:800;color:{clr};margin:-8px 0 6px">{h["label"]}</div>{rows}')
+    md(f'<div style="text-align:center;font-weight:600;color:{clr};margin:-8px 0 6px">{h["label"]}</div>{rows}')
     st.caption(f"Điểm theo quy tắc (tổng trọng số {h['weights_sum']}%) – chỉ để tham khảo, không phải khuyến nghị.")
 
 

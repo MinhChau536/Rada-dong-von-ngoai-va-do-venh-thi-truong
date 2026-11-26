@@ -134,7 +134,12 @@ md('<div class="ffr-acad">🎓 <span><b>Đề tài nghiên cứu học thuật</
 from src.common.config import public_mode  # noqa: E402
 if public_mode():
     _last = da.sessions()[-1] if da.ready() and da.sessions() else None
-    md('<div class="ffr-note">🌐 <span><b>Bản công khai chỉ xem</b> · dữ liệu SSI FastConnect tới phiên '
+    from tools import snapshot as _snap
+    try:
+        _st = (_snap.STAMP.read_text(encoding="utf-8") if _snap.STAMP.exists() else "-") + " / disk " + _snap.stamp()
+    except Exception as _e:  # noqa: BLE001
+        _st = repr(_e)
+    md(f'<div class="ffr-note" data-stamp="{_st}">🌐 <span><b>Bản công khai chỉ xem</b> · dữ liệu SSI FastConnect tới phiên '
        f'<b>{_last:%d/%m/%Y}</b> · tự cập nhật sau khi SSI công bố số liệu cuối ngày.</span></div>' if _last is not None else
        '<div class="ffr-note">🌐 <span><b>Bản công khai (chỉ xem)</b></span></div>')
 else:

@@ -56,6 +56,10 @@ PAGES = {
         st.Page(p8_phuong_phap.render, title="Phương pháp & giới hạn", icon=":material/menu_book:", url_path="phuong-phap"),
     ],
 }
+from src.data.database import refresh_from_snapshot  # noqa: E402
+
+if refresh_from_snapshot():                              # bản công khai: GitHub vừa có dữ liệu phiên mới
+    st.cache_data.clear()
 if not da.ready():
     # Kho chỉ báo trống: vẫn hiện đủ menu, mỗi trang phân tích hiện nội dung sẽ có + lối tới "Kết nối dữ liệu";
     # trang Kết nối dữ liệu là trang mặc định. KHÔNG sinh dữ liệu giả.

@@ -178,3 +178,8 @@ portfolio:
     "Thận trọng": {target_vol: 0.15, max_weight: 0.25, max_beta: 0.9}
     "Cân bằng": {target_vol: 0.22, max_weight: 0.30, max_beta: 1.1}
     "Tăng trưởng": {target_vol: 0.30, max_weight: 0.40, max_beta: 1.4}
+
+# Đẩy dữ liệu phiên mới lên GitHub sau khi tải xong số liệu cuối ngày → bản công khai (Streamlit Cloud) tự cập nhật.
+# Chỉ commit thư mục data/snapshot_delta (tools/publish_data.py). Đặt false nếu không muốn máy tự push.
+publish:
+  auto_push: true

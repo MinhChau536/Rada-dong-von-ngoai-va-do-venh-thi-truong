@@ -68,6 +68,10 @@ def refresh_data(wait_live_sec: int = 60) -> None:
     try:
         r = updater.update()
         say(f"Cập nhật {r.get('status')}: dữ liệu tới {r['after']['indicators']} ({r.get('seconds')} giây).")
+        from tools.publish_data import auto_publish
+        pub = auto_publish()
+        if pub.get("state") == "pushed":
+            say(f"Đã đẩy dữ liệu tới phiên {pub['last_session']} lên GitHub – bản công khai tự cập nhật sau 1–3 phút.")
     except updater.Busy:
         say("Một tiến trình khác đang cập nhật – web sẽ tự cập nhật khi xong.")
     except Exception as exc:  # noqa: BLE001

@@ -1,0 +1,303 @@
+{
+ "created": "2026-11-26 10:22:31",
+ "base_created": "2026-11-23 23:23:24",
+ "base_last": "2026-11-23",
+ "source": "SSI FastConnect V3",
+ "tables": {
+  "alert_log": {
+   "mode": "full",
+   "rows": 660,
+   "total_rows": 660,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "alert_predictive": {
+   "mode": "full",
+   "rows": 11,
+   "total_rows": 11,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "checkpoints": {
+   "mode": "full",
+   "rows": 3,
+   "total_rows": 3,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "control_balance": {
+   "mode": "full",
+   "rows": 2,
+   "total_rows": 2,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "data_quality_log": {
+   "mode": "full",
+   "rows": 7220,
+   "total_rows": 7220,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "did_coefs": {
+   "mode": "full",
+   "rows": 51,
+   "total_rows": 51,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "dim_events": {
+   "mode": "full",
+   "rows": 5,
+   "total_rows": 5,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "dim_securities": {
+   "mode": "full",
+   "rows": 7060,
+   "total_rows": 7060,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "dim_universe": {
+   "mode": "full",
+   "rows": 81,
+   "total_rows": 81,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "event_aar": {
+   "mode": "full",
+   "rows": 620,
+   "total_rows": 620,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "event_params": {
+   "mode": "full",
+   "rows": 378,
+   "total_rows": 378,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "event_results": {
+   "mode": "full",
+   "rows": 1512,
+   "total_rows": 1512,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "fact_daily_index": {
+   "mode": "full",
+   "rows": 10851,
+   "total_rows": 10851,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "fact_daily_stock": {
+   "mode": "after",
+   "rows": 749,
+   "total_rows": 1016344,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "fact_intraday": {
+   "mode": "full",
+   "rows": 52731,
+   "total_rows": 52731,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_daily": {
+   "mode": "full",
+   "rows": 2720,
+   "total_rows": 2720,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_group_daily": {
+   "mode": "after",
+   "rows": 60,
+   "total_rows": 82039,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_intraday": {
+   "mode": "full",
+   "rows": 1776,
+   "total_rows": 1776,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_stock_daily": {
+   "mode": "after",
+   "rows": 749,
+   "total_rows": 1016344,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "indicator_watchlist": {
+   "mode": "full",
+   "rows": 5,
+   "total_rows": 5,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "ingest_log": {
+   "mode": "full",
+   "rows": 36827,
+   "total_rows": 36827,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "leaders_daily": {
+   "mode": "after",
+   "rows": 20,
+   "total_rows": 26959,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "pipeline_meta": {
+   "mode": "full",
+   "rows": 1,
+   "total_rows": 1,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_daily_index": {
+   "mode": "full",
+   "rows": 10851,
+   "total_rows": 10851,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_daily_stock": {
+   "mode": "after",
+   "rows": 749,
+   "total_rows": 1016344,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_index_components": {
+   "mode": "full",
+   "rows": 241,
+   "total_rows": 241,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_intraday": {
+   "mode": "full",
+   "rows": 52731,
+   "total_rows": 52731,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_securities": {
+   "mode": "full",
+   "rows": 7274,
+   "total_rows": 7274,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_stream": {
+   "mode": "full",
+   "rows": 118573,
+   "total_rows": 118573,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "raw_stream_neo": {
+   "mode": "full",
+   "rows": 0,
+   "total_rows": 0,
+   "files": []
+  },
+  "reports_log": {
+   "mode": "full",
+   "rows": 50,
+   "total_rows": 50,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "robustness_results": {
+   "mode": "full",
+   "rows": 291,
+   "total_rows": 291,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "source_events": {
+   "mode": "full",
+   "rows": 6,
+   "total_rows": 6,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "source_status": {
+   "mode": "full",
+   "rows": 1,
+   "total_rows": 1,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "stats_results": {
+   "mode": "full",
+   "rows": 960,
+   "total_rows": 960,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "watchlist": {
+   "mode": "full",
+   "rows": 5,
+   "total_rows": 5,
+   "files": [
+    "data_0.parquet"
+   ]
+  },
+  "watchlist_reaction": {
+   "mode": "full",
+   "rows": 25,
+   "total_rows": 25,
+   "files": [
+    "data_0.parquet"
+   ]
+  }
+ },
+ "last_session": "2026-11-25 00:00:00"
+}

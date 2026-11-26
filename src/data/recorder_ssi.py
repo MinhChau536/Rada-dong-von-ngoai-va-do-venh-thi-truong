@@ -310,6 +310,15 @@ def close_from_stream(state: Dict) -> Optional[Dict]:
     return None
 
 
+def _publish() -> None:
+    """Đẩy phần dữ liệu mới lên GitHub (tools/publish_data.py) – lỗi không làm dừng bộ ghi."""
+    try:
+        from tools.publish_data import auto_publish
+        log.info("Đẩy dữ liệu lên GitHub: %s", auto_publish())
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Không đẩy được dữ liệu lên GitHub: %s", exc)
+
+
 def post_close_update(poll_sec: int = 90, until: str = "18:30") -> str:
     """Sau đóng cửa: hỏi SSI REST mỗi `poll_sec` giây, có số liệu chính thức của hôm nay thì tải và dựng lại ngay.
 
@@ -322,6 +331,7 @@ def post_close_update(poll_sec: int = 90, until: str = "18:30") -> str:
     while now_vn().strftime("%H:%M") < until:
         try:
             if not updater.is_behind():
+                _publish()
                 return "up_to_date"
             c = _client()
             ready = bool(c.index_summary("VNINDEX", today)) and bool(c.securities_summary("FPT", today, today))
@@ -330,11 +340,13 @@ def post_close_update(poll_sec: int = 90, until: str = "18:30") -> str:
                 try:                                  # chạy ngay trong tiến trình này (không qua autoupdate: hàm đó
                     r = updater.update()              # thấy chính bộ ghi đang chạy nên sẽ bỏ qua)
                     log.info("Cập nhật cuối ngày xong: %s, dữ liệu tới %s", r.get("status"), r["after"]["indicators"])
+                    _publish()                        # bản công khai trên mạng có phiên mới ngay
                     # SSI có thể điều chỉnh số cuối ngày sau đó → 18:05 tải lại phiên một lần (updater.refresh_recent)
                     while now_vn().strftime("%H:%M") < "18:05":
                         time.sleep(60)
                     r = updater.update()
                     log.info("Tải lại sau 18:00: %s", r.get("status"))
+                    _publish()
                     return str(r.get("status"))
                 except updater.Busy:                  # tiến trình khác đang cập nhật → chờ lượt sau
                     time.sleep(poll_sec)

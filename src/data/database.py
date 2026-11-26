@@ -48,6 +48,40 @@ def _auto_restore() -> None:
         snapshot.restore(db=main)
 
 
+_STAMP_SEEN = {"v": None}
+
+
+def refresh_from_snapshot() -> bool:
+    """Bản công khai (Streamlit Cloud): khi GitHub có dữ liệu phiên mới (data/snapshot_delta đổi) → dựng lại kho.
+
+    Trả True nếu vừa nạp dữ liệu mới (giao diện cần xóa bộ nhớ đệm). Chỉ chạy ở chế độ công khai – máy cá nhân tự tải
+    từ SSI nên không bao giờ bị ghi đè bởi ảnh chụp."""
+    import os
+    from src.common.config import is_main_store
+    on_cloud = Path("/mount/src").exists() or os.environ.get("FFR_SNAPSHOT_SYNC") == "1"
+    if not on_cloud or not is_main_store():          # máy cá nhân: kho tải từ SSI, không bao giờ ghi đè bằng ảnh chụp
+        return False
+    from tools import snapshot
+    cur = snapshot.stamp()
+    if _STAMP_SEEN["v"] == cur:
+        return False
+    with _RESTORE_LOCK:
+        try:
+            have = snapshot.STAMP.read_text(encoding="utf-8")
+        except OSError:
+            have = ""
+        main = Path(db_path())
+        if have == cur and main.exists():
+            _STAMP_SEEN["v"] = cur
+            return False
+        log.info("Có dữ liệu mới trên GitHub (%s) – dựng lại kho từ ảnh chụp…", cur)
+        lock = _path_lock(str(main))
+        with lock:
+            snapshot.restore(db=main, force=True)
+        _STAMP_SEEN["v"] = cur
+        return True
+
+
 @contextlib.contextmanager
 def connect(read_only: bool = False, path: Optional[Path] = None, retries: int = 5) -> Iterator[duckdb.DuckDBPyConnection]:
     if path is None:

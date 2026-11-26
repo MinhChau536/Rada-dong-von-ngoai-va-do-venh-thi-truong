@@ -136,7 +136,9 @@ if public_mode():
     _last = da.sessions()[-1] if da.ready() and da.sessions() else None
     from tools import snapshot as _snap
     try:
-        _st = (_snap.STAMP.read_text(encoding="utf-8") if _snap.STAMP.exists() else "-") + " / disk " + _snap.stamp()
+        from src.data.database import REFRESH_STATUS as _rs
+        _st = ((_snap.STAMP.read_text(encoding="utf-8") if _snap.STAMP.exists() else "-") + " / disk " + _snap.stamp()
+               + " / " + _rs["v"]).replace('"', "'").replace("<", "(").replace(">", ")")
     except Exception as _e:  # noqa: BLE001
         _st = repr(_e)
     md(f'<div class="ffr-note" data-stamp="{_st}">🌐 <span><b>Bản công khai chỉ xem</b> · dữ liệu SSI FastConnect tới phiên '

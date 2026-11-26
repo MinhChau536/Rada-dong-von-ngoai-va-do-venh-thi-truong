@@ -51,35 +51,47 @@ def _auto_restore() -> None:
 _STAMP_SEEN = {"v": None}
 
 
-def refresh_from_snapshot() -> bool:
-    """Bản công khai (Streamlit Cloud): khi GitHub có dữ liệu phiên mới (data/snapshot_delta đổi) → dựng lại kho.
+REFRESH_STATUS = {"v": "chưa chạy"}
 
-    Trả True nếu vừa nạp dữ liệu mới (giao diện cần xóa bộ nhớ đệm). Chỉ chạy ở chế độ công khai – máy cá nhân tự tải
-    từ SSI nên không bao giờ bị ghi đè bởi ảnh chụp."""
+
+def refresh_from_snapshot() -> bool:
+    """Bản công khai (Streamlit Cloud): khi GitHub có dữ liệu phiên mới (data/snapshot, data/snapshot_delta đổi) → dựng lại kho.
+
+    Trả True nếu vừa nạp dữ liệu mới (giao diện cần xóa bộ nhớ đệm). Chỉ chạy trên máy chủ đám mây – máy cá nhân tự tải
+    từ SSI nên không bao giờ bị ghi đè bởi ảnh chụp. Trạng thái lần chạy gần nhất ghi ở REFRESH_STATUS (hiển thị khi kiểm tra)."""
     import os
     from src.common.config import is_main_store
     on_cloud = Path("/mount/src").exists() or os.environ.get("FFR_SNAPSHOT_SYNC") == "1"
     if not on_cloud or not is_main_store():          # máy cá nhân: kho tải từ SSI, không bao giờ ghi đè bằng ảnh chụp
+        REFRESH_STATUS["v"] = f"bỏ qua (cloud={on_cloud}, main={is_main_store()})"
         return False
     from tools import snapshot
     cur = snapshot.stamp()
     if _STAMP_SEEN["v"] == cur:
         return False
-    with _RESTORE_LOCK:
-        try:
-            have = snapshot.STAMP.read_text(encoding="utf-8")
-        except OSError:
-            have = ""
-        main = Path(db_path())
-        if have == cur and main.exists():
+    try:
+        with _RESTORE_LOCK:
+            try:
+                have = snapshot.STAMP.read_text(encoding="utf-8")
+            except OSError:
+                have = ""
+            main = Path(db_path())
+            if have == cur and main.exists():
+                _STAMP_SEEN["v"] = cur
+                REFRESH_STATUS["v"] = "đã mới"
+                return False
+            log.info("Có dữ liệu mới trên GitHub (%s) – dựng lại kho từ ảnh chụp…", cur)
+            REFRESH_STATUS["v"] = f"đang dựng lại ({have!r} → {cur!r})"
+            with _path_lock(str(main)):
+                ok = snapshot.restore(db=main, force=True)
             _STAMP_SEEN["v"] = cur
-            return False
-        log.info("Có dữ liệu mới trên GitHub (%s) – dựng lại kho từ ảnh chụp…", cur)
-        lock = _path_lock(str(main))
-        with lock:
-            snapshot.restore(db=main, force=True)
-        _STAMP_SEEN["v"] = cur
-        return True
+            REFRESH_STATUS["v"] = f"dựng lại xong: {ok}"
+            return bool(ok)
+    except Exception as exc:  # noqa: BLE001 – không làm sập trang; ghi lại để kiểm tra
+        log.exception("Dựng lại kho từ ảnh chụp lỗi")
+        REFRESH_STATUS["v"] = f"lỗi: {exc!r}"[:300]
+        _STAMP_SEEN["v"] = cur                        # không thử lại liên tục trong cùng tiến trình
+        return False
 
 
 @contextlib.contextmanager

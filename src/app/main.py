@@ -15,6 +15,14 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Streamlit Cloud kéo code mới sau mỗi git push nhưng giữ module cũ trong bộ nhớ → lỗi import hàm mới (vd. session_label).
+# Khi bất kỳ tệp .py trong src/ đổi, bỏ toàn bộ module src.* đã nạp để lần chạy này nạp lại bản mới.
+_SRC_SIG = max((f.stat().st_mtime for f in (ROOT / "src").rglob("*.py")), default=0.0)
+if getattr(sys, "_ffr_src_sig", _SRC_SIG) != _SRC_SIG:
+    for _m in [m for m in sys.modules if m == "src" or m.startswith("src.")]:
+        sys.modules.pop(_m, None)
+sys._ffr_src_sig = _SRC_SIG
+
 import pandas as pd
 import streamlit as st  # noqa: E402
 

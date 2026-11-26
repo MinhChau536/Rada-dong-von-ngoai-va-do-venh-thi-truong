@@ -55,7 +55,7 @@ def render(session_date=None, show_session: bool = True) -> None:
                     for k, (c, s, _) in srcs.items())
     demo = ""
     sess = sdate.strftime("%d/%m/%Y") if sdate is not None else "—"
-    sess_pill = f'<span class="ffr-pill">📅 Phiên {sess}</span>' if show_session else ""
+    sess_pill = f'<span class="ffr-pill">Phiên {sess}</span>' if show_session else ""
     li = da.live_info()
     is_live = li is not None and sdate is not None and sdate == pd.Timestamp(li["session_date"])
     if is_live:
@@ -77,13 +77,13 @@ def render(session_date=None, show_session: bool = True) -> None:
         live_pill = ""
         comp_pill = f'<span class="ffr-pill">Đầy đủ: {frac_pct(comp, 1) if comp is not None else "—"}</span>'
     md(f'<div class="ffr-status">{demo}{sess_pill}{live_pill}'
-       f'<span class="ffr-pill">⏱ {now_vn():%H:%M:%S} (giờ VN)</span>'
+       f'<span class="ffr-pill">{now_vn():%H:%M:%S} (giờ VN)</span>'
        f'<span class="ffr-pill">Nguồn: {active_source()}</span>{dots}'
        f'{comp_pill}</div>')
     if in_session() and li is not None:
         age = (now_vn().replace(tzinfo=None) - pd.Timestamp(li["built_at"])).total_seconds() / 60
         if age > float(get("alerts.stale_minutes", 5)):
-            st.warning(f"⚠️ Phiên tạm tính dựng cách đây {age:.0f} phút – bộ ghi WebSocket có thể đã dừng.")
+            st.warning(f"Phiên tạm tính dựng cách đây {age:.0f} phút – bộ ghi WebSocket có thể đã dừng.")
         elif not is_live:
             st.info("Đang xem một phiên cũ. Chọn phiên hôm nay ở ô bên trái để xem số liệu trực tiếp.")
         return
@@ -95,7 +95,7 @@ def render(session_date=None, show_session: bool = True) -> None:
             st.info("ℹ️ SSI FastConnect chưa phát dữ liệu phiên hôm nay (masterdata và nến 1 phút đều trống – ngày nghỉ "
                     "hoặc SSI gián đoạn). Đang hiển thị phiên gần nhất; bộ ghi vẫn chạy nền và trang tự làm mới khi SSI có số liệu.")
             return
-        st.info("⏳ Chưa có phiên tạm tính của hôm nay – bộ ghi WebSocket SSI đang dựng số liệu "
+        st.info("Chưa có phiên tạm tính của hôm nay – bộ ghi WebSocket SSI đang dựng số liệu "
                 "(lần đầu khoảng 30–60 giây). Trang tự làm mới khi có số liệu; trong lúc chờ đang hiển thị phiên gần nhất.")
         return
     # Dữ liệu cũ > 5 phút trong phiên → cảnh báo vàng
@@ -104,4 +104,4 @@ def render(session_date=None, show_session: bool = True) -> None:
         if ok is not None and pd.notna(ok):
             age = (now_vn().replace(tzinfo=None) - pd.Timestamp(ok)).total_seconds() / 60
             if age > float(get("alerts.stale_minutes", 5)):
-                st.warning(f"⚠️ Dữ liệu cũ hơn {age:.0f} phút trong phiên – số liệu có thể chưa cập nhật.")
+                st.warning(f"Dữ liệu cũ hơn {age:.0f} phút trong phiên – số liệu có thể chưa cập nhật.")

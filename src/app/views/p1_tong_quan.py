@@ -22,8 +22,8 @@ from src.app import data_access as da
 from src.app.components import about, charts, status_bar
 from src.app.components import widgets as W
 from src.app.components.states import empty, safe_block
-from src.app.components.ui import (colored, esc, header, kpi, md, pal, plot, section, soft_chip, spark, table_html, tint)
-from src.app.theme import ABSORB_COLORS, SESSION_COLORS, color_for
+from src.app.components.ui import (colored, esc, header, kpi, md, pal, plot, section, soft_chip, spark, table_html, tint, chip_ink)
+from src.app.theme import ABSORB_COLORS, WEB_SESSION_COLORS as SESSION_COLORS, color_for
 from src.common import fmt
 from src.common.config import events, get
 from src.finance.breadth import breadth_summary, session_label, session_type_label  # noqa: F401
@@ -62,7 +62,7 @@ def render_index_cards(data: Dict) -> None:
             chg, rc = last["change"], last["ratio_change"]
             clr = color_for(chg, p)
             r = period_returns(h.set_index("trade_date")["value"])
-            md(f'<div class="ffr-card"><div style="display:flex;justify-content:space-between"><div class="ffr-lbl">{name}</div>'
+            md(f'<div class="ffr-card"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 8px"><div class="ffr-lbl">{name}</div>'
                f'<div class="ffr-lbl" style="letter-spacing:0">{d:%d/%m/%Y}</div></div>'
                f'<div class="ffr-val">{fmt.num(last["value"])}</div>'
                f'<div class="ffr-chg" style="color:{clr}">{fmt.arrow(chg)} {fmt.num(chg, 2, True)} ({fmt.pct(rc)})</div>'
@@ -93,7 +93,7 @@ def render_trend_quality(data: Dict) -> None:
             md(kpi(lbl, val, clr, sub, tip))
     with cols[4]:
         md(kpi("Loại phiên", soft_chip(session_label(x), sc), None,
-               f'{int(x["n_sessions_same_type_5"])}/5 phiên gần nhất cùng loại' + (" · ⚠ độ vênh cao" if x["high_divergence"] else ""),
+               f'{int(x["n_sessions_same_type_5"])}/5 phiên gần nhất cùng loại' + (" · độ vênh cao" if x["high_divergence"] else ""),
                "Quy tắc mục 8.2: dấu r_VNI × dấu AD; |r_VNI| < 0,1% = đi ngang"))
 
 
@@ -173,7 +173,7 @@ def render_health(data: Dict) -> None:
 def render_breadth(data: Dict) -> None:
     p = pal()
     s = data["stock"]
-    baskets = {"★ HOSE toàn sàn": None, "VN30": da.universe("VN30"), "Nhóm FTSE": da.universe("FTSE"),
+    baskets = {"HOSE toàn sàn": None, "VN30": da.universe("VN30"), "Nhóm FTSE": da.universe("FTSE"),
                "Nhóm đối chứng": da.universe("CONTROL"), "Watchlist": get_watchlist()}
     name = st.selectbox("Rổ", list(baskets), key="p1_basket", label_visibility="collapsed",
                         format_func=lambda n: f"{n} · {len(s) if baskets[n] is None else len(baskets[n])} mã")
@@ -215,7 +215,7 @@ def _movers(df: pd.DataFrame, sparks: Dict, extra: str) -> str:
         rows.append([f'<span style="color:{p["muted"]}">{i}</span>',
                      f'<span class="ffr-sym">{r.symbol}</span> <small style="color:{p["muted"]}">{esc(r.sector)}</small>',
                      fmt.price(r.close), colored(r.close - r.ref, fmt.num(r.close - r.ref, 0, True)),
-                     f'<span class="ffr-chip" style="background:{tint(clr)};color:{clr}">{fmt.pct(r.ret * 100)}</span>',
+                     f'<span class="ffr-chip" style="background:{tint(clr)};color:{chip_ink(clr)}">{fmt.pct(r.ret * 100)}</span>',
                      fmt.num(r.vol, 0), ex, colored(r.net_flow, fmt.num(r.net_flow / 1e9, 1, True)),
                      colored(r.ret_20d, fmt.pct(r.ret_20d, 1)),
                      f'<div style="width:110px">{spark(sparks.get(r.symbol, []), clr, 110, 24, False)}</div>'])
@@ -254,7 +254,7 @@ def render_movers(data: Dict) -> None:
             st.session_state["_p1_goto_watch"] = True
 
     st.selectbox("Mở hồ sơ mã", ["—"] + sorted(s["symbol"]), key="p1_pick", label_visibility="collapsed", on_change=_open_profile,
-                 format_func=lambda v: "🔎 Chọn mã để mở hồ sơ trong Watchlist Impact…" if v == "—" else v)
+                 format_func=lambda v: "Chọn mã để mở hồ sơ trong Watchlist Impact…" if v == "—" else v)
     if st.session_state.pop("_p1_goto_watch", False):
         st.switch_page(st.session_state["_pages"]["watchlist"])
 
@@ -322,7 +322,7 @@ def render() -> None:
     header("Tổng quan thị trường", "Bức tranh phiên trong một trang – chi tiết ở các trang phân tích")
     c1, c2 = st.columns([1.35, 4], vertical_alignment="center", gap="small")   # chọn phiên ngay dưới banner, cạnh thanh trạng thái
     with c1:
-        date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"📅 Phiên {d:%d/%m/%Y}", key="p1_date",
+        date = st.selectbox("Phiên", sess[::-1], format_func=lambda d: f"Phiên {d:%d/%m/%Y}", key="p1_date",
                             label_visibility="collapsed", help="Xem lại một phiên bất kỳ trong lịch sử")
     with c2:
         status_bar.render(date, show_session=False)        # ô chọn phiên bên trái đã hiện phiên

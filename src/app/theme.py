@@ -33,16 +33,20 @@ DARK = {**COMMON, "dark": True, "sidebar": "#081221", "bg": "#0A1628", "card": "
 # bảng màu web – style "framed-sheet" của taste-skill 2.1.5 (library/app.json), dashboard phân tích:
 # khung (menu + nền ngoài) một tông xám-ngọc nhạt lấy từ màu thương hiệu, nội dung trên "tờ" trắng viền 1px, không bóng;
 # màu nhấn xanh ngọc chỉ cho số liệu chính và mục đang chọn. Tối: nền trung tính thật (không xanh navy).
-WEB_LIGHT = {**LIGHT, "frame": "#F1F5F5", "bg": "#FFFFFF", "card": "#FFFFFF", "raised": "#F4F6F8", "active": "#E6EBEC",
+WEB_LIGHT = {**LIGHT, "up": "#15803D", "ref": "#B45309", "frame": "#F1F5F5", "bg": "#FFFFFF", "card": "#FFFFFF", "raised": "#F4F6F8", "active": "#E6EBEC",
              "border": "#E5E8EA", "rule": "#EFF1F2", "control": "#CDD1D4", "text": "#131416", "muted": "#5D6164",
              "accent": "#1B6C80", "accent_ink": "#FFFFFF", "grid": "#EEF0F2", "track": "#EFF1F2", "soft": "#F4F6F8",
              "hover": "#F4F6F8", "insight_bg": "#F4F6F8", "insight_border": "#E5E8EA",
-             "sb_text": "#3D4245", "sb_muted": "#6A7074", "chart": ["#1B6C80", "#2F70BB", "#A86F0C"]}
+             "sb_text": "#3D4245", "sb_muted": "#6A7074", "chart": ["#1B6C80", "#2F70BB", "#A86F0C"],
+             "teal": "#1B6C80", "ma20": "#8A8F94", "ma50": "#2F70BB", "series2": "#2F70BB", "series3": "#A86F0C",
+             "neutral_line": "#8A8F94", "buy": "#2F70BB"}
 WEB_DARK = {**DARK, "frame": "#0E0F11", "bg": "#151618", "card": "#151618", "raised": "#1C1D20", "active": "#26282C",
             "border": "#27292D", "rule": "#1F2124", "control": "#3A3C41", "text": "#EDEEF0", "muted": "#9A9DA3",
             "accent": "#4FC3B5", "accent_ink": "#06201C", "grid": "#222428", "track": "#1F2124", "soft": "#1C1D20",
             "hover": "#1C1D20", "insight_bg": "#1C1D20", "insight_border": "#27292D",
-            "sb_text": "#B9BCC2", "sb_muted": "#868A91", "chart": ["#4FC3B5", "#6FA3E0", "#D9A441"]}
+            "sb_text": "#B9BCC2", "sb_muted": "#868A91", "chart": ["#4FC3B5", "#6FA3E0", "#D9A441"],
+            "teal": "#4FC3B5", "ma20": "#8A8F94", "ma50": "#6FA3E0", "series2": "#6FA3E0", "series3": "#D9A441",
+            "neutral_line": "#9A9DA3", "buy": "#6FA3E0"}
 GOLD = {"dark": "#F5B341", "light": "#B7791F"}             # chỉ còn cho logo / đường MA20 – không dùng làm màu nhấn giao diện
 FONT = "'IBM Plex Sans', 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif"
 MONO = "'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace"
@@ -51,6 +55,9 @@ ABSORB_COLORS = {"absorb": "#16A34A", "joint_sell": "#DC2626", "joint_buy": "#25
                  "domestic_take": "#D97706", "neutral": "#94A3B8"}
 SESSION_COLORS = {"broad_up": "#16A34A", "narrow_up": "#84CC16", "flat": "#94A3B8",
                   "narrow_down": "#F97316", "broad_down": "#DC2626"}
+# web: 5 loại phiên là một thang đậm–nhạt của đúng hai sắc tăng/giảm (taste-skill: không quá 4 sắc độ); PDF giữ SESSION_COLORS
+WEB_SESSION_COLORS = {"broad_up": "#15803D", "narrow_up": "#86C79A", "flat": "#A3A8AD",
+                      "narrow_down": "#EE9A9A", "broad_down": "#C4242A"}
 EASE = "cubic-bezier(.2,.8,.2,1)"
 
 
@@ -95,9 +102,13 @@ def css(mode: str = "light") -> str:
                                                     p["card"], p["soft"], p["track"])
     HOV = p["hover"]
     # khung (framed-sheet): thanh bên nằm trên nền khung, không đường kẻ; mục đang chọn = viên xám trung tính
-    FR, ACT, RULE, CTRL = p["frame"], p["active"], p["rule"], p["control"]
-    SB, SBT, SBL = FR, p["sb_text"], p["sb_muted"]
-    SBLINE = BD
+    ACT, RULE, CTRL = p["active"], p["rule"], p["control"]
+    # khung + menu: xanh dầu đậm lấy từ màu thương hiệu (cả hai chế độ); tờ nội dung nằm trong khung
+    SB = "#0E3A46" if not D else "#0B2C36"
+    FR = SB
+    SBT, SBL, SBH = "#D3E6EB", "#8FB8C2", "#FFFFFF"
+    SBACT, SBFILL, SBCTRL = "rgba(255,255,255,.14)", "rgba(255,255,255,.07)", "rgba(255,255,255,.22)"
+    SBLINE = "rgba(255,255,255,.14)"
     return f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap&subset=vietnamese');
 :root {{ --ffr-bg:{p['bg']}; --ffr-card:{CARD}; --ffr-border:{BD}; --ffr-text:{TXT}; --ffr-muted:{MUT};
@@ -115,7 +126,7 @@ h1,h2,h3,h4,p,span,div,label,li,td,th,input,textarea,button {{ font-family:{FONT
 /* tờ nội dung: trắng, cách mép phải/trên/dưới 8px, viền 1px, bo 16px, không bóng */
 [data-testid="stMain"] {{ background:{p['bg']} !important; margin:8px 8px 8px 0; border:1px solid {BD}; border-radius:16px;
   overflow:auto; height:calc(100dvh - 16px) !important; max-height:calc(100dvh - 16px); }}
-.block-container {{ padding:24px 32px 48px !important; max-width:1560px !important; }}
+.block-container {{ padding:24px 24px 48px !important; max-width:100% !important; }}
 [data-testid="stMain"] [data-testid="stMainBlockContainer"] {{ padding-top:20px !important; }}
 [data-testid="stHeader"] {{ height:0 !important; min-height:0 !important; }}
 div[class*="st-key-tcw"] {{ margin-top:8px; }}
@@ -124,6 +135,10 @@ div[class*="st-key-tcw"] {{ margin-top:8px; }}
 [data-testid="stLayoutWrapper"]:has(> .st-key-ffr_fx) {{ display:none !important; }}
 .ffr-srcr {{ font-size:12.5px; white-space:nowrap; }}
 code, kbd, pre {{ font-family:{MONO} !important; }}
+[data-testid="stMarkdownContainer"] code {{ font-size:max(12px, .9em) !important; }}
+/* khối code (vd. cấu hình YAML): một màu mực, chú thích xám – không tô màu cú pháp nhạt khó đọc */
+[data-testid="stCode"] code span {{ color:{TXT} !important; }}
+[data-testid="stCode"] code span[class*="comment"] {{ color:{MUT} !important; }}
 ::selection {{ background:{'rgba(45,212,191,.28)' if D else '#CDE7EA'}; }}
 *:focus-visible {{ outline:2px solid {ACC} !important; outline-offset:2px; }}
 
@@ -131,33 +146,42 @@ code, kbd, pre {{ font-family:{MONO} !important; }}
 [data-testid="stSidebarCollapsedControl"], [data-testid="stExpandSidebarButton"] {{ z-index:1000020 !important;
   visibility:visible !important; opacity:1 !important; display:flex !important; }}
 [data-testid="stSidebarCollapsedControl"] button, button[data-testid="stExpandSidebarButton"],
-[data-testid="stExpandSidebarButton"] button {{ background:{TXT} !important; color:{p['bg']} !important; border:1px solid {TXT} !important;
+[data-testid="stExpandSidebarButton"] button {{ background:{SB} !important; color:#FFFFFF !important; border:1px solid {SB} !important;
   border-radius:var(--r-sm) !important; width:40px !important; height:40px !important; box-shadow:none !important;
   opacity:1 !important; visibility:visible !important; }}
 [data-testid="stSidebarCollapsedControl"] svg, [data-testid="stExpandSidebarButton"] svg,
-[data-testid="stSidebarCollapsedControl"] span, [data-testid="stExpandSidebarButton"] span {{ color:{p['bg']} !important; fill:{p['bg']} !important; }}
+[data-testid="stSidebarCollapsedControl"] span, [data-testid="stExpandSidebarButton"] span {{ color:#FFFFFF !important; fill:#FFFFFF !important; }}
 
 /* ── thanh bên: nền mực phẳng, một đường kẻ, mục đang mở tô màu nhấn ── */
-section[data-testid="stSidebar"] {{ background:{SB} !important; width:292px !important; min-width:292px !important;
-  border-right:none !important; }}
+section[data-testid="stSidebar"] {{ background:{SB} !important; border-right:none !important; }}
+/* độ rộng chỉ khi menu đang mở – khi thu gọn, nội dung dùng hết bề ngang */
+@media (min-width: 992px) {{ section[data-testid="stSidebar"][aria-expanded="true"] {{ width:292px !important; min-width:292px !important; }} }}
 section[data-testid="stSidebar"] > div {{ background:{SB} !important; }}
+/* menu mở đè lên nội dung (tablet): không bóng đổ, một đường viền mảnh */
+section[data-testid="stSidebar"] {{ box-shadow:none !important; }}
+@media (max-width: 991px) {{ section[data-testid="stSidebar"] {{ border-right:1px solid {BD} !important; }}
+  [data-testid="stMain"] [data-testid="stMainBlockContainer"] {{ padding-top:60px !important; }} }}
 section[data-testid="stSidebar"] * {{ color:{SBT}; }}
 [data-testid="stAppViewContainer"] {{ height:100vh !important; height:100dvh !important; max-height:100dvh !important; }}
 section[data-testid="stSidebar"] {{ height:100vh !important; height:100dvh !important; max-height:100dvh !important; }}
 [data-testid="stSidebarContent"] {{ height:100% !important; max-height:100dvh !important; overflow-y:auto !important; overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:{CTRL} transparent; }}
+  -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:{SBCTRL} transparent; }}
 [data-testid="stSidebarContent"]::-webkit-scrollbar {{ width:8px; }}
 [data-testid="stSidebarContent"]::-webkit-scrollbar-track {{ background:transparent; }}
-[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb {{ background:{CTRL}; border-radius:8px; }}
+[data-testid="stSidebarContent"]::-webkit-scrollbar-thumb {{ background:{SBCTRL}; border-radius:8px; }}
 section[data-testid="stSidebar"] [data-baseweb="select"] > div, section[data-testid="stSidebar"] input {{
-  background:{p['card']} !important; border-color:{CTRL} !important; color:{TXT} !important; border-radius:6px !important; }}
-section[data-testid="stSidebar"] [data-baseweb="select"] * {{ color:{TXT} !important; }}
-section[data-testid="stSidebar"] button {{ background:{p['card']} !important; border:1px solid {CTRL} !important;
+  background:{SBFILL} !important; border:1px solid {SBCTRL} !important; color:{SBH} !important; border-radius:6px !important; }}
+section[data-testid="stSidebar"] [data-testid="stSelectbox"] div:has(> input) {{ background:transparent !important; border:none !important; }}
+section[data-testid="stSidebar"] [data-baseweb="select"] * {{ color:{SBH} !important; }}
+section[data-testid="stSidebar"] input::placeholder {{ color:{SBL} !important; opacity:1; }}
+section[data-testid="stSidebar"] button {{ background:{SBFILL} !important; border:1px solid {SBCTRL} !important;
   padding:4px 10px !important; border-radius:6px !important; }}
-section[data-testid="stSidebar"] button p {{ color:{TXT} !important; font-size:13px; white-space:nowrap; }}
+section[data-testid="stSidebar"] button p, section[data-testid="stSidebar"] button svg {{ color:{SBH} !important; fill:{SBH} !important;
+  font-size:13px; white-space:nowrap; }}
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p, section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{ color:{SBT} !important; }}
 .ffr-brand {{ display:flex; align-items:center; gap:12px; margin:0 0 16px; padding:4px 4px 0; background:none; border:none; }}
 .ffr-brand svg {{ flex:0 0 auto; }}
-.ffr-brand b {{ display:block; color:{TXT} !important; font-size:16px; font-weight:600; line-height:1.25; letter-spacing:-.01em; white-space:nowrap; }}
+.ffr-brand b {{ display:block; color:{SBH} !important; font-size:16px; font-weight:600; line-height:1.25; letter-spacing:-.01em; white-space:nowrap; }}
 .ffr-brand small {{ display:block; color:{SBL} !important; font-size:12px; font-weight:400; white-space:nowrap; line-height:1.4; }}
 .ffr-grp {{ display:flex; align-items:center; gap:8px; margin:22px 0 6px 12px; }}
 .ffr-grp span {{ color:{SBL} !important; font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; white-space:nowrap; }}
@@ -166,11 +190,11 @@ section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ border-radius:v
   border:1px solid transparent; transition:background var(--m-in) var(--ease), color var(--m-in) var(--ease); }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ color:{SBT} !important; font-size:14px !important; font-weight:400 !important; white-space:nowrap; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a span {{ color:{SBL} !important; }}
-section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{ background:{ACT} !important; }}
-section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover p {{ color:{TXT} !important; }}
-section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a {{ background:{ACT} !important; border-color:transparent !important; }}
-section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a p {{ color:{TXT} !important; font-weight:500 !important; }}
-section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a span {{ color:{TXT} !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {{ background:{SBFILL} !important; }}
+section[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover p {{ color:{SBH} !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a {{ background:{SBACT} !important; border-color:transparent !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a p {{ color:{SBH} !important; font-weight:600 !important; }}
+section[data-testid="stSidebar"] .st-key-nav_active [data-testid="stPageLink"] a span {{ color:{SBH} !important; }}
 .ffr-sep {{ height:1px; background:{SBLINE}; margin:16px 0 12px; }}
 section[data-testid="stSidebar"] [data-testid="stExpander"] details {{ background:transparent !important;
   border:1px solid {SBLINE} !important; border-radius:var(--r-md) !important; }}
@@ -178,10 +202,10 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ color:{
 .ffr-srcbox {{ background:transparent; border:1px solid {SBLINE}; border-radius:var(--r-md); padding:12px; font-size:13px; margin-top:12px; }}
 .ffr-srct {{ color:{SBL} !important; font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; margin-bottom:6px; }}
 .ffr-srcr {{ display:flex; align-items:center; padding:3px 0; color:{SBT} !important; }}
-.ffr-srcr em {{ margin-left:auto; font-style:normal; color:{TXT} !important; font-weight:500; font-variant-numeric:tabular-nums; }}
+.ffr-srcr em {{ margin-left:auto; font-style:normal; color:{SBH} !important; font-weight:500; font-variant-numeric:tabular-nums; }}
 .ffr-disc {{ border:1px solid {SBLINE}; background:transparent; border-radius:var(--r-md); padding:12px; font-size:13px; margin-top:12px;
   line-height:1.55; color:{SBT} !important; }}
-.ffr-disc-t {{ font-weight:600; color:{TXT} !important; font-size:13px; margin-bottom:2px; }}
+.ffr-disc-t {{ font-weight:600; color:{SBH} !important; font-size:13px; margin-bottom:2px; }}
 .ffr-dot {{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:8px; }}
 
 /* ── nội dung: đầu mục, thẻ, chỉ số ── */
@@ -245,7 +269,7 @@ table.tc-t tbody tr:nth-child(odd) td {{ background:transparent; }}
 table.ffr-t tr:hover td, table.tc-t tbody tr:hover td {{ background:{HOV} !important; }}
 .tc-tw {{ width:100%; overflow-x:auto; }}
 /* bảng: chỉ đường kẻ ngang (không kẻ dọc, không khung ngoài của bảng markdown Streamlit) */
-table.ffr-t, table.tc-t {{ border:none !important; }}
+table.ffr-t, table.tc-t, table.ffr-t tr, table.tc-t tr {{ border:none !important; }}
 table.ffr-t th, table.ffr-t td, table.tc-t th, table.tc-t td {{ border-left:none !important; border-right:none !important; border-top:none !important; }}
 table.ffr-t th, table.tc-t th {{ border-bottom:1px solid {BD} !important; background:transparent !important; }}
 /* thẻ cùng một hàng chung một mép đáy (taste-skill: không "ragged row") */
@@ -290,7 +314,8 @@ div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] {{ flex:1 1 0; min-width:
 div[class*="st-key-tcw"] .stTabs [data-testid="stTab"] p {{ font-size:13.5px !important; font-weight:500 !important; color:{MUT} !important;
   text-transform:none !important; letter-spacing:0 !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 div[class*="st-key-tcw"] .stTabs [data-testid="stTab"]:hover p {{ color:{TXT} !important; }}
-div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:{CARD} !important; box-shadow:0 0 0 1px {BD} !important; }}
+div[class*="st-key-tcw"] .stTabs [aria-selected="true"] {{ background:{CARD} !important; box-shadow:none !important;
+  border:1px solid {BD} !important; }}
 div[class*="st-key-tcw"] .stTabs [aria-selected="true"] p {{ color:{TXT} !important; font-weight:600 !important; }}
 div[class*="st-key-tcw"] .stTabs .react-aria-SelectionIndicator,
 div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-highlight"], div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-border"] {{ display:none; }}
@@ -299,7 +324,7 @@ div[class*="st-key-tcw"] .stTabs [data-baseweb="tab-highlight"], div[class*="st-
 div[data-testid="stButtonGroup"] button {{ background:{SOFT} !important; border-color:{BD} !important; }}
 div[data-testid="stButtonGroup"] button p {{ color:{MUT} !important; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] {{ background:{CARD} !important; border-color:{CTRL} !important;
-  box-shadow:inset 0 -2px 0 {ACC} !important; }}
+  border-bottom:2px solid {ACC} !important; box-shadow:none !important; }}
 div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:{TXT} !important; font-weight:600; }}
 [data-testid="stMain"] [data-testid^="stBaseButton"], [data-testid="stMain"] [data-testid="stDownloadButton"] button {{
   border-radius:var(--r-sm) !important; min-height:36px; box-shadow:none !important;
@@ -307,7 +332,13 @@ div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:{TXT} !i
 [data-testid="stMain"] [data-testid="stBaseButton-primary"] {{ background:{TXT} !important; border-color:{TXT} !important; }}
 [data-testid="stMain"] [data-testid="stBaseButton-primary"] p {{ color:{p['bg']} !important; font-weight:600; }}
 [data-testid="stMain"] [data-baseweb="select"] > div, [data-testid="stMain"] [data-baseweb="input"] {{ border-radius:var(--r-sm) !important; }}
-[data-testid="stMain"] [data-baseweb="select"] > div {{ background:{CARD} !important; border-color:{CTRL} !important; }}
+[data-testid="stMain"] [data-baseweb="select"] > div {{ background:{CARD} !important; border:1px solid {CTRL} !important; }}
+[data-testid="stMain"] [data-testid="stSelectbox"] [data-baseweb="select"] {{ border:1px solid {CTRL} !important; border-radius:6px !important;
+  background:{CARD} !important; }}
+[data-testid="stMain"] [data-testid="stSelectbox"] div:has(> input) {{ border:1px solid {CTRL} !important; border-radius:6px !important;
+  background:{CARD} !important; }}
+[data-testid="stMain"] [data-testid="stSelectbox"] [data-baseweb="select"] *, [data-testid="stMain"] [data-testid="stSelectbox"] input {{
+  color:{TXT} !important; -webkit-text-fill-color:{TXT} !important; }}
 [data-testid="stMain"] [data-baseweb="select"] > div * {{ color:{TXT} !important; }}
 [data-testid="stMain"] [data-testid="stExpander"] details {{ border:1px solid {BD} !important; border-radius:var(--r-md) !important;
   background:{CARD}; }}
@@ -320,7 +351,14 @@ div[data-testid="stButtonGroup"] button[aria-checked="true"] p {{ color:{TXT} !i
   [data-testid="stMain"] [data-testid="stDownloadButton"] button:not(:disabled):active {{ transform:translateY(1px) scale(.985);
     transition-duration:var(--m-press); }}
 }}
+/* tablet: hàng nhiều thẻ xuống dòng thành 2 cột thay vì ép hẹp */
+@media (min-width: 641px) and (max-width: 1100px) {{
+  [data-testid="stMain"] [data-testid="stHorizontalBlock"] {{ flex-wrap:wrap !important; row-gap:16px; }}
+  [data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{ flex:1 1 calc(50% - 16px) !important;
+    min-width:calc(50% - 16px) !important; }}
+}}
 @media (prefers-reduced-motion: reduce) {{ * {{ transition:none !important; animation:none !important; }} }}
 @media (max-width: 640px) {{ [data-testid="stMain"] {{ margin:0; border:none; border-radius:0; height:100dvh !important; max-height:100dvh; }}
-  .block-container {{ padding:12px 16px 40px !important; }} .ffr-val {{ font-size:22px; }} }}
+  .block-container, [data-testid="stMain"] [data-testid="stMainBlockContainer"] {{ padding:60px 16px 40px !important; }}
+  .ffr-val {{ font-size:22px; }} }}
 </style>"""

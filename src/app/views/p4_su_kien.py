@@ -28,7 +28,7 @@ EV_EXPLAIN = {"E1": "FTSE Russell công bố nâng hạng Việt Nam lên thị 
 def _stats_table(df: pd.DataFrame) -> None:
     rows = []
     for r in df.itertuples():
-        star = "✅" if pd.notna(r.p_value) and r.p_value < 0.05 else ""
+        star = "Có" if pd.notna(r.p_value) and r.p_value < 0.05 else "—"
         est = (f"{fmt.frac_pct(r.estimate, 1)} CAR > 0" if r.test == "Dấu tổng quát"
                else fmt.num(r.estimate * (100 if r.metric == "CAR" else 1), 3, True) + ("%" if r.metric == "CAR" else ""))
         rows.append([GROUP_LBL.get(r.group, r.group), r.metric, r.window, r.test, est, fmt.num(r.statistic, 2, True),
@@ -101,8 +101,8 @@ def _cum_groups(p) -> None:
         fig.add_scatter(x=x["trade_date"], y=cum, name=f"{lbl} ({fmt.pct(cum.iloc[-1], 1)})", line=dict(color=col, width=w))
     for r in events().itertuples():
         if r.event_date >= e1:
-            fig.add_vline(x=r.event_date, line=dict(color="#F5B341", width=1, dash="dot"))
-            fig.add_annotation(x=r.event_date, y=1, yref="paper", text=r.event_id, showarrow=False, font=dict(color="#F5B341", size=11),
+            fig.add_vline(x=r.event_date, line=dict(color=p["muted"], width=1, dash="dot"))
+            fig.add_annotation(x=r.event_date, y=1, yref="paper", text=r.event_id, showarrow=False, font=dict(color=p["muted"], size=12),
                                yanchor="bottom")
     fig.add_hline(y=0, line=dict(color=p["muted"], width=1))
     plot(charts._lay(fig, p, 360, hovermode="x unified", legend=dict(orientation="h", y=-0.15, x=0),

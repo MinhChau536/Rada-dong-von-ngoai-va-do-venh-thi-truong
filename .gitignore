@@ -44,3 +44,6 @@ report/*.pdf
 
 # skill thiết kế cài cục bộ (taste-skill) – không đưa lên git
 .claude/skills/
+
+# thu m?c l�m vi?c c?a taste-skill (?nh ch?p, sheet) � kh�ng dua l�n git
+.taste-skill/

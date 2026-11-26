@@ -40,7 +40,7 @@ def _rerun(code: str, label: str) -> None:
         r = subprocess.run([sys.executable, "-c", code], cwd=str(ROOT), capture_output=True, text=True, timeout=900,
                            encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode == 0:
-        st.toast(f"Đã chạy lại {label}", icon="✅")
+        st.toast(f"Đã chạy lại {label}", icon=":material/check_circle:")
         da.clear_cache()
         st.rerun()
     else:
@@ -108,7 +108,7 @@ def _tab_predictive(p) -> None:
     main = pr[pr["horizon"].isin(["t+1", "t+1…t+5"]) & pr["mean_base_pct"].notna()]
     if not main.empty:
         fig = go.Figure()
-        for h, col in (("t+1", p["accent"]), ("t+1…t+5", "#F59E0B")):
+        for h, col in (("t+1", p["accent"]), ("t+1…t+5", p["series2"])):
             x = main[main["horizon"] == h]
             fig.add_trace(go.Bar(y=x["rule"], x=x["mean_signal_pct"], name=f"Sau tín hiệu {h}", orientation="h", marker_color=col))
             fig.add_trace(go.Scatter(y=x["rule"], x=x["mean_base_pct"], name=f"Phiên thường {h}", mode="markers",
@@ -263,8 +263,8 @@ def render(embedded: bool = False) -> None:
         status_bar.render()
     p = pal()
     date = da.sessions()[-1]
-    t1, t2, t4, t5 = st.tabs(["🔔 Cảnh báo – chống trùng", "🎯 Cảnh báo – giá trị dự báo",
-                              "📏 Biên dao động VN-Index", "💰 Giá trị kinh tế"])
+    t1, t2, t4, t5 = st.tabs(["Cảnh báo – chống trùng", "Cảnh báo – giá trị dự báo",
+                              "Biên dao động VN-Index", "Giá trị kinh tế"])
     with t1:
         section("Chạy lại cảnh báo trên lịch sử", "Đo số tin thực sự gửi sau chống trùng và giới hạn ngày")
         _tab_dedup(p)

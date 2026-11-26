@@ -12,7 +12,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from src.app.theme import SESSION_COLORS, color_for, register_plotly
+from src.app.theme import WEB_SESSION_COLORS as SESSION_COLORS, color_for, register_plotly
 from src.finance.breadth import SESSION_TYPES
 
 
@@ -58,7 +58,7 @@ def index_chart(df: pd.DataFrame, name: str, kind: str, p: Dict, events: Optiona
             if x.min() <= ed <= x.max():
                 fig.add_vline(x=ed, line=dict(color=p["teal"], width=1.3, dash="dash"))
                 fig.add_annotation(x=ed, y=1.0, yref="paper", text=f"{e.event_id} {ed:%d/%m}", showarrow=False,
-                                   font=dict(size=10, color="#fff"), bgcolor=p["teal"], borderpad=2)
+                                   font=dict(size=12, color="#fff"), bgcolor=p["teal"], borderpad=2)
     _lay(fig, p, height, hovermode="x unified", xaxis_rangeslider_visible=False, margin=dict(l=8, r=60, t=36, b=8))
     fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])], showgrid=False)
     fig.update_yaxes(tickformat=",.0f", row=1, col=1)
@@ -70,7 +70,7 @@ def gauge(score: float, p: Dict) -> go.Figure:
     col = p["up"] if score >= 70 else p["ref"] if score >= 40 else p["down"]
     fig = go.Figure(go.Indicator(mode="gauge+number", value=score,
                                  number=dict(font=dict(size=38, color=p["text"]), valueformat=".0f"),
-                                 gauge=dict(axis=dict(range=[0, 100], tickwidth=0, tickfont=dict(size=10, color=p["muted"])),
+                                 gauge=dict(axis=dict(range=[0, 100], tickwidth=0, tickfont=dict(size=12, color=p["muted"])),
                                             bar=dict(color=col, thickness=.28), bgcolor="rgba(0,0,0,0)", borderwidth=0,
                                             steps=[dict(range=[0, 40], color="rgba(220,38,38,.12)"),
                                                    dict(range=[40, 70], color="rgba(217,119,6,.12)"),
@@ -99,7 +99,7 @@ def treemap(snap: pd.DataFrame, p: Dict) -> go.Figure:
     d["ret_pct"] = d["ret"] * 100
     d["nf_bn"] = d["net_flow"] / 1e9
     fig = px.treemap(d, path=[px.Constant("HOSE"), "sector", "symbol"], values="size", color="ret_pct",
-                     color_continuous_scale=[[0, "#B91C1C"], [.35, "#F87171"], [.5, "#E5E7EB" if not p["dark"] else "#334155"],
+                     color_continuous_scale=[[0, "#B91C1C"], [.35, "#F87171"], [.5, "#E8E8E8" if not p["dark"] else "#3A3A3A"],
                                              [.65, "#4ADE80"], [1, "#15803D"]],
                      range_color=[-2.5, 2.5], color_continuous_midpoint=0,
                      custom_data=["ret_pct", "close", "size", "nf_bn"])
@@ -128,7 +128,7 @@ def sector_bars(df: pd.DataFrame, col: str, p: Dict, suffix: str = "%") -> go.Fi
 
 def line_comparison(series: Dict[str, pd.Series], p: Dict, height: int = 330) -> go.Figure:
     fig = go.Figure()
-    colors = [p["accent"], "#2563EB", "#D97706", "#E11D48"]
+    colors = [p["accent"], p["series2"], p["series3"], p["neutral_line"]]
     for i, (name, s) in enumerate(series.items()):
         s = s.dropna()
         if s.empty:
@@ -208,7 +208,7 @@ def caar_chart(aar: pd.DataFrame, p: Dict, col: str = "CAAR", title: str = "", h
     fig = go.Figure()
     names = {"FTSE": "Nhóm FTSE (27 mã)", "CONTROL": "Nhóm đối chứng", "FTSE_AW": "Vào All-World (6 mã lớn/vừa)",
              "FTSE_SC": "Chỉ vào All-Cap (21 mã nhỏ)"}
-    for g, c in (("FTSE", p["accent"]), ("CONTROL", "#94A3B8"), ("FTSE_AW", "#F5B341"), ("FTSE_SC", "#2563EB")):
+    for g, c in (("FTSE", p["accent"]), ("CONTROL", "#94A3B8"), ("FTSE_AW", p["series3"]), ("FTSE_SC", p["series2"])):
         d = aar[aar["group"] == g].sort_values("tau")
         if d.empty:
             continue
@@ -248,7 +248,7 @@ def did_coef_chart(c: pd.DataFrame, p: Dict, outcome: str, height: int = 320) ->
 
 def line(df: pd.DataFrame, x: str, ys: Dict[str, str], p: Dict, height: int = 300, title: str = "") -> go.Figure:
     fig = go.Figure()
-    colors = [p["accent"], "#2563EB", "#D97706", "#E11D48", "#94A3B8"]
+    colors = [p["accent"], p["series2"], p["series3"], p["neutral_line"], "#C4C8CC"]
     for i, (col, name) in enumerate(ys.items()):
         fig.add_trace(go.Scatter(x=df[x], y=df[col], name=name, line=dict(color=colors[i % 5], width=1.8)))
     return _lay(fig, p, height, hovermode="x unified", title=dict(text=title, font=dict(size=13)))

@@ -63,7 +63,7 @@ def spark(values: Iterable, color: str, w: int = 170, h: int = 40, fill: bool = 
 def chip(text: str, bg: str, fg: str = "#ffffff") -> str:
     """Nhãn trạng thái: nền nhạt + chữ đậm cùng màu (taste-skill: không dùng nền bão hòa chữ trắng)."""
     if fg.lower() in ("#fff", "#ffffff") and bg.startswith("#") and len(bg) == 7:
-        return f'<span class="ffr-chip" style="background:{tint(bg)};color:{bg}">{esc(text)}</span>'
+        return f'<span class="ffr-chip" style="background:{tint(bg)};color:{chip_ink(bg)}">{esc(text)}</span>'
     return f'<span class="ffr-chip" style="background:{bg};color:{fg}">{esc(text)}</span>'
 
 
@@ -73,8 +73,23 @@ def tint(hex_color: str, alpha: float = .14) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
+def chip_ink(color: str) -> str:
+    """Chữ trên nền nhạt cùng sắc: tối hơn ở chế độ Sáng, sáng hơn ở chế độ Tối, để đủ tương phản."""
+    h = color.lstrip("#")
+    if len(h) != 6:
+        return color
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    if pal()["dark"]:
+        f = .45
+        r, g, b = (round(v + (255 - v) * f) for v in (r, g, b))
+    else:
+        f = .42
+        r, g, b = (round(v * (1 - f)) for v in (r, g, b))
+    return f"#{r:02X}{g:02X}{b:02X}"
+
+
 def soft_chip(text: str, color: str) -> str:
-    return f'<span class="ffr-chip" style="background:{tint(color)};color:{color}">{esc(text)}</span>'
+    return f'<span class="ffr-chip" style="background:{tint(color)};color:{chip_ink(color)}">{esc(text)}</span>'
 
 
 def kpi(label: str, value: str, color: Optional[str] = None, sub: str = "", title: str = "") -> str:

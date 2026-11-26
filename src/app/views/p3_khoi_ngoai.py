@@ -154,7 +154,7 @@ def render() -> None:
             sec = uni[uni["group_type"] == "sector"]
             uni = pd.concat([uni[uni["group_type"] == "universe"], sec.nlargest(5, "net_flow"), sec.nsmallest(5, "net_flow")])
             uni = uni.drop_duplicates("group_name")
-            uni["group_name"] = uni["group_name"].replace({"FTSE": "★ Nhóm FTSE", "CONTROL": "★ Đối chứng", "VN30": "★ VN30"})
+            uni["group_name"] = uni["group_name"].replace({"FTSE": "Nhóm FTSE", "CONTROL": "Đối chứng", "VN30": "VN30"})
             fig = charts.sector_bars(uni.rename(columns={"net_flow": "val"}), "val", p, " tỷ")
             fig.update_traces(textposition="auto", insidetextanchor="end",
                               text=[fmt.num(v, 0, True, " tỷ") for v in fig.data[0].x])

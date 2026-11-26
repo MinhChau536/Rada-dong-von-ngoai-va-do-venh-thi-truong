@@ -189,15 +189,15 @@ def banner_html(title: str, sub: str, pills_html: str = "") -> str:
     plain, rest = HIGHLIGHT.get(title, (title, ""))
     head = (f"{plain} {rest}" if rest else plain).strip().replace("&", '<span class="amp">&amp;</span>')
     return (f'<div class="ffr-banner"><div class="ffr-banner-txt">'
-            f'<div class="ffr-banner-title">{head}</div><div class="ffr-banner-sub">{sub}</div>'
+            f'<h1 class="ffr-banner-title">{head}</h1><div class="ffr-banner-sub">{sub}</div>'
             f'<div class="ffr-banner-pills">{pills_html}</div></div></div>')
 
 
 # ── nền trang ────────────────────────────────────────────────────────────────
-STARS = "✨ Đêm sao tương tác"
-PAGE_PHOTO = "🖼 Ảnh theo trang"
+STARS = "Đêm sao tương tác"
+PAGE_PHOTO = "Ảnh theo trang"
 BACKGROUNDS = [STARS, PAGE_PHOTO, "Trơn", "Lưới biểu đồ", "Sóng ngọc", "Bình minh", "Nến mờ", "Ảnh của tôi"]
-ALIASES = {"Mặc định": STARS, "Đêm sao": STARS}         # tên cũ đã lưu trong ui_prefs.json
+ALIASES = {"Mặc định": STARS, "Đêm sao": STARS, "✨ Đêm sao tương tác": STARS, "🖼 Ảnh theo trang": PAGE_PHOTO}         # tên cũ đã lưu trong ui_prefs.json
 
 
 def normalize(choice: Optional[str]) -> str:
@@ -333,8 +333,10 @@ def banner_css(dark: bool) -> str:
   padding:4px 0 16px; margin:0 0 16px; border-bottom:1px solid var(--ffr-border); background:none; color:var(--ffr-text); }
 .ffr-hero-photo, .ffr-hero-glow, .ffr-banner-art { display:none !important; }
 .ffr-banner-txt { display:flex; flex-direction:column; min-width:0; max-width:100%; }
-.ffr-banner-title { font-family:var(--ffr-font); font-size:30px; font-weight:600; letter-spacing:-.025em; line-height:1.15;
-  color:var(--ffr-text); }
+.ffr-banner-title, [data-testid="stMarkdownContainer"] h1.ffr-banner-title { font-family:var(--ffr-font) !important;
+  font-size:28px !important; font-weight:600 !important; letter-spacing:-.025em; line-height:1.15 !important;
+  color:var(--ffr-text) !important; margin:0 !important; padding:0 !important; scroll-margin-top:0; }
+.ffr-banner-title [data-testid="stHeaderActionElements"], .ffr-banner-title a { display:none !important; }
 .ffr-banner-title .amp { font-weight:400; color:var(--ffr-muted); margin:0 .06em; }
 .ffr-banner-title em { font-style:normal; color:inherit; }
 .ffr-banner-sub { font-size:15px; color:var(--ffr-muted); margin-top:6px; line-height:1.55; max-width:86ch; }
@@ -345,5 +347,5 @@ def banner_css(dark: bool) -> str:
 div[data-testid="stElementContainer"]:has(iframe[height="0"]) { display:none !important; }
 .st-key-ffr_fx { position:absolute !important; width:0 !important; height:0 !important; overflow:hidden !important;
   margin:0 !important; padding:0 !important; }
-@media (max-width: 900px) { .ffr-banner-title { font-size:24px; } }
+@media (max-width: 900px) { .ffr-banner-title, [data-testid="stMarkdownContainer"] h1.ffr-banner-title { font-size:22px !important; } }
 """

@@ -1,13 +1,13 @@
 {
- "created": "2026-11-26 15:11:56",
+ "created": "2026-11-27 22:15:00",
  "base_created": "2026-11-26 11:11:29",
  "base_last": "2026-11-25",
  "source": "SSI FastConnect V3",
  "tables": {
   "alert_log": {
    "mode": "full",
-   "rows": 684,
-   "total_rows": 684,
+   "rows": 676,
+   "total_rows": 676,
    "files": [
     "data_0.parquet"
    ]
@@ -38,8 +38,8 @@
   },
   "data_quality_log": {
    "mode": "full",
-   "rows": 7289,
-   "total_rows": 7289,
+   "rows": 7391,
+   "total_rows": 7391,
    "files": [
     "data_0.parquet"
    ]
@@ -62,8 +62,8 @@
   },
   "dim_securities": {
    "mode": "full",
-   "rows": 7060,
-   "total_rows": 7060,
+   "rows": 8913,
+   "total_rows": 8913,
    "files": [
     "data_0.parquet"
    ]
@@ -102,56 +102,56 @@
   },
   "fact_daily_index": {
    "mode": "full",
-   "rows": 10855,
-   "total_rows": 10855,
+   "rows": 10859,
+   "total_rows": 10859,
    "files": [
     "data_0.parquet"
    ]
   },
   "fact_daily_stock": {
    "mode": "after",
-   "rows": 739,
-   "total_rows": 1016702,
+   "rows": 1122,
+   "total_rows": 1017085,
    "files": [
     "data_0.parquet"
    ]
   },
   "fact_intraday": {
    "mode": "full",
-   "rows": 52731,
-   "total_rows": 52731,
+   "rows": 55574,
+   "total_rows": 55574,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_daily": {
    "mode": "full",
-   "rows": 2721,
-   "total_rows": 2721,
+   "rows": 2722,
+   "total_rows": 2722,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_group_daily": {
    "mode": "after",
-   "rows": 60,
-   "total_rows": 82069,
+   "rows": 90,
+   "total_rows": 82099,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_intraday": {
    "mode": "full",
-   "rows": 1776,
-   "total_rows": 1776,
+   "rows": 1872,
+   "total_rows": 1872,
    "files": [
     "data_0.parquet"
    ]
   },
   "indicator_stock_daily": {
    "mode": "after",
-   "rows": 739,
-   "total_rows": 1016702,
+   "rows": 1122,
+   "total_rows": 1017085,
    "files": [
     "data_0.parquet"
    ]
@@ -166,16 +166,16 @@
   },
   "ingest_log": {
    "mode": "full",
-   "rows": 37715,
-   "total_rows": 37715,
+   "rows": 39285,
+   "total_rows": 39285,
    "files": [
     "data_0.parquet"
    ]
   },
   "leaders_daily": {
    "mode": "after",
-   "rows": 20,
-   "total_rows": 26969,
+   "rows": 30,
+   "total_rows": 26979,
    "files": [
     "data_0.parquet"
    ]
@@ -190,40 +190,40 @@
   },
   "raw_daily_index": {
    "mode": "full",
-   "rows": 10855,
-   "total_rows": 10855,
+   "rows": 10859,
+   "total_rows": 10859,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_daily_stock": {
    "mode": "after",
-   "rows": 739,
-   "total_rows": 1016702,
+   "rows": 1122,
+   "total_rows": 1017085,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_index_components": {
    "mode": "full",
-   "rows": 241,
-   "total_rows": 241,
+   "rows": 301,
+   "total_rows": 301,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_intraday": {
    "mode": "full",
-   "rows": 52731,
-   "total_rows": 52731,
+   "rows": 55574,
+   "total_rows": 55574,
    "files": [
     "data_0.parquet"
    ]
   },
   "raw_securities": {
    "mode": "full",
-   "rows": 7274,
-   "total_rows": 7274,
+   "rows": 9181,
+   "total_rows": 9181,
    "files": [
     "data_0.parquet"
    ]
@@ -244,8 +244,8 @@
   },
   "reports_log": {
    "mode": "full",
-   "rows": 53,
-   "total_rows": 53,
+   "rows": 56,
+   "total_rows": 56,
    "files": [
     "data_0.parquet"
    ]
@@ -299,5 +299,5 @@
    ]
   }
  },
- "last_session": "2026-11-26 00:00:00"
+ "last_session": "2026-11-27 00:00:00"
 }

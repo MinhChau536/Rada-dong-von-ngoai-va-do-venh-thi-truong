@@ -345,7 +345,7 @@ def banner_css(dark: bool) -> str:
              radial-gradient(ellipse at 10% 120%, rgba(245,179,65,.16), transparent 50%),
              linear-gradient(90deg, rgba(7,17,32,.96) 0%, rgba(7,17,32,.75) 45%, rgba(7,17,32,.15) 100%); }
 .ffr-banner-txt { position:relative; z-index:1; display:flex; flex-direction:column; justify-content:center; max-width:64%; }
-.ffr-kicker { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:11px; letter-spacing:1.2px; text-transform:uppercase;
+.ffr-kicker { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:13px; letter-spacing:1.2px; text-transform:uppercase;
   color:#F5B341; font-weight:600; display:flex; align-items:center; gap:9px; margin-bottom:8px; }
 .ffr-kicker span { width:7px; height:7px; border-radius:50%; background:#F5B341; box-shadow:0 0 0 4px rgba(245,179,65,.2); }
 .ffr-banner-title { font-family:'Be Vietnam Pro',Inter,system-ui,sans-serif; font-size:30px; font-weight:800; letter-spacing:-.5px;

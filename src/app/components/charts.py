@@ -51,14 +51,14 @@ def index_chart(df: pd.DataFrame, name: str, kind: str, p: Dict, events: Optiona
     last = float(d["value"].iloc[-1])
     fig.add_hline(y=last, line=dict(color=p["accent"], width=1, dash="dot"), row=1, col=1,
                   annotation_text=f" {last:,.2f}".replace(",", "§").replace(".", ",").replace("§", "."),
-                  annotation_position="right", annotation_font=dict(color=p["accent"], size=11))
+                  annotation_position="right", annotation_font=dict(color=p["accent"], size=12.5))
     if events is not None:
         for e in events.itertuples():
             ed = pd.Timestamp(e.event_date)
             if x.min() <= ed <= x.max():
                 fig.add_vline(x=ed, line=dict(color=p["teal"], width=1.3, dash="dash"))
                 fig.add_annotation(x=ed, y=1.0, yref="paper", text=f"{e.event_id} {ed:%d/%m}", showarrow=False,
-                                   font=dict(size=10, color="#fff"), bgcolor=p["teal"], borderpad=2)
+                                   font=dict(size=12.5, color="#fff"), bgcolor=p["teal"], borderpad=2)
     _lay(fig, p, height, hovermode="x unified", xaxis_rangeslider_visible=False, margin=dict(l=8, r=60, t=36, b=8))
     fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])], showgrid=False)
     fig.update_yaxes(tickformat=",.0f", row=1, col=1)
@@ -70,7 +70,7 @@ def gauge(score: float, p: Dict) -> go.Figure:
     col = p["up"] if score >= 70 else p["ref"] if score >= 40 else p["down"]
     fig = go.Figure(go.Indicator(mode="gauge+number", value=score,
                                  number=dict(font=dict(size=38, color=p["text"]), valueformat=".0f"),
-                                 gauge=dict(axis=dict(range=[0, 100], tickwidth=0, tickfont=dict(size=10, color=p["muted"])),
+                                 gauge=dict(axis=dict(range=[0, 100], tickwidth=0, tickfont=dict(size=12.5, color=p["muted"])),
                                             bar=dict(color=col, thickness=.28), bgcolor="rgba(0,0,0,0)", borderwidth=0,
                                             steps=[dict(range=[0, 40], color="rgba(220,38,38,.12)"),
                                                    dict(range=[40, 70], color="rgba(217,119,6,.12)"),
@@ -227,7 +227,7 @@ def caar_chart(aar: pd.DataFrame, p: Dict, col: str = "CAAR", title: str = "", h
     fig.add_vline(x=0, line=dict(color=p["teal"], dash="dash"))
     fig.add_hline(y=0, line=dict(color=p["muted"], width=1))
     _lay(fig, p, height, title=dict(text=title, font=dict(size=13)), hovermode="closest",
-         hoverlabel=dict(bgcolor="rgba(15,30,51,.75)", font_size=11), legend=dict(orientation="h", y=-0.22, x=0),
+         hoverlabel=dict(bgcolor="rgba(15,30,51,.75)", font_size=12.5), legend=dict(orientation="h", y=-0.22, x=0),
          margin=dict(l=8, r=8, t=10, b=8))
     fig.update_traces(hovertemplate="τ = %{x}: %{y:.2f}<extra>%{fullData.name}</extra>", selector=dict(showlegend=True))
     fig.update_xaxes(title="Ngày sự kiện τ (phiên)")

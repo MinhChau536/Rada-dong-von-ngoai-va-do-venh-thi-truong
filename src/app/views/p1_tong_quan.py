@@ -86,7 +86,9 @@ def render_trend_quality(data: Dict) -> None:
         ("Top 5 đóng góp (CR5)", fmt.frac_pct(x["CR5"], 0), p["text"],
          f'phân vị {fmt.num(x.get("CR5_pct250"), 0)}% · 250 phiên', "(5) CR5 = Σ|C| top5 / Σ|C|"),
         ("Khối ngoại ròng HOSE", fmt.bn(x["NF_total"]), color_for(x["NF_total"], p),
-         f'z = {fmt.num(x["z_NF_total"], 2, True)} so với 60 phiên', "(6) NF = FB − FS; (8) z theo 60 phiên trước"),
+         f'z = {fmt.num(x["z_NF_total"], 2, True)} so với 60 phiên' + (" · tạm tính, chưa hết phiên"
+                                                                       if da.session_progress(data["date"]) is not None else ""),
+         "(6) NF = FB − FS; (8) z theo 60 phiên trước"),
     ]
     cols = st.columns(5)
     for c, (lbl, val, clr, sub, tip) in zip(cols, items):
@@ -117,7 +119,7 @@ def render_watchlist_strip(data: Dict) -> None:
                f'<b class="ffr-sym">{sym}</b><b style="color:{clr}">{fmt.pct(r["ret"] * 100)}</b></div>'
                f'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><div>'
                f'<div style="font-size:18px;font-weight:800">{fmt.price(r["close"])}</div>'
-               f'<div style="font-size:11px;color:{p["muted"]}">vs trung vị {fmt.num(r["ER_M"] * 100, 2, True)} đ.% · NN {fmt.bn(r["net_flow"], 0)}</div>'
+               f'<div style="font-size:13px;color:{p["muted"]}">vs trung vị {fmt.num(r["ER_M"] * 100, 2, True)} đ.% · NN {fmt.bn(r["net_flow"], 0)}</div>'
                f'</div><div style="width:80px">{spark(data["sparks"].get(sym, []), clr, 80, 30, False)}</div></div>'
                f'<div style="margin-top:5px">{soft_chip(ABSORB_LABELS[ab], ABSORB_COLORS[ab])}</div></div>')
             if st.button("Xem hồ sơ →", key=f"wl_go_{sym}", width="stretch"):
@@ -228,6 +230,9 @@ def _movers(df: pd.DataFrame, sparks: Dict, extra: str) -> str:
 def render_movers(data: Dict) -> None:
     s = data["stock"][data["stock"]["is_valid"]].copy()
     s = s[s["tv"] >= float(get("outlook.movers_min_tv_bn", 10)) * 1e9]     # cùng bộ lọc GTGD với PDF
+    frac = da.session_progress(data["date"])
+    if frac is not None and "vol_ratio" in s:          # trong phiên: KL mới là một phần ngày → so với TB20 cùng thời điểm
+        s["vol_ratio"] = s["vol_ratio"] / frac
     n = 10
     tabs = st.tabs(["Tăng mạnh nhất", "Giảm mạnh nhất", "GTGD lớn", "Đột biến khối lượng", "Đóng góp điểm lớn"])
     with tabs[0]:
@@ -242,6 +247,9 @@ def render_movers(data: Dict) -> None:
             st.caption("Phiên này không có mã nào (GTGD ≥ 10 tỷ) có khối lượng ≥ 2 lần trung bình 20 phiên – "
                        "dưới đây là 10 mã có tỷ lệ KL/TB20 cao nhất.")
             spike = s.nlargest(n, "vol_ratio")
+        if frac is not None:
+            st.caption(f"Đang trong phiên ({fmt.num(frac * 100, 0)}% thời gian giao dịch): KL/TB20 đã quy về cùng thời điểm "
+                       "trong ngày (KL tới lúc này ÷ phần TB20 tương ứng).")
         md(_movers(spike, data["sparks"], "vol"))
     with tabs[4]:
         md(_movers(s.reindex(s["C"].abs().sort_values(ascending=False).index).head(n), data["sparks"], "C"))

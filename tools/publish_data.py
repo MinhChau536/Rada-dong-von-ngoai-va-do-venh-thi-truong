@@ -61,6 +61,11 @@ def _unpushed_foreign_commits() -> int:
 
 
 def _commit_push(paths, message: str, log) -> str:
+    # chỉ giữ đường dẫn còn trên đĩa hoặc git đang theo dõi: `git add` một thư mục đã xóa mà chưa từng commit
+    # (data/live_snapshot sau khi có số chính thức) báo lỗi 128 → trước đây làm hỏng mọi lần đẩy từ 26/11/2026
+    paths = [p for p in paths if (ROOT / p).exists() or _git("ls-files", "--error-unmatch", "--", p, check=False).returncode == 0]
+    if not paths:
+        return "unchanged"
     _git("add", "-A", "--", *paths)
     if _git("diff", "--cached", "--quiet", "--", *paths, check=False).returncode == 0:
         return "unchanged"

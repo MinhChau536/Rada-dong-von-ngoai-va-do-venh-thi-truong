@@ -212,4 +212,10 @@ if __name__ == "__main__":
         print(json.dumps({"coverage": coverage(), "behind": is_behind(), "last_update": last_status()},
                          ensure_ascii=False, indent=2, default=str))
     else:
-        print(json.dumps(update(a.force, not a.no_robustness), ensure_ascii=False, indent=2, default=str))
+        res = update(a.force, not a.no_robustness)
+        print(json.dumps(res, ensure_ascii=False, indent=2, default=str))
+        try:                                            # tôn trọng publish.auto_push; lỗi mạng/git không làm hỏng lần cập nhật
+            from tools.publish_data import auto_publish
+            print(json.dumps(auto_publish(), ensure_ascii=False, default=str))
+        except Exception as exc:  # noqa: BLE001
+            print(f"Không đẩy được dữ liệu lên GitHub: {exc}")

@@ -65,7 +65,7 @@ DX_CSS = """<style>
 .dx-v { display:flex; gap:18px; flex-wrap:wrap; margin:4px 0; font-size:13px; opacity:.9; }
 .dx-v b { font-size:18px; font-variant-numeric:tabular-nums; }
 .dx-a { font-size:13.5px; line-height:1.55; }
-.dx-ev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; white-space:nowrap; }
+.dx-ev { display:inline-block; padding:2px 9px; border-radius:999px; font-size:13px; font-weight:700; white-space:nowrap; }
 .dx-concl { border:none; border-left:3px solid var(--ffr-accent); border-radius:0; padding:4px 0 4px 14px;
   font-size:15px; line-height:1.6; margin:4px 0 12px; background:transparent; }
 </style>"""

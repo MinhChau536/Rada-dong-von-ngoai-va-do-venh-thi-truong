@@ -176,11 +176,11 @@ WL_CSS = """<style>
 .wl-co-name { font-size:16px; font-weight:700; margin-top:6px; }
 .wl-co-meta, .wl-co-note { font-size:12.5px; opacity:.75; margin-top:4px; }
 .wl-co-note { margin-top:10px; font-style:italic; }
-.wl-tile small { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; opacity:.7; }
+.wl-tile small { font-size:13px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; opacity:.7; }
 .wl-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-top:14px; }
 .wl-tile { border:1px solid rgba(148,163,184,.18); border-radius:12px; padding:10px 12px; background:rgba(255,255,255,.03); }
 .wl-tile b { display:block; font-size:19px; font-weight:800; margin:4px 0 2px; font-variant-numeric:tabular-nums; }
-.wl-tile span { font-size:11.5px; opacity:.7; }
+.wl-tile span { font-size:13px; opacity:.7; }
 </style>"""
 
 
@@ -311,7 +311,7 @@ def symbol_tab(pick: str, data, date) -> None:
                                customdata=rx["n"], hovertemplate="%{x}: %{y:.2f}% (%{customdata} phiên)<extra></extra>"))
         fig.update_layout(title=f"{pick} hơn/kém trung vị thị trường theo loại phiên (ERᴹ TB, điểm %)")
         charts._lay(fig, p, 300, showlegend=False)
-        fig.update_xaxes(tickangle=0, tickfont=dict(size=11))
+        fig.update_xaxes(tickangle=0, tickfont=dict(size=12.5))
         plot(fig, f"p5_rx_{pick}")
 
 

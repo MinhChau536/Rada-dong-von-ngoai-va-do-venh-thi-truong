@@ -37,6 +37,19 @@ def live_info() -> Optional[dict]:
         return None
 
 
+def session_progress(session_date) -> Optional[float]:
+    """Phiên `session_date` đang là phiên tạm tính trong giờ → tỷ lệ thời gian giao dịch đã qua (0–1) tại lần dựng
+    gần nhất (9:00–11:30 và 13:00–15:00 = 270 phút). Ngoài phiên / đã có số đóng cửa → None."""
+    li = live_info()
+    if not li or session_date is None or pd.Timestamp(li["session_date"]) != pd.Timestamp(session_date):
+        return None
+    t = pd.Timestamp(li["built_at"])
+    m = t.hour * 60 + t.minute
+    done = max(0, min(m, 11 * 60 + 30) - 9 * 60) + max(0, min(m, 15 * 60) - 13 * 60)
+    frac = done / 270
+    return None if frac >= 0.995 else max(frac, 0.02)
+
+
 def _lv() -> str:
     """Phiên bản dữ liệu tạm tính – dùng làm khóa cache."""
     li = live_info()

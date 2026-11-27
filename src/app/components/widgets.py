@@ -132,7 +132,10 @@ def w_indices(D: Dict) -> None:
 def w_top(D: Dict) -> None:
     v = D["stock"][D["stock"]["is_valid"]].copy()
     min_tv = float(get("outlook.movers_min_tv_bn", 10)) * 1e9          # cùng bộ lọc với PDF: GTGD ≥ 10 tỷ
-    liq = v[v["tv"] >= min_tv]
+    liq = v[v["tv"] >= min_tv].copy()
+    frac = da.session_progress(D["date"])
+    if frac is not None and "vol_ratio" in liq:        # trong phiên: quy KL/TB20 về cùng thời điểm trong ngày
+        liq["vol_ratio"] = liq["vol_ratio"] / frac
     title("Top 10 cổ phiếu HOSE")
     tabs = st.tabs(["Tăng giá", "Giảm giá", "GTGD", "KL đột biến"])
     picks = [liq.nlargest(10, "ret"), liq.nsmallest(10, "ret"), v.nlargest(10, "tv"),
@@ -254,8 +257,15 @@ def w_liquidity(D: Dict) -> None:
     _fig(fig, 300, dates=True, showlegend=True, legend=dict(orientation="h", y=-0.18, x=0))
     plot(fig, "tc_liq")
     last, avg = tv.iloc[-1], ma.iloc[-1]
-    md(f'<div class="tc-row"><span>Phiên này <b>{fmt.num(last, 0)} tỷ</b></span>'
-       f'<span>So với TB20: <b style="color:{color_for(last - avg, p)}">{fmt.pct((last / avg - 1) * 100, 0)}</b></span></div>')
+    frac = da.session_progress(D["date"])
+    if frac is not None:                     # trong phiên: GTGD mới là một phần ngày → so với TB20 cùng thời điểm
+        exp = avg * frac
+        md(f'<div class="tc-row"><span>Tới lúc này <b>{fmt.num(last, 0)} tỷ</b> ({fmt.num(frac * 100, 0)}% thời gian phiên)</span>'
+           f'<span>So với TB20 cùng thời điểm (≈{fmt.num(exp, 0)} tỷ): '
+           f'<b style="color:{color_for(last - exp, p)}">{fmt.pct((last / exp - 1) * 100, 0)}</b></span></div>')
+    else:
+        md(f'<div class="tc-row"><span>Phiên này <b>{fmt.num(last, 0)} tỷ</b></span>'
+           f'<span>So với TB20: <b style="color:{color_for(last - avg, p)}">{fmt.pct((last / avg - 1) * 100, 0)}</b></span></div>')
 
 
 # ── 7. Độ rộng ───────────────────────────────────────────────────────────────

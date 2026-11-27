@@ -165,14 +165,16 @@ python tools/schedule_windows.py --remove # gỡ
 
 | Giờ (thứ 2 – thứ 6) | Việc hệ thống làm | Web / PDF / bot hiển thị |
 |---|---|---|
-| 08:50 | Bộ ghi luồng khởi động (Task Scheduler; hoặc khi mở web/bot) | Phiên gần nhất |
+| 08:50 | Bộ ghi luồng khởi động (Task Scheduler, khi đăng nhập Windows, hoặc khi mở web/bot); bật sớm hơn 08:55 thì **chờ tới giờ**, không thoát | Phiên gần nhất |
 | **09:00 – 15:00** | Ghi WebSocket cả sàn HOSE; **2 phút/lần** dựng phiên tạm tính, chạy lại chuỗi chỉ báo và đẩy số liệu tạm tính lên GitHub (`data/live_snapshot/`) | ● TRỰC TIẾP trên máy và trên bản công khai, trễ ~2–4 phút, web tự làm mới; báo cáo chỉ xuất được **Market Snapshot** |
 | 11:35 | Bản tin giữa phiên + Market Snapshot qua Telegram | |
 | **15:05 – 15:15** | Chốt phiên từ luồng (giá sau ATC, khối ngoại cả phiên), tính lại toàn bộ chỉ báo và kiểm định | ● ĐÓNG CỬA TẠM TÍNH |
 | 15:15 | Chẩn đoán phiên + Closing Report qua Telegram (chỉ khi đã có số đóng cửa chính thức) | |
 | Khi SSI công bố số cuối ngày | Hỏi REST 90 giây/lần (tới 18:30), tải và **thay bản tạm tính** bằng số chính thức, đẩy `data/snapshot_delta/` lên GitHub | Số liệu chính thức · mở **Closing Report** |
 
-Máy tắt nhiều ngày: lần chạy sau tự lấp mọi phiên còn thiếu qua REST. Luồng WebSocket không tải bù được.
+Máy tắt nhiều ngày: lần chạy sau tự lấp mọi phiên còn thiếu qua REST. Luồng WebSocket không tải bù được. Máy bật sau giờ đóng cửa (kể cả sau 18:30): bộ ghi / web tự tải số đóng cửa chính thức còn thiếu và đẩy lên bản công khai.
+
+**Chỉ số trong phiên khác cuối phiên ở đâu.** Giá, chỉ số, độ rộng, đóng góp điểm và độ vênh dùng giá khớp mới nhất nên đọc được ngay. Các đại lượng cộng dồn theo thời gian (GTGD, khối lượng, khối ngoại ròng) mới là một phần ngày: thanh khoản và "đột biến khối lượng" được so với TB20 **quy về cùng thời điểm** (theo phần thời gian giao dịch đã qua, 270 phút/phiên); điểm z khối ngoại ghi rõ "tạm tính, chưa hết phiên". Sau 15:00 số chốt từ luồng thay thế, rồi số chính thức của SSI thay thế tiếp.
 
 **Số liệu trong phiên cần máy chạy bộ ghi.** Bộ ghi bật giữa phiên vẫn dựng được giá và chỉ số ngay (bù bằng nến 1 phút REST), nhưng khối ngoại của một mã chỉ có khi mã đó phát sinh giao dịch khối ngoại sau lúc bật – thanh trạng thái hiện "Khối ngoại tạm tính: x/381 mã có số liệu". Số đầy đủ có sau khi SSI công bố số cuối ngày.
 

@@ -118,7 +118,8 @@ def render() -> None:
     with t1:
         k = st.columns(4)
         for c, h in zip(k, [kpi("Khối ngoại ròng HOSE", fmt.bn(x["NF_total"]), color_for(x["NF_total"], p),
-                                sub=f"z = {fmt.num(x['z_NF_total'], 2, True)} so với 60 phiên"),
+                                sub=f"z = {fmt.num(x['z_NF_total'], 2, True)} so với 60 phiên"
+                                    + (" · tạm tính, chưa hết phiên" if da.session_progress(date) is not None else "")),
                             kpi("Top 5 mã / tổng |ròng|", fmt.frac_pct(x["top5_share_flow"], 0), sub="mức tập trung của dòng vốn"),
                             kpi("HHI dòng vốn", fmt.num(x["HHI"], 3),
                                 sub=f"≈ trải đều trên {fmt.num(1 / x['HHI'] if x['HHI'] else float('nan'), 0)} mã"),

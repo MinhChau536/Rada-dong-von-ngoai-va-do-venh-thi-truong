@@ -166,6 +166,8 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
     if not (env("SSI_API_KEY") and env("SSI_API_SECRET")):
         raise SystemExit("Thiếu SSI_API_KEY / SSI_API_SECRET trong .env")
     db.init_schema()
+    if seconds is None and symbols is None:
+        _wait_for_window()                             # Task Scheduler/đăng nhập bật lúc 08:50 hoặc sớm hơn: chờ, không thoát
     if seconds is None and not in_recorder_window():
         log.info("Ngoài cửa sổ ghi %s–%s – không ghi luồng.", get("session.recorder_start"), get("session.recorder_end"))
         if symbols is None and now_vn().weekday() < 5 and now_vn().strftime("%H:%M") >= get("session.recorder_end", "15:05"):
@@ -256,6 +258,20 @@ def run(seconds: Optional[float] = None, symbols: Optional[List[str]] = None) ->
     if seconds is None and symbols is None:
         post_close_update()
     return out
+
+
+def _wait_for_window(max_wait_h: float = 4.0) -> None:
+    """Ngày giao dịch, bộ ghi được bật trước giờ mở cửa sổ ghi (08:55): ngủ tới giờ rồi ghi tiếp.
+    Trước đây bộ ghi thoát ngay ("ngoài cửa sổ ghi") → cả ngày không có số liệu trong phiên lẫn số đóng cửa (27/11/2026)."""
+    start = str(get("session.recorder_start", "08:55"))
+    t0 = time.monotonic()
+    announced = False
+    while now_vn().weekday() < 5 and now_vn().strftime("%H:%M") < start and time.monotonic() - t0 < max_wait_h * 3600:
+        if not announced:
+            log.info("Chưa tới giờ ghi luồng (%s) – chờ, không thoát", start)
+            announced = True
+        _keep_awake(True)
+        time.sleep(20)
 
 
 def _keep_awake(on: bool) -> None:
@@ -368,6 +384,18 @@ def post_close_update(poll_sec: int = 90, until: str = "18:30") -> str:
         except Exception as exc:  # noqa: BLE001
             log.warning("Kiểm tra số liệu cuối ngày lỗi: %s", exc)
         time.sleep(poll_sec)
+    # quá giờ chờ (máy bật muộn, hoặc SSI công bố muộn): nếu kho vẫn thiếu phiên thì thử tải một lần – buổi tối SSI
+    # thường đã có số cuối ngày; trước đây hàm trả "timeout" ngay mà không tải gì
+    try:
+        if updater.is_behind():
+            r = updater.update()
+            log.info("Cập nhật cuối ngày (muộn): %s, dữ liệu tới %s", r.get("status"), r["after"]["indicators"])
+            _publish()
+            return str(r.get("status"))
+        _publish()
+        return "up_to_date"
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Cập nhật cuối ngày (muộn) lỗi: %s", exc)
     return "timeout"
 
 

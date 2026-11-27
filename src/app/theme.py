@@ -325,15 +325,16 @@ html, body, [data-testid="stAppViewContainer"], .stApp {{ font-size:16px !import
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a {{ padding:11px 16px !important; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a p {{ font-size:16px !important; }}
 section[data-testid="stSidebar"] [data-testid="stPageLink"] a span {{ font-size:21px !important; }}
-.ffr-grp span {{ font-size:12.5px !important; }}
+.ffr-grp span {{ font-size:13.5px !important; }}
 .ffr-brand b {{ font-size:19px !important; }}
 .ffr-brand small {{ font-size:12.5px !important; }}
-.ffr-srcbox, .ffr-disc {{ font-size:13.5px !important; }}
-.ffr-srct {{ font-size:12px !important; }}
+.ffr-srcbox, .ffr-disc, .ffr-srcr {{ font-size:14px !important; }}
+.ffr-disc-t {{ font-size:14px !important; }}
+.ffr-srct {{ font-size:13px !important; }}
 section[data-testid="stSidebar"] button p {{ font-size:14px !important; }}
 section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ font-size:15px !important; }}
 /* đầu trang, mục, thẻ chỉ số */
-.ffr-acad {{ font-size:13.5px !important; }}
+.ffr-acad {{ font-size:14px !important; }}
 .ffr-note {{ font-size:14px !important; }}
 .ffr-banner-title {{ font-size:34px !important; }}
 @media (max-width: 640px) {{ .ffr-banner-title {{ font-size:26px !important; }} .block-container {{ padding:1rem 1rem 3rem 1rem !important; }} }}
@@ -343,24 +344,24 @@ section[data-testid="stSidebar"] [data-testid="stExpander"] summary p {{ font-si
 .ffr-pill {{ font-size:13.5px !important; padding:5px 12px; }}
 .ffr-sec h3 {{ font-size:19px !important; }}
 .ffr-sec span {{ font-size:14px !important; }}
-.ffr-lbl {{ font-size:12.5px !important; }}
+.ffr-lbl {{ font-size:13.5px !important; }}
 .ffr-val {{ font-size:28px !important; }}
 .ffr-chg {{ font-size:15px !important; }}
 .ffr-meta {{ font-size:13.5px !important; }}
-.ffr-kpi small {{ font-size:12.5px !important; }}
+.ffr-kpi small {{ font-size:13.5px !important; }}
 .ffr-kpi b {{ font-size:25px !important; }}
 .ffr-insight {{ font-size:15px !important; }}
 .ffr-lead {{ font-size:15.5px !important; }}
 .ffr-legend, .ffr-comp {{ font-size:14px !important; }}
-.ffr-chip {{ font-size:13px !important; }}
+.ffr-chip {{ font-size:13.5px !important; }}
 .ffr-foot {{ font-size:13.5px !important; }}
 .ffr-intro, .ffr-status {{ font-size:14px !important; }}
 /* thẻ widget và bảng */
 .tc-title {{ font-size:20px !important; }}
 .tc-sub {{ font-size:14px !important; }}
-.tc-row, .tc-note {{ font-size:13.5px !important; }}
+.tc-row, .tc-note {{ font-size:14px !important; }}
 table.ffr-t, table.tc-t {{ font-size:15px !important; }}
-table.ffr-t th, table.tc-t th {{ font-size:13.5px !important; }}
+table.ffr-t th, table.tc-t th {{ font-size:14px !important; }}
 table.ffr-t td, table.tc-t td {{ padding-top:8px !important; padding-bottom:8px !important; }}
 /* tab */
 .stTabs [data-testid="stTab"] p {{ font-size:16px !important; }}

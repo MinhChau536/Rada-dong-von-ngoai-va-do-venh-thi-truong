@@ -66,7 +66,7 @@ def _timeline(ev: pd.DataFrame) -> None:
     md('<style>.ft-tl{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:4px 0 6px}'
        '.ft-ev{border:1px solid rgba(148,163,184,.2);border-left:3px solid #F5B341;border-radius:12px;padding:9px 12px;'
        'background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:2px}.ft-ev b{color:#F5B341;font-size:15px}'
-       '.ft-ev span{font-weight:700;font-size:13.5px}.ft-ev em{font-style:normal;font-size:13px}.ft-ev small{opacity:.75;font-size:12px;'
+       '.ft-ev span{font-weight:700;font-size:13.5px}.ft-ev em{font-style:normal;font-size:13px}.ft-ev small{opacity:.75;font-size:13px;'
        'line-height:1.4}</style>' + f'<div class="ft-tl">{items}</div>')
 
 
@@ -102,7 +102,7 @@ def _cum_groups(p) -> None:
     for r in events().itertuples():
         if r.event_date >= e1:
             fig.add_vline(x=r.event_date, line=dict(color="#F5B341", width=1, dash="dot"))
-            fig.add_annotation(x=r.event_date, y=1, yref="paper", text=r.event_id, showarrow=False, font=dict(color="#F5B341", size=11),
+            fig.add_annotation(x=r.event_date, y=1, yref="paper", text=r.event_id, showarrow=False, font=dict(color="#F5B341", size=12.5),
                                yanchor="bottom")
     fig.add_hline(y=0, line=dict(color=p["muted"], width=1))
     plot(charts._lay(fig, p, 360, hovermode="x unified", legend=dict(orientation="h", y=-0.15, x=0),
